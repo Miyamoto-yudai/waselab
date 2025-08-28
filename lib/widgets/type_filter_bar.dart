@@ -29,22 +29,13 @@ class TypeFilterBar extends StatelessWidget {
     return Container(
       width: double.infinity, // 画面幅いっぱいに広げる
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [
-            const Color(0xFF8E1728),
-            const Color(0xFF7F3143),
-          ],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: const Color(0xFF8E1728).withValues(alpha: 0.3),
-            spreadRadius: 0,
-            blurRadius: 4,
-            offset: const Offset(0, 2),
+        color: Colors.white,
+        border: Border(
+          bottom: BorderSide(
+            color: Colors.grey.shade300,
+            width: 1,
           ),
-        ],
+        ),
       ),
       child: SingleChildScrollView(
         scrollDirection: Axis.horizontal,
@@ -60,8 +51,8 @@ class TypeFilterBar extends StatelessWidget {
                 padding: const EdgeInsets.only(right: 8),
                 child: Material(
                   color: selectedType == null 
-                    ? Colors.white
-                    : Colors.white.withValues(alpha: 0.2),
+                    ? const Color(0xFF8E1728)
+                    : Colors.grey.shade200,
                   borderRadius: BorderRadius.circular(20),
                   child: InkWell(
                     onTap: () => onTypeSelected(null),
@@ -73,8 +64,8 @@ class TypeFilterBar extends StatelessWidget {
                         style: TextStyle(
                           fontWeight: selectedType == null ? FontWeight.bold : FontWeight.w500,
                           color: selectedType == null 
-                            ? const Color(0xFF8E1728)
-                            : Colors.white,
+                            ? Colors.white
+                            : Colors.grey.shade700,
                           fontSize: 12,
                         ),
                       ),
@@ -89,8 +80,8 @@ class TypeFilterBar extends StatelessWidget {
                   padding: const EdgeInsets.only(right: 8),
                   child: Material(
                     color: isSelected 
-                      ? Colors.white
-                      : Colors.white.withValues(alpha: 0.2),
+                      ? const Color(0xFF8E1728)
+                      : Colors.grey.shade200,
                     borderRadius: BorderRadius.circular(20),
                     child: InkWell(
                       onTap: () => onTypeSelected(isSelected ? null : type),
@@ -104,8 +95,8 @@ class TypeFilterBar extends StatelessWidget {
                               _getTypeIcon(type),
                               size: 16,
                               color: isSelected 
-                                ? const Color(0xFF8E1728)
-                                : Colors.white,
+                                ? Colors.white
+                                : Colors.grey.shade700,
                             ),
                             const SizedBox(width: 6),
                             Text(
@@ -113,8 +104,8 @@ class TypeFilterBar extends StatelessWidget {
                               style: TextStyle(
                                 fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
                                 color: isSelected 
-                                  ? const Color(0xFF8E1728)
-                                  : Colors.white,
+                                  ? Colors.white
+                                  : Colors.grey.shade700,
                                 fontSize: 12,
                               ),
                             ),

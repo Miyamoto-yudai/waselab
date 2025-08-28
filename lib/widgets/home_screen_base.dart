@@ -28,14 +28,90 @@ class HomeScreenBase extends StatefulWidget {
   State<HomeScreenBase> createState() => _HomeScreenBaseState();
 }
 
+enum SortOption {
+  newest('新しい順'),
+  oldest('古い順'),
+  highReward('報酬額が高い順'),
+  lowReward('報酬額が低い順'),
+  soonest('開催日が近い順'),
+  latest('開催日が遠い順');
+
+  final String label;
+  const SortOption(this.label);
+}
+
 class _HomeScreenBaseState extends State<HomeScreenBase> {
   ExperimentType? _selectedType;
+  SortOption _sortOption = SortOption.newest;
+  String _searchQuery = '';
+  final TextEditingController _searchController = TextEditingController();
   
   List<Experiment> get filteredExperiments {
-    if (_selectedType == null) {
-      return widget.experiments;
+    List<Experiment> filtered = List.from(widget.experiments);
+    
+    // 検索フィルター
+    if (_searchQuery.isNotEmpty) {
+      final query = _searchQuery.toLowerCase();
+      filtered = filtered.where((experiment) {
+        // タイトル、説明、研究室名、場所で検索
+        final titleMatch = experiment.title.toLowerCase().contains(query);
+        final descriptionMatch = experiment.description.toLowerCase().contains(query);
+        final labNameMatch = experiment.labName?.toLowerCase().contains(query) ?? false;
+        final locationMatch = experiment.location.toLowerCase().contains(query);
+        
+        // 報酬額での検索（数値として入力された場合）
+        final rewardMatch = int.tryParse(_searchQuery) != null 
+            ? experiment.reward.toString().contains(_searchQuery)
+            : false;
+        
+        return titleMatch || descriptionMatch || labNameMatch || locationMatch || rewardMatch;
+      }).toList();
     }
-    return widget.experiments.where((e) => e.type == _selectedType).toList();
+    
+    // タイプフィルター
+    if (_selectedType != null) {
+      filtered = filtered.where((e) => e.type == _selectedType).toList();
+    }
+    
+    // ソート処理
+    switch (_sortOption) {
+      case SortOption.newest:
+        filtered.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+        break;
+      case SortOption.oldest:
+        filtered.sort((a, b) => a.createdAt.compareTo(b.createdAt));
+        break;
+      case SortOption.highReward:
+        filtered.sort((a, b) => b.reward.compareTo(a.reward));
+        break;
+      case SortOption.lowReward:
+        filtered.sort((a, b) => a.reward.compareTo(b.reward));
+        break;
+      case SortOption.soonest:
+        filtered.sort((a, b) {
+          if (a.experimentDate == null && b.experimentDate == null) return 0;
+          if (a.experimentDate == null) return 1;
+          if (b.experimentDate == null) return -1;
+          return a.experimentDate!.compareTo(b.experimentDate!);
+        });
+        break;
+      case SortOption.latest:
+        filtered.sort((a, b) {
+          if (a.experimentDate == null && b.experimentDate == null) return 0;
+          if (a.experimentDate == null) return -1;
+          if (b.experimentDate == null) return 1;
+          return b.experimentDate!.compareTo(a.experimentDate!);
+        });
+        break;
+    }
+    
+    return filtered;
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
   }
 
   @override
@@ -168,14 +244,156 @@ class _HomeScreenBaseState extends State<HomeScreenBase> {
       ),
       body: Column(
         children: [
-          // 種別切り替えボタン（共通コンポーネント）
-          TypeFilterBar(
-            selectedType: _selectedType,
-            onTypeSelected: (type) {
-              setState(() {
-                _selectedType = type;
-              });
-            },
+          // 検索バー、種別切り替えボタン、ソート選択
+          Column(
+            children: [
+              // 検索バー
+              Container(
+                color: Colors.white,
+                padding: const EdgeInsets.all(12),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Container(
+                        height: 40,
+                        decoration: BoxDecoration(
+                          color: Colors.grey.shade100,
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(color: Colors.grey.shade300),
+                        ),
+                        child: TextField(
+                          controller: _searchController,
+                          onChanged: (value) {
+                            setState(() {
+                              _searchQuery = value;
+                            });
+                          },
+                          decoration: InputDecoration(
+                            hintText: '実験を検索（タイトル、説明、研究室、場所、報酬額）',
+                            hintStyle: TextStyle(
+                              fontSize: 14,
+                              color: Colors.grey.shade600,
+                            ),
+                            prefixIcon: const Icon(
+                              Icons.search,
+                              size: 20,
+                              color: Color(0xFF8E1728),
+                            ),
+                            suffixIcon: _searchQuery.isNotEmpty
+                                ? IconButton(
+                                    icon: Icon(
+                                      Icons.clear,
+                                      size: 18,
+                                      color: Colors.grey.shade600,
+                                    ),
+                                    onPressed: () {
+                                      setState(() {
+                                        _searchController.clear();
+                                        _searchQuery = '';
+                                      });
+                                    },
+                                  )
+                                : null,
+                            border: InputBorder.none,
+                            contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 10,
+                            ),
+                          ),
+                          style: const TextStyle(fontSize: 14),
+                        ),
+                      ),
+                    ),
+                    if (_searchQuery.isNotEmpty) ...[
+                      const SizedBox(width: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 6,
+                        ),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF8E1728),
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        child: Text(
+                          '${filteredExperiments.length}件',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              const Divider(height: 1, thickness: 1),
+              TypeFilterBar(
+                selectedType: _selectedType,
+                onTypeSelected: (type) {
+                  setState(() {
+                    _selectedType = type;
+                  });
+                },
+              ),
+              // ソート選択ドロップダウン
+              Container(
+                color: Colors.white,
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                child: Row(
+                  children: [
+                    const Icon(Icons.sort, size: 20, color: Color(0xFF8E1728)),
+                    const SizedBox(width: 8),
+                    const Text(
+                      '並び替え:',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF8E1728),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12),
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: Colors.grey.shade300),
+                          color: Colors.grey.shade50,
+                        ),
+                        child: DropdownButtonHideUnderline(
+                          child: DropdownButton<SortOption>(
+                            value: _sortOption,
+                            isDense: true,
+                            isExpanded: true,
+                            icon: const Icon(Icons.arrow_drop_down, color: Color(0xFF8E1728)),
+                            style: const TextStyle(
+                              fontSize: 14,
+                              color: Colors.black87,
+                            ),
+                            onChanged: (SortOption? newValue) {
+                              if (newValue != null) {
+                                setState(() {
+                                  _sortOption = newValue;
+                                });
+                              }
+                            },
+                            items: SortOption.values.map<DropdownMenuItem<SortOption>>((SortOption value) {
+                              return DropdownMenuItem<SortOption>(
+                                value: value,
+                                child: Text(value.label),
+                              );
+                            }).toList(),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const Divider(height: 1, thickness: 1),
+            ],
           ),
           
           // 実験リスト（レスポンシブグリッド）
@@ -194,11 +412,14 @@ class _HomeScreenBaseState extends State<HomeScreenBase> {
                           ),
                           const SizedBox(height: 16),
                           Text(
-                            '実験がありません',
+                            _searchQuery.isNotEmpty
+                                ? '「$_searchQuery」に一致する実験が見つかりません'
+                                : '実験がありません',
                             style: TextStyle(
                               fontSize: 16,
                               color: Colors.grey[600],
                             ),
+                            textAlign: TextAlign.center,
                           ),
                         ],
                       ),
