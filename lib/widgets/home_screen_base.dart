@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import '../models/experiment.dart';
 import '../widgets/experiment_card.dart';
-import '../widgets/type_filter_bar.dart';
 
 /// ホーム画面の共通ベースウィジェット
 class HomeScreenBase extends StatefulWidget {
@@ -114,11 +113,32 @@ class _HomeScreenBaseState extends State<HomeScreenBase> {
     super.dispose();
   }
 
+  Widget _buildCompactFilterChip(String label, bool isSelected, VoidCallback onTap) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+        decoration: BoxDecoration(
+          color: isSelected ? const Color(0xFF8E1728) : Colors.grey.shade200,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            fontSize: 11,
+            fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+            color: isSelected ? Colors.white : Colors.grey.shade700,
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        toolbarHeight: 42, // アプリバーの高さをさらに細くする
+        toolbarHeight: 36, // アプリバーの高さをさらに細くする
         titleSpacing: 0, // タイトルを完全に左寄せ
         centerTitle: false, // タイトルを左寄せに配置
         title: Padding(
@@ -126,7 +146,7 @@ class _HomeScreenBaseState extends State<HomeScreenBase> {
           child: Text(
             widget.title,
             style: const TextStyle(
-              fontSize: 16,
+              fontSize: 14,
               fontWeight: FontWeight.bold,
             ),
           ),
@@ -250,15 +270,15 @@ class _HomeScreenBaseState extends State<HomeScreenBase> {
               // 検索バー
               Container(
                 color: Colors.white,
-                padding: const EdgeInsets.all(12),
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                 child: Row(
                   children: [
                     Expanded(
                       child: Container(
-                        height: 40,
+                        height: 32,
                         decoration: BoxDecoration(
                           color: Colors.grey.shade100,
-                          borderRadius: BorderRadius.circular(20),
+                          borderRadius: BorderRadius.circular(16),
                           border: Border.all(color: Colors.grey.shade300),
                         ),
                         child: TextField(
@@ -269,21 +289,21 @@ class _HomeScreenBaseState extends State<HomeScreenBase> {
                             });
                           },
                           decoration: InputDecoration(
-                            hintText: '実験を検索（タイトル、説明、研究室、場所、報酬額）',
+                            hintText: '検索（タイトル、研究室、場所など）',
                             hintStyle: TextStyle(
-                              fontSize: 14,
+                              fontSize: 12,
                               color: Colors.grey.shade600,
                             ),
                             prefixIcon: const Icon(
                               Icons.search,
-                              size: 20,
+                              size: 18,
                               color: Color(0xFF8E1728),
                             ),
                             suffixIcon: _searchQuery.isNotEmpty
                                 ? IconButton(
                                     icon: Icon(
                                       Icons.clear,
-                                      size: 18,
+                                      size: 16,
                                       color: Colors.grey.shade600,
                                     ),
                                     onPressed: () {
@@ -296,30 +316,30 @@ class _HomeScreenBaseState extends State<HomeScreenBase> {
                                 : null,
                             border: InputBorder.none,
                             contentPadding: const EdgeInsets.symmetric(
-                              horizontal: 16,
-                              vertical: 10,
+                              horizontal: 12,
+                              vertical: 6,
                             ),
                           ),
-                          style: const TextStyle(fontSize: 14),
+                          style: const TextStyle(fontSize: 12),
                         ),
                       ),
                     ),
                     if (_searchQuery.isNotEmpty) ...[
-                      const SizedBox(width: 8),
+                      const SizedBox(width: 6),
                       Container(
                         padding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 6,
+                          horizontal: 8,
+                          vertical: 4,
                         ),
                         decoration: BoxDecoration(
                           color: const Color(0xFF8E1728),
-                          borderRadius: BorderRadius.circular(16),
+                          borderRadius: BorderRadius.circular(12),
                         ),
                         child: Text(
                           '${filteredExperiments.length}件',
                           style: const TextStyle(
                             color: Colors.white,
-                            fontSize: 12,
+                            fontSize: 11,
                             fontWeight: FontWeight.bold,
                           ),
                         ),
@@ -328,71 +348,76 @@ class _HomeScreenBaseState extends State<HomeScreenBase> {
                   ],
                 ),
               ),
-              const Divider(height: 1, thickness: 1),
-              TypeFilterBar(
-                selectedType: _selectedType,
-                onTypeSelected: (type) {
-                  setState(() {
-                    _selectedType = type;
-                  });
-                },
-              ),
-              // ソート選択ドロップダウン
+              // タイプフィルターとソートを同じ行に配置
               Container(
                 color: Colors.white,
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                 child: Row(
                   children: [
-                    const Icon(Icons.sort, size: 20, color: Color(0xFF8E1728)),
-                    const SizedBox(width: 8),
-                    const Text(
-                      '並び替え:',
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.bold,
-                        color: Color(0xFF8E1728),
+                    // タイプフィルター（コンパクト版）
+                    Expanded(
+                      child: SingleChildScrollView(
+                        scrollDirection: Axis.horizontal,
+                        child: Row(
+                          children: [
+                            _buildCompactFilterChip('すべて', _selectedType == null, () {
+                              setState(() {
+                                _selectedType = null;
+                              });
+                            }),
+                            const SizedBox(width: 6),
+                            ...ExperimentType.values.map((type) {
+                              return Padding(
+                                padding: const EdgeInsets.only(right: 6),
+                                child: _buildCompactFilterChip(type.label, _selectedType == type, () {
+                                  setState(() {
+                                    _selectedType = _selectedType == type ? null : type;
+                                  });
+                                }),
+                              );
+                            }),
+                          ],
+                        ),
                       ),
                     ),
                     const SizedBox(width: 8),
-                    Expanded(
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12),
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(color: Colors.grey.shade300),
-                          color: Colors.grey.shade50,
-                        ),
-                        child: DropdownButtonHideUnderline(
-                          child: DropdownButton<SortOption>(
-                            value: _sortOption,
-                            isDense: true,
-                            isExpanded: true,
-                            icon: const Icon(Icons.arrow_drop_down, color: Color(0xFF8E1728)),
-                            style: const TextStyle(
-                              fontSize: 14,
-                              color: Colors.black87,
-                            ),
-                            onChanged: (SortOption? newValue) {
-                              if (newValue != null) {
-                                setState(() {
-                                  _sortOption = newValue;
-                                });
-                              }
-                            },
-                            items: SortOption.values.map<DropdownMenuItem<SortOption>>((SortOption value) {
-                              return DropdownMenuItem<SortOption>(
-                                value: value,
-                                child: Text(value.label),
-                              );
-                            }).toList(),
+                    // ソート選択（コンパクト版）
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8),
+                      height: 28,
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(color: Colors.grey.shade300),
+                        color: Colors.grey.shade50,
+                      ),
+                      child: DropdownButtonHideUnderline(
+                        child: DropdownButton<SortOption>(
+                          value: _sortOption,
+                          isDense: true,
+                          icon: const Icon(Icons.arrow_drop_down, size: 18, color: Color(0xFF8E1728)),
+                          style: const TextStyle(
+                            fontSize: 11,
+                            color: Colors.black87,
                           ),
+                          onChanged: (SortOption? newValue) {
+                            if (newValue != null) {
+                              setState(() {
+                                _sortOption = newValue;
+                              });
+                            }
+                          },
+                          items: SortOption.values.map<DropdownMenuItem<SortOption>>((SortOption value) {
+                            return DropdownMenuItem<SortOption>(
+                              value: value,
+                              child: Text(value.label, style: const TextStyle(fontSize: 11)),
+                            );
+                          }).toList(),
                         ),
                       ),
                     ),
                   ],
                 ),
               ),
-              const Divider(height: 1, thickness: 1),
             ],
           ),
           

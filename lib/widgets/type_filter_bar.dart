@@ -40,7 +40,7 @@ class TypeFilterBar extends StatelessWidget {
       child: SingleChildScrollView(
         scrollDirection: Axis.horizontal,
         child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+          padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 12),
           constraints: BoxConstraints(
             minWidth: MediaQuery.of(context).size.width, // 最小幅を画面幅に設定
           ),
