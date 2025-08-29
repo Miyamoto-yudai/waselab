@@ -80,36 +80,106 @@ class ExperimentCard extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-              // 締切タグ
-              if (daysLeft != null)
-                Container(
-                  margin: const EdgeInsets.only(bottom: 6),
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                  decoration: BoxDecoration(
-                    color: daysLeft <= 3 
-                      ? Colors.red.withValues(alpha: 0.1)
-                      : daysLeft <= 7
-                        ? Colors.orange.withValues(alpha: 0.1)
-                        : Colors.green.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(6),
-                  ),
-                  child: Text(
-                    daysLeft <= 0 
-                      ? '本日締切' 
-                      : daysLeft == 1
-                        ? '明日締切'
-                        : 'あと$daysLeft日',
-                    style: TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.bold,
-                      color: daysLeft <= 3 
-                        ? Colors.red[700]
-                        : daysLeft <= 7
-                          ? Colors.orange[700]
-                          : Colors.green[700],
+              // 締切タグとスケジュールタイプ表示
+              Row(
+                children: [
+                  // 柔軟なスケジュール調整のバッジ
+                  if (experiment.allowFlexibleSchedule)
+                    Container(
+                      margin: const EdgeInsets.only(bottom: 6, right: 8),
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: Colors.blue.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(6),
+                        border: Border.all(
+                          color: Colors.blue.withValues(alpha: 0.3),
+                          width: 1,
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.calendar_month,
+                            size: 12,
+                            color: Colors.blue[700],
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            '日程調整可',
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.blue[700],
+                            ),
+                          ),
+                        ],
+                      ),
+                    )
+                  else
+                    Container(
+                      margin: const EdgeInsets.only(bottom: 6, right: 8),
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: Colors.purple.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(6),
+                        border: Border.all(
+                          color: Colors.purple.withValues(alpha: 0.3),
+                          width: 1,
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.event,
+                            size: 12,
+                            color: Colors.purple[700],
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            '日時固定',
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.purple[700],
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
-                  ),
-                ),
+                  // 締切タグ
+                  if (daysLeft != null)
+                    Container(
+                      margin: const EdgeInsets.only(bottom: 6),
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: daysLeft <= 3 
+                          ? Colors.red.withValues(alpha: 0.1)
+                          : daysLeft <= 7
+                            ? Colors.orange.withValues(alpha: 0.1)
+                            : Colors.green.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Text(
+                        daysLeft <= 0 
+                          ? '本日締切' 
+                          : daysLeft == 1
+                            ? '明日締切'
+                            : 'あと$daysLeft日',
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                          color: daysLeft <= 3 
+                            ? Colors.red[700]
+                            : daysLeft <= 7
+                              ? Colors.orange[700]
+                              : Colors.green[700],
+                        ),
+                      ),
+                    ),
+                ],
+              ),
               
               // タイトルと研究室名
               Column(
@@ -290,35 +360,71 @@ class ExperimentCard extends StatelessWidget {
               
               const SizedBox(height: 4),
               
-              // 場所情報
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
-                decoration: BoxDecoration(
-                  color: Colors.blue.withValues(alpha: 0.05),
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(
-                    color: Colors.blue.withValues(alpha: 0.15),
-                    width: 1,
-                  ),
-                ),
-                child: Row(
-                  children: [
-                    Icon(Icons.location_on_outlined, size: 16, color: Colors.blue[700]),
-                    const SizedBox(width: 6),
-                    Flexible(
-                      child: Text(
-                        experiment.location,
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: Colors.blue[900],
-                          fontWeight: FontWeight.w500,
+              // 場所情報と日程情報
+              Row(
+                children: [
+                  // 場所情報
+                  Expanded(
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: Colors.blue.withValues(alpha: 0.05),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(
+                          color: Colors.blue.withValues(alpha: 0.15),
+                          width: 1,
                         ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(Icons.location_on_outlined, size: 16, color: Colors.blue[700]),
+                          const SizedBox(width: 6),
+                          Flexible(
+                            child: Text(
+                              experiment.location,
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: Colors.blue[900],
+                                fontWeight: FontWeight.w500,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
-                  ],
-                ),
+                  ),
+                  const SizedBox(width: 4),
+                  // 日程情報
+                  if (experiment.allowFlexibleSchedule)
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: Colors.green.withValues(alpha: 0.05),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(
+                          color: Colors.green.withValues(alpha: 0.15),
+                          width: 1,
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.date_range, size: 16, color: Colors.green[700]),
+                          const SizedBox(width: 4),
+                          Text(
+                            '予約制',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.green[900],
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                ],
               ),
               ],
             ),
