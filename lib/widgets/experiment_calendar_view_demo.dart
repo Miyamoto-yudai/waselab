@@ -144,7 +144,7 @@ class _ExperimentCalendarViewDemoState extends State<ExperimentCalendarViewDemo>
               return isSameDay(_selectedDay, day);
             },
             eventLoader: _getEventsForDay,
-            startingDayOfWeek: StartingDayOfWeek.monday,
+            startingDayOfWeek: StartingDayOfWeek.sunday,
             locale: 'ja_JP',
             availableCalendarFormats: const {
               CalendarFormat.month: '月',
@@ -199,8 +199,8 @@ class _ExperimentCalendarViewDemoState extends State<ExperimentCalendarViewDemo>
             },
             calendarBuilders: CalendarBuilders(
               dowBuilder: (context, day) {
-                final weekdays = ['月', '火', '水', '木', '金', '土', '日'];
-                final weekday = weekdays[day.weekday - 1];
+                final weekdays = ['日', '月', '火', '水', '木', '金', '土'];
+                final weekday = weekdays[day.weekday % 7];
                 final isWeekend = day.weekday == DateTime.saturday || 
                                  day.weekday == DateTime.sunday;
                 
