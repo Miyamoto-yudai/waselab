@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import '../services/demo_auth_service.dart';
+import '../models/experiment.dart';
+import 'package:intl/intl.dart';
 
 /// デモモード用のマイページ画面
 class MyPageScreenDemo extends StatefulWidget {
@@ -16,7 +18,8 @@ class MyPageScreenDemo extends StatefulWidget {
   State<MyPageScreenDemo> createState() => _MyPageScreenDemoState();
 }
 
-class _MyPageScreenDemoState extends State<MyPageScreenDemo> {
+class _MyPageScreenDemoState extends State<MyPageScreenDemo> with SingleTickerProviderStateMixin {
+  late TabController _tabController;
   bool _isEditing = false;
   final TextEditingController _bioController = TextEditingController(
     text: 'わせラボで実験に参加しています。心理学と認知科学に興味があります。',
@@ -27,6 +30,73 @@ class _MyPageScreenDemoState extends State<MyPageScreenDemo> {
   final TextEditingController _gradeController = TextEditingController(
     text: '3年',
   );
+  
+  // デモ用のサンプル実験データ
+  final List<Experiment> _demoParticipatedExperiments = [
+    Experiment(
+      id: '1',
+      title: '視覚認知に関する実験',
+      description: '画像を見て反応速度を測定する実験です',
+      reward: 1500,
+      location: 'オンライン',
+      type: ExperimentType.online,
+      isPaid: true,
+      creatorId: 'demo_creator',
+      createdAt: DateTime.now().subtract(const Duration(days: 30)),
+      experimentDate: DateTime.now().subtract(const Duration(days: 25)),
+    ),
+    Experiment(
+      id: '2',
+      title: '言語処理に関するアンケート調査',
+      description: '日本語の文章理解に関するアンケートです',
+      reward: 500,
+      location: 'オンライン',
+      type: ExperimentType.survey,
+      isPaid: true,
+      creatorId: 'demo_creator2',
+      createdAt: DateTime.now().subtract(const Duration(days: 45)),
+      experimentDate: DateTime.now().subtract(const Duration(days: 40)),
+    ),
+    Experiment(
+      id: '3',
+      title: '心理学実験への参加者募集',
+      description: '記憶と学習に関する対面実験です',
+      reward: 2000,
+      location: '早稲田キャンパス14号館',
+      type: ExperimentType.onsite,
+      isPaid: true,
+      creatorId: 'demo_creator3',
+      createdAt: DateTime.now().subtract(const Duration(days: 60)),
+      experimentDate: DateTime.now().subtract(const Duration(days: 55)),
+    ),
+  ];
+  
+  final List<Experiment> _demoCreatedExperiments = [
+    Experiment(
+      id: '4',
+      title: 'VR空間での行動分析実験',
+      description: 'VRヘッドセットを使用した空間認知実験です',
+      reward: 3000,
+      location: '理工学部51号館',
+      type: ExperimentType.onsite,
+      isPaid: true,
+      creatorId: 'current_user',
+      createdAt: DateTime.now().subtract(const Duration(days: 10)),
+      experimentDate: DateTime.now().add(const Duration(days: 5)),
+    ),
+    Experiment(
+      id: '5',
+      title: '消費者行動に関するオンライン調査',
+      description: '購買意思決定プロセスに関する調査です',
+      reward: 1000,
+      location: 'オンライン',
+      type: ExperimentType.online,
+      isPaid: true,
+      creatorId: 'current_user',
+      createdAt: DateTime.now().subtract(const Duration(days: 20)),
+      experimentDate: DateTime.now().subtract(const Duration(days: 15)),
+    ),
+  ];
 
   String _formatCurrency(int amount) {
     final formatter = amount.toString().replaceAllMapped(
@@ -34,6 +104,21 @@ class _MyPageScreenDemoState extends State<MyPageScreenDemo> {
       (Match m) => '${m[1]},',
     );
     return formatter;
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _tabController = TabController(length: 3, vsync: this);
+  }
+
+  @override
+  void dispose() {
+    _tabController.dispose();
+    _bioController.dispose();
+    _departmentController.dispose();
+    _gradeController.dispose();
+    super.dispose();
   }
 
   @override
@@ -51,8 +136,28 @@ class _MyPageScreenDemoState extends State<MyPageScreenDemo> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('マイページ'),
+        bottom: TabBar(
+          controller: _tabController,
+          indicatorColor: Colors.white,
+          indicatorWeight: 3,
+          labelStyle: const TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.bold,
+          ),
+          unselectedLabelStyle: const TextStyle(
+            fontSize: 15,
+            fontWeight: FontWeight.normal,
+          ),
+          labelColor: Colors.white,
+          unselectedLabelColor: Colors.white70,
+          tabs: const [
+            Tab(text: 'プロフィール'),
+            Tab(text: '参加履歴'),
+            Tab(text: '募集履歴'),
+          ],
+        ),
         actions: [
-          if (!_isEditing)
+          if (!_isEditing && _tabController.index == 0)
             IconButton(
               icon: const Icon(Icons.edit),
               onPressed: () {
@@ -67,7 +172,11 @@ class _MyPageScreenDemoState extends State<MyPageScreenDemo> {
           ),
         ],
       ),
-      body: SingleChildScrollView(
+      body: TabBarView(
+        controller: _tabController,
+        children: [
+          // プロフィールタブ
+          SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Center(
           child: ConstrainedBox(
@@ -462,8 +571,141 @@ class _MyPageScreenDemoState extends State<MyPageScreenDemo> {
             ),
           ),
         ),
+          ),
+          // 参加履歴タブ
+          _buildExperimentHistoryTab(_demoParticipatedExperiments, '参加した実験'),
+          // 募集履歴タブ
+          _buildExperimentHistoryTab(_demoCreatedExperiments, '募集した実験'),
+        ],
       ),
     );
+  }
+
+  Widget _buildExperimentHistoryTab(List<Experiment> experiments, String emptyMessage) {
+    if (experiments.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.history,
+              size: 64,
+              color: Colors.grey[400],
+            ),
+            const SizedBox(height: 16),
+            Text(
+              '$emptyMessageがありません',
+              style: TextStyle(
+                fontSize: 16,
+                color: Colors.grey[600],
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return ListView.builder(
+      padding: const EdgeInsets.all(16),
+      itemCount: experiments.length,
+      itemBuilder: (context, index) {
+        final experiment = experiments[index];
+        return Card(
+          elevation: 2,
+          margin: const EdgeInsets.only(bottom: 12),
+          child: ListTile(
+            leading: CircleAvatar(
+              backgroundColor: _getTypeColor(experiment.type),
+              child: Icon(
+                _getTypeIcon(experiment.type),
+                color: Colors.white,
+                size: 20,
+              ),
+            ),
+            title: Text(
+              experiment.title,
+              style: const TextStyle(fontWeight: FontWeight.bold),
+            ),
+            subtitle: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const SizedBox(height: 4),
+                Text(
+                  experiment.description,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 4),
+                Row(
+                  children: [
+                    Icon(Icons.calendar_today, size: 14, color: Colors.grey[600]),
+                    const SizedBox(width: 4),
+                    Text(
+                      experiment.experimentDate != null
+                        ? DateFormat('yyyy/MM/dd').format(experiment.experimentDate!)
+                        : '日程未定',
+                      style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                    ),
+                    const SizedBox(width: 16),
+                    Icon(Icons.payments, size: 14, color: Colors.grey[600]),
+                    const SizedBox(width: 4),
+                    Text(
+                      experiment.isPaid ? '¥${experiment.reward}' : '無償',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: experiment.isPaid ? Colors.green[700] : Colors.grey[600],
+                        fontWeight: experiment.isPaid ? FontWeight.bold : FontWeight.normal,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+            trailing: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              decoration: BoxDecoration(
+                color: experiment.type == ExperimentType.online
+                    ? Colors.blue.withValues(alpha: 0.1)
+                    : experiment.type == ExperimentType.onsite
+                        ? Colors.orange.withValues(alpha: 0.1)
+                        : Colors.green.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Text(
+                experiment.type.label,
+                style: TextStyle(
+                  fontSize: 12,
+                  color: _getTypeColor(experiment.type),
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Color _getTypeColor(ExperimentType type) {
+    switch (type) {
+      case ExperimentType.online:
+        return Colors.blue;
+      case ExperimentType.onsite:
+        return Colors.orange;
+      case ExperimentType.survey:
+        return Colors.green;
+    }
+  }
+
+  IconData _getTypeIcon(ExperimentType type) {
+    switch (type) {
+      case ExperimentType.online:
+        return Icons.computer;
+      case ExperimentType.onsite:
+        return Icons.place;
+      case ExperimentType.survey:
+        return Icons.assignment;
+    }
   }
 
   Widget _buildProfileField({
@@ -521,13 +763,5 @@ class _MyPageScreenDemoState extends State<MyPageScreenDemo> {
           ),
       ],
     );
-  }
-
-  @override
-  void dispose() {
-    _bioController.dispose();
-    _departmentController.dispose();
-    _gradeController.dispose();
-    super.dispose();
   }
 }

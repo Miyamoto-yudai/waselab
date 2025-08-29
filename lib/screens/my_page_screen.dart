@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import '../services/auth_service.dart';
 import '../services/user_service.dart';
+import '../services/experiment_service.dart';
 import '../models/app_user.dart';
+import '../models/experiment.dart';
 import 'login_screen.dart';
+import 'package:intl/intl.dart';
 
 class MyPageScreen extends StatefulWidget {
   const MyPageScreen({super.key});
@@ -11,12 +14,16 @@ class MyPageScreen extends StatefulWidget {
   State<MyPageScreen> createState() => _MyPageScreenState();
 }
 
-class _MyPageScreenState extends State<MyPageScreen> {
+class _MyPageScreenState extends State<MyPageScreen> with SingleTickerProviderStateMixin {
   final AuthService _authService = AuthService();
   final UserService _userService = UserService();
+  final ExperimentService _experimentService = ExperimentService();
   AppUser? _currentUser;
   bool _isLoading = true;
   bool _isEditing = false;
+  late TabController _tabController;
+  List<Experiment> _participatedExperiments = [];
+  List<Experiment> _createdExperiments = [];
 
   final TextEditingController _bioController = TextEditingController();
   final TextEditingController _departmentController = TextEditingController();
@@ -25,20 +32,35 @@ class _MyPageScreenState extends State<MyPageScreen> {
   @override
   void initState() {
     super.initState();
+    _tabController = TabController(length: 3, vsync: this);
     _loadUserData();
   }
 
   Future<void> _loadUserData() async {
     try {
       final user = await _authService.getCurrentAppUser();
-      if (mounted) {
-        setState(() {
-          _currentUser = user;
-          _bioController.text = user?.bio ?? '';
-          _departmentController.text = user?.department ?? '';
-          _gradeController.text = user?.grade ?? '';
-          _isLoading = false;
-        });
+      if (user != null) {
+        // 実験履歴を取得
+        final participated = await _experimentService.getUserParticipatedExperiments(user.uid);
+        final created = await _experimentService.getUserCreatedExperiments(user.uid);
+        
+        if (mounted) {
+          setState(() {
+            _currentUser = user;
+            _bioController.text = user.bio ?? '';
+            _departmentController.text = user.department ?? '';
+            _gradeController.text = user.grade ?? '';
+            _participatedExperiments = participated;
+            _createdExperiments = created;
+            _isLoading = false;
+          });
+        }
+      } else {
+        if (mounted) {
+          setState(() {
+            _isLoading = false;
+          });
+        }
       }
     } catch (e) {
       debugPrint('ユーザー情報の取得エラー: $e');
@@ -137,8 +159,28 @@ class _MyPageScreenState extends State<MyPageScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('マイページ'),
+        bottom: TabBar(
+          controller: _tabController,
+          indicatorColor: Colors.white,
+          indicatorWeight: 3,
+          labelStyle: const TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.bold,
+          ),
+          unselectedLabelStyle: const TextStyle(
+            fontSize: 15,
+            fontWeight: FontWeight.normal,
+          ),
+          labelColor: Colors.white,
+          unselectedLabelColor: Colors.white70,
+          tabs: const [
+            Tab(text: 'プロフィール'),
+            Tab(text: '参加履歴'),
+            Tab(text: '募集履歴'),
+          ],
+        ),
         actions: [
-          if (!_isEditing)
+          if (!_isEditing && _tabController.index == 0)
             IconButton(
               icon: const Icon(Icons.edit),
               onPressed: () {
@@ -153,7 +195,11 @@ class _MyPageScreenState extends State<MyPageScreen> {
           ),
         ],
       ),
-      body: SingleChildScrollView(
+      body: TabBarView(
+        controller: _tabController,
+        children: [
+          // プロフィールタブ
+          SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Center(
           child: ConstrainedBox(
@@ -547,8 +593,141 @@ class _MyPageScreenState extends State<MyPageScreen> {
             ),
           ),
         ),
+          ),
+          // 参加履歴タブ
+          _buildExperimentHistoryTab(_participatedExperiments, '参加した実験'),
+          // 募集履歴タブ
+          _buildExperimentHistoryTab(_createdExperiments, '募集した実験'),
+        ],
       ),
     );
+  }
+
+  Widget _buildExperimentHistoryTab(List<Experiment> experiments, String emptyMessage) {
+    if (experiments.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.history,
+              size: 64,
+              color: Colors.grey[400],
+            ),
+            const SizedBox(height: 16),
+            Text(
+              '$emptyMessageがありません',
+              style: TextStyle(
+                fontSize: 16,
+                color: Colors.grey[600],
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return ListView.builder(
+      padding: const EdgeInsets.all(16),
+      itemCount: experiments.length,
+      itemBuilder: (context, index) {
+        final experiment = experiments[index];
+        return Card(
+          elevation: 2,
+          margin: const EdgeInsets.only(bottom: 12),
+          child: ListTile(
+            leading: CircleAvatar(
+              backgroundColor: _getTypeColor(experiment.type),
+              child: Icon(
+                _getTypeIcon(experiment.type),
+                color: Colors.white,
+                size: 20,
+              ),
+            ),
+            title: Text(
+              experiment.title,
+              style: const TextStyle(fontWeight: FontWeight.bold),
+            ),
+            subtitle: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const SizedBox(height: 4),
+                Text(
+                  experiment.description,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 4),
+                Row(
+                  children: [
+                    Icon(Icons.calendar_today, size: 14, color: Colors.grey[600]),
+                    const SizedBox(width: 4),
+                    Text(
+                      experiment.experimentDate != null
+                        ? DateFormat('yyyy/MM/dd').format(experiment.experimentDate!)
+                        : '日程未定',
+                      style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                    ),
+                    const SizedBox(width: 16),
+                    Icon(Icons.payments, size: 14, color: Colors.grey[600]),
+                    const SizedBox(width: 4),
+                    Text(
+                      experiment.isPaid ? '¥${experiment.reward}' : '無償',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: experiment.isPaid ? Colors.green[700] : Colors.grey[600],
+                        fontWeight: experiment.isPaid ? FontWeight.bold : FontWeight.normal,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+            trailing: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              decoration: BoxDecoration(
+                color: experiment.type == ExperimentType.online
+                    ? Colors.blue.withValues(alpha: 0.1)
+                    : experiment.type == ExperimentType.onsite
+                        ? Colors.orange.withValues(alpha: 0.1)
+                        : Colors.green.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Text(
+                experiment.type.label,
+                style: TextStyle(
+                  fontSize: 12,
+                  color: _getTypeColor(experiment.type),
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Color _getTypeColor(ExperimentType type) {
+    switch (type) {
+      case ExperimentType.online:
+        return Colors.blue;
+      case ExperimentType.onsite:
+        return Colors.orange;
+      case ExperimentType.survey:
+        return Colors.green;
+    }
+  }
+
+  IconData _getTypeIcon(ExperimentType type) {
+    switch (type) {
+      case ExperimentType.online:
+        return Icons.computer;
+      case ExperimentType.onsite:
+        return Icons.place;
+      case ExperimentType.survey:
+        return Icons.assignment;
+    }
   }
 
   Widget _buildProfileField({
@@ -610,6 +789,7 @@ class _MyPageScreenState extends State<MyPageScreen> {
 
   @override
   void dispose() {
+    _tabController.dispose();
     _bioController.dispose();
     _departmentController.dispose();
     _gradeController.dispose();

@@ -28,6 +28,7 @@ class Experiment {
   final int? duration;          // 所要時間（分）
   final int? maxParticipants;   // 最大参加者数
   final List<String> requirements; // 参加条件
+  final List<String> participants; // 参加者IDリスト
 
   Experiment({
     required this.id,
@@ -46,6 +47,7 @@ class Experiment {
     this.duration,
     this.maxParticipants,
     this.requirements = const [],
+    this.participants = const [],
   });
 
   /// FirestoreのドキュメントからExperimentを作成
@@ -72,6 +74,7 @@ class Experiment {
       duration: data['duration'],
       maxParticipants: data['maxParticipants'],
       requirements: List<String>.from(data['requirements'] ?? []),
+      participants: List<String>.from(data['participants'] ?? []),
     );
   }
 
@@ -97,6 +100,7 @@ class Experiment {
       'duration': duration,
       'maxParticipants': maxParticipants,
       'requirements': requirements,
+      'participants': participants,
     };
   }
 }
