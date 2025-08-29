@@ -14,6 +14,11 @@ class AppUser {
   final int participatedExperiments; // 参加実験数
   final String? department;        // 学部・学科
   final String? grade;             // 学年
+  final int goodCount;             // Good評価数
+  final int badCount;              // Bad評価数
+  final int totalEarnings;         // 今までに稼いだ総額（円）
+  final int monthlyEarnings;       // 今月稼いだ額（円）
+  final DateTime? lastEarningsUpdate; // 収益最終更新日
 
   AppUser({
     required this.uid,
@@ -27,6 +32,11 @@ class AppUser {
     this.participatedExperiments = 0,
     this.department,
     this.grade,
+    this.goodCount = 0,
+    this.badCount = 0,
+    this.totalEarnings = 0,
+    this.monthlyEarnings = 0,
+    this.lastEarningsUpdate,
   });
 
   /// Firestoreのドキュメントからユーザーを作成
@@ -45,6 +55,11 @@ class AppUser {
       participatedExperiments: data['participatedExperiments'] ?? 0,
       department: data['department'],
       grade: data['grade'],
+      goodCount: data['goodCount'] ?? 0,
+      badCount: data['badCount'] ?? 0,
+      totalEarnings: data['totalEarnings'] ?? 0,
+      monthlyEarnings: data['monthlyEarnings'] ?? 0,
+      lastEarningsUpdate: (data['lastEarningsUpdate'] as Timestamp?)?.toDate(),
     );
   }
 
@@ -62,6 +77,13 @@ class AppUser {
       'participatedExperiments': participatedExperiments,
       'department': department,
       'grade': grade,
+      'goodCount': goodCount,
+      'badCount': badCount,
+      'totalEarnings': totalEarnings,
+      'monthlyEarnings': monthlyEarnings,
+      'lastEarningsUpdate': lastEarningsUpdate != null 
+        ? Timestamp.fromDate(lastEarningsUpdate!) 
+        : null,
     };
   }
 

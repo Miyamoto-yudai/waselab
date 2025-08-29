@@ -79,4 +79,54 @@ class UserService {
         .map((doc) => AppUser.fromFirestore(doc))
         .toList();
   }
+
+  Future<void> updateUserRatings({
+    required String userId,
+    bool isGood = true,
+  }) async {
+    final field = isGood ? 'goodCount' : 'badCount';
+    await _firestore.collection('users').doc(userId).update({
+      field: FieldValue.increment(1),
+    });
+  }
+
+  Future<void> updateUserEarnings({
+    required String userId,
+    required int amount,
+  }) async {
+    final now = DateTime.now();
+    final userDoc = await _firestore.collection('users').doc(userId).get();
+    
+    if (userDoc.exists) {
+      final userData = userDoc.data() as Map<String, dynamic>;
+      final lastUpdate = (userData['lastEarningsUpdate'] as Timestamp?)?.toDate();
+      
+      // 月が変わっているかチェック
+      bool isNewMonth = lastUpdate == null || 
+        lastUpdate.year != now.year || 
+        lastUpdate.month != now.month;
+      
+      final updates = <String, dynamic>{
+        'totalEarnings': FieldValue.increment(amount),
+        'lastEarningsUpdate': Timestamp.fromDate(now),
+      };
+      
+      if (isNewMonth) {
+        // 新しい月の場合、月次収益をリセット
+        updates['monthlyEarnings'] = amount;
+      } else {
+        // 同じ月の場合、月次収益に加算
+        updates['monthlyEarnings'] = FieldValue.increment(amount);
+      }
+      
+      await _firestore.collection('users').doc(userId).update(updates);
+    }
+  }
+
+  Future<void> resetMonthlyEarnings(String userId) async {
+    await _firestore.collection('users').doc(userId).update({
+      'monthlyEarnings': 0,
+      'lastEarningsUpdate': Timestamp.fromDate(DateTime.now()),
+    });
+  }
 }
