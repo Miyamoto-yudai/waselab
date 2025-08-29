@@ -109,17 +109,6 @@ class _NavigationScreenState extends State<NavigationScreen> {
               backgroundColor: Colors.white,
               indicatorColor: const Color(0xFF8E1728).withValues(alpha: 0.2),
               labelType: NavigationRailLabelType.all,
-              leading: const Padding(
-                padding: EdgeInsets.symmetric(vertical: 24.0),
-                child: Text(
-                  'わせラボ',
-                  style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                    color: Color(0xFF8E1728),
-                  ),
-                ),
-              ),
               destinations: [
                 const NavigationRailDestination(
                   icon: Icon(Icons.home_outlined),

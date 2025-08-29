@@ -127,8 +127,11 @@ class _LoginScreenDemoState extends State<LoginScreenDemo> {
                       ),
                       const SizedBox(height: 16),
                       Text(
-                        '実験協力アプリ',
-                        style: Theme.of(context).textTheme.headlineMedium,
+                        'わせラボ',
+                        style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                          color: const Color(0xFF8E1728),
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                       const SizedBox(height: 8),
                       Container(

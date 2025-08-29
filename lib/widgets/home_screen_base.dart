@@ -49,6 +49,8 @@ class _HomeScreenBaseState extends State<HomeScreenBase> {
   final ScrollController _scrollController = ScrollController();
   double _scrollOffset = 0.0;
   bool _isHeaderVisible = true;
+  DateTime? _startDateFilter;
+  DateTime? _endDateFilter;
   
   List<Experiment> get filteredExperiments {
     List<Experiment> filtered = List.from(widget.experiments);
@@ -75,6 +77,42 @@ class _HomeScreenBaseState extends State<HomeScreenBase> {
     // タイプフィルター
     if (_selectedType != null) {
       filtered = filtered.where((e) => e.type == _selectedType).toList();
+    }
+    
+    // 日付フィルター
+    if (_startDateFilter != null || _endDateFilter != null) {
+      filtered = filtered.where((experiment) {
+        // 柔軟なスケジュールの場合
+        if (experiment.allowFlexibleSchedule) {
+          final expStart = experiment.experimentPeriodStart;
+          final expEnd = experiment.experimentPeriodEnd;
+          
+          if (expStart == null || expEnd == null) return false;
+          
+          // 期間が重なるかチェック
+          if (_startDateFilter != null && _endDateFilter != null) {
+            return !(expEnd.isBefore(_startDateFilter!) || expStart.isAfter(_endDateFilter!));
+          } else if (_startDateFilter != null) {
+            return !expEnd.isBefore(_startDateFilter!);
+          } else if (_endDateFilter != null) {
+            return !expStart.isAfter(_endDateFilter!);
+          }
+        } else {
+          // 固定日程の場合
+          final expDate = experiment.recruitmentStartDate;
+          if (expDate == null) return false;
+          
+          if (_startDateFilter != null && _endDateFilter != null) {
+            return expDate.isAfter(_startDateFilter!.subtract(const Duration(days: 1))) && 
+                   expDate.isBefore(_endDateFilter!.add(const Duration(days: 1)));
+          } else if (_startDateFilter != null) {
+            return !expDate.isBefore(_startDateFilter!);
+          } else if (_endDateFilter != null) {
+            return !expDate.isAfter(_endDateFilter!);
+          }
+        }
+        return true;
+      }).toList();
     }
     
     // ソート処理
@@ -145,6 +183,75 @@ class _HomeScreenBaseState extends State<HomeScreenBase> {
     _searchController.dispose();
     super.dispose();
   }
+  
+  /// 日付範囲選択ダイアログを表示
+  Future<void> _selectDateRange() async {
+    final DateTimeRange? picked = await showDateRangePicker(
+      context: context,
+      firstDate: DateTime.now().subtract(const Duration(days: 365)),
+      lastDate: DateTime.now().add(const Duration(days: 365)),
+      initialDateRange: _startDateFilter != null && _endDateFilter != null
+          ? DateTimeRange(start: _startDateFilter!, end: _endDateFilter!)
+          : null,
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: const ColorScheme.light(
+              primary: Color(0xFF8E1728),
+              onPrimary: Colors.white,
+            ),
+          ),
+          child: child!,
+        );
+      },
+    );
+    
+    if (picked != null) {
+      setState(() {
+        _startDateFilter = picked.start;
+        _endDateFilter = picked.end;
+      });
+    }
+  }
+  
+  /// クイック日付選択
+  void _setQuickDateRange(String type) {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    
+    setState(() {
+      switch (type) {
+        case 'today':
+          _startDateFilter = today;
+          _endDateFilter = today;
+          break;
+        case 'tomorrow':
+          final tomorrow = today.add(const Duration(days: 1));
+          _startDateFilter = tomorrow;
+          _endDateFilter = tomorrow;
+          break;
+        case 'in2days':
+          final in2days = today.add(const Duration(days: 2));
+          _startDateFilter = in2days;
+          _endDateFilter = in2days;
+          break;
+        case 'in3days':
+          final in3days = today.add(const Duration(days: 3));
+          _startDateFilter = in3days;
+          _endDateFilter = in3days;
+          break;
+        case 'thisWeek':
+          final weekday = now.weekday;
+          _startDateFilter = today.subtract(Duration(days: weekday - 1));
+          _endDateFilter = today.add(Duration(days: 7 - weekday));
+          break;
+        case 'clear':
+          _startDateFilter = null;
+          _endDateFilter = null;
+          break;
+      }
+    });
+  }
 
   Widget _buildCompactFilterChip(String label, bool isSelected, VoidCallback onTap) {
     return GestureDetector(
@@ -166,6 +273,66 @@ class _HomeScreenBaseState extends State<HomeScreenBase> {
       ),
     );
   }
+  
+  Widget _buildDateChip(String label, String type) {
+    final isSelected = _checkDateSelection(type);
+    return Container(
+      margin: const EdgeInsets.only(right: 4),
+      height: 24,
+      child: Material(
+        color: isSelected 
+          ? const Color(0xFF8E1728).withOpacity(0.1)
+          : Colors.grey.shade100,
+        borderRadius: BorderRadius.circular(12),
+        child: InkWell(
+          onTap: () => _setQuickDateRange(type),
+          borderRadius: BorderRadius.circular(12),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 0),
+            alignment: Alignment.center,
+            child: Text(
+              label,
+              style: TextStyle(
+                fontSize: 10,
+                fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+                color: isSelected 
+                  ? const Color(0xFF8E1728)
+                  : Colors.grey.shade700,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+  
+  bool _checkDateSelection(String type) {
+    if (_startDateFilter == null || _endDateFilter == null) return false;
+    
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    
+    switch (type) {
+      case 'today':
+        return _startDateFilter == today && _endDateFilter == today;
+      case 'tomorrow':
+        final tomorrow = today.add(const Duration(days: 1));
+        return _startDateFilter == tomorrow && _endDateFilter == tomorrow;
+      case 'in2days':
+        final in2days = today.add(const Duration(days: 2));
+        return _startDateFilter == in2days && _endDateFilter == in2days;
+      case 'in3days':
+        final in3days = today.add(const Duration(days: 3));
+        return _startDateFilter == in3days && _endDateFilter == in3days;
+      case 'thisWeek':
+        final weekday = now.weekday;
+        final weekStart = today.subtract(Duration(days: weekday - 1));
+        final weekEnd = today.add(Duration(days: 7 - weekday));
+        return _startDateFilter == weekStart && _endDateFilter == weekEnd;
+      default:
+        return false;
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -180,8 +347,39 @@ class _HomeScreenBaseState extends State<HomeScreenBase> {
               toolbarHeight: 60,
               titleSpacing: 0,
               centerTitle: false,
+              leading: LayoutBuilder(
+                builder: (context, constraints) {
+                  // 画面幅が600px以上の場合はフラスコアイコンを表示
+                  final screenWidth = MediaQuery.of(context).size.width;
+                  if (screenWidth >= 600) {
+                    return Container(
+                      margin: const EdgeInsets.only(left: 16),
+                      width: 40,
+                      height: 40,
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.1),
+                            blurRadius: 8,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      child: const Icon(
+                        Icons.science,
+                        size: 24,
+                        color: Color(0xFF8E1728),
+                      ),
+                    );
+                  } else {
+                    return const SizedBox.shrink();
+                  }
+                },
+              ),
               title: Padding(
-                padding: const EdgeInsets.only(left: 16),
+                padding: const EdgeInsets.only(left: 8),
                 child: Text(
                   widget.title,
                   style: const TextStyle(
@@ -246,10 +444,10 @@ class _HomeScreenBaseState extends State<HomeScreenBase> {
               ],
             ),
           ),
-          // 検索バー、種別切り替えボタン、ソート選択
+          // 検索バー、日付フィルター、種別切り替えボタン、ソート選択
           AnimatedContainer(
             duration: const Duration(milliseconds: 200),
-            height: _isHeaderVisible ? 100 : 0,
+            height: _isHeaderVisible ? 150 : 0,
             child: SingleChildScrollView(
               physics: const NeverScrollableScrollPhysics(),
               child: AnimatedOpacity(
@@ -336,6 +534,73 @@ class _HomeScreenBaseState extends State<HomeScreenBase> {
                             ),
                           ],
                         ],
+                      ),
+                    ),
+                    // 日付フィルター
+                    Container(
+                      color: Colors.white,
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
+                      child: SingleChildScrollView(
+                        scrollDirection: Axis.horizontal,
+                        child: Row(
+                          children: [
+                            // 日付範囲選択ボタン
+                            Container(
+                              margin: const EdgeInsets.only(right: 6),
+                              child: OutlinedButton.icon(
+                                onPressed: _selectDateRange,
+                                icon: Icon(
+                                  Icons.calendar_today,
+                                  size: 14,
+                                  color: (_startDateFilter != null || _endDateFilter != null)
+                                      ? const Color(0xFF8E1728)
+                                      : Colors.grey[600],
+                                ),
+                                label: Text(
+                                  (_startDateFilter != null && _endDateFilter != null)
+                                      ? '${_startDateFilter!.month}/${_startDateFilter!.day}〜${_endDateFilter!.month}/${_endDateFilter!.day}'
+                                      : '期間で絞り込む',
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    color: (_startDateFilter != null || _endDateFilter != null)
+                                        ? const Color(0xFF8E1728)
+                                        : Colors.grey[700],
+                                  ),
+                                ),
+                                style: OutlinedButton.styleFrom(
+                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                  minimumSize: const Size(0, 28),
+                                  side: BorderSide(
+                                    color: (_startDateFilter != null || _endDateFilter != null)
+                                        ? const Color(0xFF8E1728)
+                                        : Colors.grey.shade300,
+                                  ),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(14),
+                                  ),
+                                ),
+                              ),
+                            ),
+                            // クイック選択ボタン（Chip風デザイン）
+                            _buildDateChip('今日', 'today'),
+                            _buildDateChip('明日', 'tomorrow'),
+                            _buildDateChip('2日後', 'in2days'),
+                            _buildDateChip('3日後', 'in3days'),
+                            _buildDateChip('今週', 'thisWeek'),
+                            // クリアボタン
+                            if (_startDateFilter != null || _endDateFilter != null)
+                              IconButton(
+                                onPressed: () => _setQuickDateRange('clear'),
+                                icon: const Icon(Icons.clear, size: 16),
+                                tooltip: 'クリア',
+                                padding: const EdgeInsets.all(4),
+                                constraints: const BoxConstraints(
+                                  minWidth: 28,
+                                  minHeight: 28,
+                                ),
+                              ),
+                          ],
+                        ),
                       ),
                     ),
                     // タイプフィルターとソートを同じ行に配置
