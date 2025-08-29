@@ -44,6 +44,9 @@ class _HomeScreenBaseState extends State<HomeScreenBase> {
   SortOption _sortOption = SortOption.newest;
   String _searchQuery = '';
   final TextEditingController _searchController = TextEditingController();
+  final ScrollController _scrollController = ScrollController();
+  double _scrollOffset = 0.0;
+  bool _isHeaderVisible = true;
   
   List<Experiment> get filteredExperiments {
     List<Experiment> filtered = List.from(widget.experiments);
@@ -108,7 +111,35 @@ class _HomeScreenBaseState extends State<HomeScreenBase> {
   }
 
   @override
+  void initState() {
+    super.initState();
+    _scrollController.addListener(_onScroll);
+  }
+
+  void _onScroll() {
+    final newOffset = _scrollController.offset;
+    // スクロール方向を検出して、ヘッダーの表示/非表示を切り替え
+    if (newOffset > _scrollOffset && newOffset > 100) {
+      // 下スクロール かつ 100px以上スクロールしている
+      if (_isHeaderVisible) {
+        setState(() {
+          _isHeaderVisible = false;
+        });
+      }
+    } else if (newOffset < _scrollOffset || newOffset <= 100) {
+      // 上スクロール または スクロール位置が100px以下
+      if (!_isHeaderVisible) {
+        setState(() {
+          _isHeaderVisible = true;
+        });
+      }
+    }
+    _scrollOffset = newOffset;
+  }
+
+  @override
   void dispose() {
+    _scrollController.dispose();
     _searchController.dispose();
     super.dispose();
   }
@@ -138,76 +169,74 @@ class _HomeScreenBaseState extends State<HomeScreenBase> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        toolbarHeight: 36, // アプリバーの高さをさらに細くする
-        titleSpacing: 0, // タイトルを完全に左寄せ
-        centerTitle: false, // タイトルを左寄せに配置
+        toolbarHeight: 60, // アプリバーを自然な高さに
+        titleSpacing: 0,
+        centerTitle: false,
         title: Padding(
-          padding: const EdgeInsets.only(left: 12),
+          padding: const EdgeInsets.only(left: 16),
           child: Text(
             widget.title,
             style: const TextStyle(
-              fontSize: 14,
+              fontSize: 20,
               fontWeight: FontWeight.bold,
             ),
           ),
         ),
-        actions: [
-          // ユーザー情報表示
-          if (widget.userName != null) ...[
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8),
-              child: Center(
-                child: Row(
-                  children: [
-                    if (widget.isWasedaUser)
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                        decoration: BoxDecoration(
-                          color: Colors.blue.withValues(alpha: 0.2),
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: const Text(
-                          '早稲田',
-                          style: TextStyle(
-                            fontSize: 10,
-                            fontWeight: FontWeight.bold,
+            actions: [
+              // ユーザー情報表示
+              if (widget.userName != null) ...[
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                  child: Center(
+                    child: Row(
+                      children: [
+                        if (widget.isWasedaUser)
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: Colors.blue.withValues(alpha: 0.2),
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: const Text(
+                              '早稲田',
+                              style: TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          )
+                        else
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: Colors.grey.withValues(alpha: 0.2),
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: const Text(
+                              'Google',
+                              style: TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
                           ),
+                        const SizedBox(width: 6),
+                        Text(
+                          widget.userName!.split(' ')[0],
+                          style: const TextStyle(fontSize: 14),
                         ),
-                      )
-                    else
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                        decoration: BoxDecoration(
-                          color: Colors.grey.withValues(alpha: 0.2),
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: const Text(
-                          'Google',
-                          style: TextStyle(
-                            fontSize: 10,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
-                    const SizedBox(width: 6),
-                    Text(
-                      widget.userName!.split(' ')[0], // 名前の最初の部分のみ表示
-                      style: const TextStyle(fontSize: 12),
+                      ],
                     ),
-                  ],
+                  ),
                 ),
+              ],
+              IconButton(
+                icon: const Icon(Icons.logout, size: 24),
+                onPressed: widget.onLogout,
+                padding: const EdgeInsets.all(12),
               ),
-            ),
-          ],
-          IconButton(
-            icon: const Icon(Icons.logout, size: 20),
-            onPressed: widget.onLogout,
-            padding: const EdgeInsets.all(8),
-            constraints: const BoxConstraints(),
-          ),
         ],
       ),
-      // 実験作成ボタン（権限に応じて表示）
       floatingActionButton: SizedBox(
         height: 64,
         child: FloatingActionButton.extended(
@@ -265,160 +294,171 @@ class _HomeScreenBaseState extends State<HomeScreenBase> {
       body: Column(
         children: [
           // 検索バー、種別切り替えボタン、ソート選択
-          Column(
-            children: [
-              // 検索バー
-              Container(
-                color: Colors.white,
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                child: Row(
+          AnimatedContainer(
+            duration: const Duration(milliseconds: 200),
+            height: _isHeaderVisible ? 100 : 0,
+            child: SingleChildScrollView(
+              physics: const NeverScrollableScrollPhysics(),
+              child: AnimatedOpacity(
+                duration: const Duration(milliseconds: 200),
+                opacity: _isHeaderVisible ? 1.0 : 0.0,
+                child: Column(
                   children: [
-                    Expanded(
-                      child: Container(
-                        height: 32,
-                        decoration: BoxDecoration(
-                          color: Colors.grey.shade100,
-                          borderRadius: BorderRadius.circular(16),
-                          border: Border.all(color: Colors.grey.shade300),
+                    // 検索バー
+                    Container(
+                      color: Colors.white,
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Container(
+                            height: 44,
+                            decoration: BoxDecoration(
+                              color: Colors.grey.shade100,
+                              borderRadius: BorderRadius.circular(22),
+                              border: Border.all(color: Colors.grey.shade300, width: 1.5),
+                            ),
+                            child: TextField(
+                              controller: _searchController,
+                              onChanged: (value) {
+                                setState(() {
+                                  _searchQuery = value;
+                                });
+                              },
+                              decoration: InputDecoration(
+                                hintText: '検索（タイトル、研究室、場所など）',
+                                hintStyle: TextStyle(
+                                  fontSize: 14,
+                                  color: Colors.grey.shade600,
+                                ),
+                                prefixIcon: const Icon(
+                                  Icons.search,
+                                  size: 22,
+                                  color: Color(0xFF8E1728),
+                                ),
+                                suffixIcon: _searchQuery.isNotEmpty
+                                    ? IconButton(
+                                        icon: Icon(
+                                          Icons.clear,
+                                          size: 20,
+                                          color: Colors.grey.shade600,
+                                        ),
+                                        onPressed: () {
+                                          setState(() {
+                                            _searchController.clear();
+                                            _searchQuery = '';
+                                          });
+                                        },
+                                      )
+                                    : null,
+                                border: InputBorder.none,
+                                contentPadding: const EdgeInsets.symmetric(
+                                  horizontal: 16,
+                                  vertical: 10,
+                                ),
+                              ),
+                              style: const TextStyle(fontSize: 14),
+                            ),
+                          ),
                         ),
-                        child: TextField(
-                          controller: _searchController,
-                          onChanged: (value) {
-                            setState(() {
-                              _searchQuery = value;
-                            });
-                          },
-                          decoration: InputDecoration(
-                            hintText: '検索（タイトル、研究室、場所など）',
-                            hintStyle: TextStyle(
-                              fontSize: 12,
-                              color: Colors.grey.shade600,
-                            ),
-                            prefixIcon: const Icon(
-                              Icons.search,
-                              size: 18,
-                              color: Color(0xFF8E1728),
-                            ),
-                            suffixIcon: _searchQuery.isNotEmpty
-                                ? IconButton(
-                                    icon: Icon(
-                                      Icons.clear,
-                                      size: 16,
-                                      color: Colors.grey.shade600,
-                                    ),
-                                    onPressed: () {
-                                      setState(() {
-                                        _searchController.clear();
-                                        _searchQuery = '';
-                                      });
-                                    },
-                                  )
-                                : null,
-                            border: InputBorder.none,
-                            contentPadding: const EdgeInsets.symmetric(
+                        if (_searchQuery.isNotEmpty) ...[
+                          const SizedBox(width: 8),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
                               horizontal: 12,
                               vertical: 6,
                             ),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF8E1728),
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                            child: Text(
+                              '${filteredExperiments.length}件',
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 13,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
                           ),
-                          style: const TextStyle(fontSize: 12),
-                        ),
-                      ),
+                        ],
+                      ],
                     ),
-                    if (_searchQuery.isNotEmpty) ...[
-                      const SizedBox(width: 6),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 4,
-                        ),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF8E1728),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Text(
-                          '${filteredExperiments.length}件',
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 11,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ],
-                ),
-              ),
-              // タイプフィルターとソートを同じ行に配置
-              Container(
-                color: Colors.white,
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                child: Row(
-                  children: [
-                    // タイプフィルター（コンパクト版）
-                    Expanded(
-                      child: SingleChildScrollView(
-                        scrollDirection: Axis.horizontal,
-                        child: Row(
-                          children: [
-                            _buildCompactFilterChip('すべて', _selectedType == null, () {
-                              setState(() {
-                                _selectedType = null;
-                              });
-                            }),
-                            const SizedBox(width: 6),
-                            ...ExperimentType.values.map((type) {
-                              return Padding(
-                                padding: const EdgeInsets.only(right: 6),
-                                child: _buildCompactFilterChip(type.label, _selectedType == type, () {
+                  ),
+                  // タイプフィルターとソートを同じ行に配置
+                  Container(
+                    color: Colors.white,
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    child: Row(
+                      children: [
+                        // タイプフィルター（コンパクト版）
+                        Expanded(
+                          child: SingleChildScrollView(
+                            scrollDirection: Axis.horizontal,
+                            child: Row(
+                              children: [
+                                _buildCompactFilterChip('すべて', _selectedType == null, () {
                                   setState(() {
-                                    _selectedType = _selectedType == type ? null : type;
+                                    _selectedType = null;
                                   });
                                 }),
-                              );
-                            }),
-                          ],
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    // ソート選択（コンパクト版）
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8),
-                      height: 28,
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(14),
-                        border: Border.all(color: Colors.grey.shade300),
-                        color: Colors.grey.shade50,
-                      ),
-                      child: DropdownButtonHideUnderline(
-                        child: DropdownButton<SortOption>(
-                          value: _sortOption,
-                          isDense: true,
-                          icon: const Icon(Icons.arrow_drop_down, size: 18, color: Color(0xFF8E1728)),
-                          style: const TextStyle(
-                            fontSize: 11,
-                            color: Colors.black87,
+                                const SizedBox(width: 6),
+                                ...ExperimentType.values.map((type) {
+                                  return Padding(
+                                    padding: const EdgeInsets.only(right: 6),
+                                    child: _buildCompactFilterChip(type.label, _selectedType == type, () {
+                                      setState(() {
+                                        _selectedType = _selectedType == type ? null : type;
+                                      });
+                                    }),
+                                  );
+                                }),
+                              ],
+                            ),
                           ),
-                          onChanged: (SortOption? newValue) {
-                            if (newValue != null) {
-                              setState(() {
-                                _sortOption = newValue;
-                              });
-                            }
-                          },
-                          items: SortOption.values.map<DropdownMenuItem<SortOption>>((SortOption value) {
-                            return DropdownMenuItem<SortOption>(
-                              value: value,
-                              child: Text(value.label, style: const TextStyle(fontSize: 11)),
-                            );
-                          }).toList(),
                         ),
-                      ),
+                        const SizedBox(width: 8),
+                        // ソート選択
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10),
+                          height: 32,
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(14),
+                            border: Border.all(color: Colors.grey.shade300),
+                            color: Colors.grey.shade50,
+                          ),
+                          child: DropdownButtonHideUnderline(
+                            child: DropdownButton<SortOption>(
+                              value: _sortOption,
+                              isDense: true,
+                              icon: const Icon(Icons.arrow_drop_down, size: 18, color: Color(0xFF8E1728)),
+                              style: const TextStyle(
+                                fontSize: 11,
+                                color: Colors.black87,
+                              ),
+                              onChanged: (SortOption? newValue) {
+                                if (newValue != null) {
+                                  setState(() {
+                                    _sortOption = newValue;
+                                  });
+                                }
+                              },
+                              items: SortOption.values.map<DropdownMenuItem<SortOption>>((SortOption value) {
+                                return DropdownMenuItem<SortOption>(
+                                  value: value,
+                                  child: Text(value.label, style: const TextStyle(fontSize: 11)),
+                                );
+                              }).toList(),
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
+                  ),
                   ],
                 ),
               ),
-            ],
+            ),
           ),
           
           // 実験リスト（レスポンシブグリッド）
@@ -452,9 +492,10 @@ class _HomeScreenBaseState extends State<HomeScreenBase> {
                   : LayoutBuilder(
                       builder: (context, constraints) {
                         return GridView.builder(
+                          controller: _scrollController,
                           padding: const EdgeInsets.all(12),
                           gridDelegate: SliverGridDelegateWithMaxCrossAxisExtent(
-                            maxCrossAxisExtent: 700, // カード最大幅を700pxに設定
+                            maxCrossAxisExtent: 600, // カード最大幅を600pxに設定
                             crossAxisSpacing: 4, // 列間隔を4pxに設定
                             mainAxisSpacing: 4, // 行間隔を4pxに設定
                             mainAxisExtent: 250, // カードの固定高さを250pxに削減
