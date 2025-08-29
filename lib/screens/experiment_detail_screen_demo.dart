@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 import '../models/experiment.dart';
+import '../widgets/experiment_calendar_view_demo.dart';
 
 /// デモ用実験詳細画面（Firebase不要）
 class ExperimentDetailScreenDemo extends StatefulWidget {
@@ -58,7 +58,89 @@ class _ExperimentDetailScreenDemoState extends State<ExperimentDetailScreenDemo>
   /// 日付のフォーマット
   String _formatDate(DateTime? date) {
     if (date == null) return '未定';
-    return DateFormat('yyyy年MM月dd日').format(date);
+    return '${date.year}年${date.month.toString().padLeft(2, '0')}月${date.day.toString().padLeft(2, '0')}日';
+  }
+
+  /// スロット選択時の処理（デモ用）
+  Future<void> _handleSlotSelection(DateTime date, String timeSlot) async {
+    // 予約確認ダイアログを表示
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('予約確認'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              '以下の日時で予約しますか？',
+              style: Theme.of(context).textTheme.bodyLarge,
+            ),
+            const SizedBox(height: 16),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.grey.shade100,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      const Icon(Icons.calendar_today, size: 16),
+                      const SizedBox(width: 8),
+                      Text(
+                        '${date.year}年${date.month.toString().padLeft(2, '0')}月${date.day.toString().padLeft(2, '0')}日',
+                        style: const TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  Row(
+                    children: [
+                      const Icon(Icons.access_time, size: 16),
+                      const SizedBox(width: 8),
+                      Text(
+                        timeSlot,
+                        style: const TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('キャンセル'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF8E1728),
+            ),
+            child: const Text('予約する'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('${date.month.toString().padLeft(2, '0')}/${date.day.toString().padLeft(2, '0')} $timeSlot で予約しました（デモ）'),
+          backgroundColor: Colors.green,
+        ),
+      );
+      
+      // カレンダーを閉じる
+      setState(() {
+        _showCalendar = false;
+      });
+    }
   }
 
   @override
@@ -68,6 +150,7 @@ class _ExperimentDetailScreenDemoState extends State<ExperimentDetailScreenDemo>
         title: const Text('実験詳細'),
       ),
       floatingActionButton: FloatingActionButton.extended(
+        heroTag: 'experiment_detail_fab_${widget.experiment.id}',
         onPressed: () {
           // デモ版では実装しないメッセージ機能
           ScaffoldMessenger.of(context).showSnackBar(
@@ -415,33 +498,9 @@ class _ExperimentDetailScreenDemoState extends State<ExperimentDetailScreenDemo>
                       },
                     ),
                     if (_showCalendar)
-                      Container(
-                        padding: const EdgeInsets.all(16),
-                        child: Column(
-                          children: [
-                            const Icon(
-                              Icons.calendar_today,
-                              size: 48,
-                              color: Colors.grey,
-                            ),
-                            const SizedBox(height: 16),
-                            const Text(
-                              'デモ版では予約機能は利用できません',
-                              style: TextStyle(
-                                color: Colors.grey,
-                                fontSize: 14,
-                              ),
-                            ),
-                            const SizedBox(height: 8),
-                            Text(
-                              '実施期間: ${_formatDate(widget.experiment.experimentPeriodStart)} ~ ${_formatDate(widget.experiment.experimentPeriodEnd)}',
-                              style: const TextStyle(
-                                fontSize: 12,
-                                color: Colors.grey,
-                              ),
-                            ),
-                          ],
-                        ),
+                      ExperimentCalendarViewDemo(
+                        experiment: widget.experiment,
+                        onSlotSelected: _handleSlotSelection,
                       ),
                   ],
                 ),
