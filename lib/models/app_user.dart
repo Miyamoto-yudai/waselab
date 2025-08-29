@@ -10,6 +10,10 @@ class AppUser {
   final bool canCreateExperiment;  // 実験作成権限
   final DateTime createdAt;
   final String? photoUrl;          // プロフィール画像URL（Googleアカウント用）
+  final String? bio;               // 自己紹介
+  final int participatedExperiments; // 参加実験数
+  final String? department;        // 学部・学科
+  final String? grade;             // 学年
 
   AppUser({
     required this.uid,
@@ -19,6 +23,10 @@ class AppUser {
     required this.canCreateExperiment,
     required this.createdAt,
     this.photoUrl,
+    this.bio,
+    this.participatedExperiments = 0,
+    this.department,
+    this.grade,
   });
 
   /// Firestoreのドキュメントからユーザーを作成
@@ -33,6 +41,10 @@ class AppUser {
       canCreateExperiment: data['canCreateExperiment'] ?? false,
       createdAt: (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
       photoUrl: data['photoUrl'],
+      bio: data['bio'],
+      participatedExperiments: data['participatedExperiments'] ?? 0,
+      department: data['department'],
+      grade: data['grade'],
     );
   }
 
@@ -46,6 +58,10 @@ class AppUser {
       'canCreateExperiment': canCreateExperiment,
       'createdAt': Timestamp.fromDate(createdAt),
       'photoUrl': photoUrl,
+      'bio': bio,
+      'participatedExperiments': participatedExperiments,
+      'department': department,
+      'grade': grade,
     };
   }
 

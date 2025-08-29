@@ -12,6 +12,16 @@ class DemoAuthService {
   bool get isLoggedIn => _currentUserEmail != null;
   bool get isWasedaUser => _isWasedaUser;
   bool get canCreateExperiment => _isWasedaUser;
+  
+  /// デモ用のユーザーオブジェクト
+  DemoUser? get currentUser => _currentUserEmail != null
+      ? DemoUser(
+          email: _currentUserEmail!,
+          name: _currentUserName ?? 'デモユーザー',
+          isWasedaUser: _isWasedaUser,
+          canCreateExperiment: _isWasedaUser,
+        )
+      : null;
 
   /// 早稲田大学のメールアドレスかどうかを検証
   bool _isWasedaEmail(String email) {
@@ -100,4 +110,19 @@ class DemoAuthService {
     _currentUserName = null;
     _isWasedaUser = false;
   }
+}
+
+/// デモ用のユーザーモデル
+class DemoUser {
+  final String email;
+  final String name;
+  final bool isWasedaUser;
+  final bool canCreateExperiment;
+
+  DemoUser({
+    required this.email,
+    required this.name,
+    required this.isWasedaUser,
+    required this.canCreateExperiment,
+  });
 }

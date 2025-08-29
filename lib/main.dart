@@ -3,74 +3,23 @@ import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
 import 'services/auth_service.dart';
 import 'screens/login_screen.dart';
-import 'screens/home_screen.dart';
+import 'screens/navigation_screen.dart';
+import 'shared/app_wrapper.dart';
 
 /// アプリのエントリーポイント
 /// Firebaseの初期化を行ってからアプリを起動する
+/// 
+/// 重要: 共通コンポーネントはshared/フォルダに配置されています
+/// main.dartとmain_demo.dartで共有される部分は必ずshared/に配置してください
 void main() async {
   // Flutter Engineの初期化を確実に行う
   WidgetsFlutterBinding.ensureInitialized();
   
   // アプリを先に起動（ローディング画面を表示）
-  runApp(const MyApp());
-}
-
-/// アプリのルートウィジェット
-class MyApp extends StatelessWidget {
-  const MyApp({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'わせラボ',
-      debugShowCheckedModeBanner: false, // デバッグバナーを非表示
-      theme: ThemeData(
-        // 早稲田大学のえんじ色をベースにしたテーマカラー
-        primaryColor: const Color(0xFF8E1728), // 早稲田えんじ色 RGB(142, 23, 40)
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color(0xFF8E1728), // 早稲田えんじ色
-          primary: const Color(0xFF8E1728),
-          secondary: const Color(0xFF7F3143), // やや明るいえんじ色 RGB(127, 49, 67)
-          surface: const Color(0xFFFAFAFA),
-          error: Colors.red[700]!,
-        ),
-        useMaterial3: true, // Material Design 3を使用
-        
-        // AppBarのテーマを設定
-        appBarTheme: const AppBarTheme(
-          centerTitle: true,
-          elevation: 3,
-          backgroundColor: Color(0xFF8E1728),
-          foregroundColor: Colors.white,
-          titleTextStyle: TextStyle(
-            color: Colors.white,
-            fontSize: 20,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        
-        // ElevatedButtonのテーマを設定
-        elevatedButtonTheme: ElevatedButtonThemeData(
-          style: ElevatedButton.styleFrom(
-            backgroundColor: const Color(0xFF8E1728),
-            foregroundColor: Colors.white,
-            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(8),
-            ),
-          ),
-        ),
-        
-        // FloatingActionButtonのテーマ
-        floatingActionButtonTheme: const FloatingActionButtonThemeData(
-          backgroundColor: Color(0xFF8E1728),
-          foregroundColor: Colors.white,
-          elevation: 6,
-        ),
-      ),
-      home: const AuthWrapper(), // 認証状態に応じて画面を切り替え
-    );
-  }
+  runApp(const WaseLaboApp(
+    home: AuthWrapper(),
+    isDemo: false,
+  ));
 }
 
 /// 認証状態に応じて表示する画面を切り替えるラッパー
@@ -227,8 +176,8 @@ class _AuthWrapperState extends State<AuthWrapper> {
         
         // 認証状態に応じて画面を表示
         if (snapshot.hasData && snapshot.data != null) {
-          // ログイン済み：ホーム画面を表示
-          return const HomeScreen();
+          // ログイン済み：ナビゲーション画面を表示
+          return const NavigationScreen();
         } else {
           // 未ログイン：ログイン画面を表示
           return const LoginScreen();
