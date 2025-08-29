@@ -74,7 +74,7 @@ class ExperimentCard extends StatelessWidget {
           },
           borderRadius: BorderRadius.circular(16),
           child: Container(
-            height: 328, // 固定高さでレイアウトを制約
+            height: 230, // 固定高さでレイアウトを制約
             padding: const EdgeInsets.all(12),
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -185,16 +185,19 @@ class ExperimentCard extends StatelessWidget {
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    experiment.title,
-                    style: const TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w800,
-                      color: Color(0xFF2C2C2C),
-                      height: 1.2,
+                  FittedBox(
+                    fit: BoxFit.scaleDown,
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      experiment.title,
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w800,
+                        color: Color(0xFF2C2C2C),
+                        height: 1.2,
+                      ),
+                      maxLines: 1,
                     ),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
                   ),
                   if (experiment.labName != null) ...[
                     const SizedBox(height: 4),

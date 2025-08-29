@@ -450,7 +450,7 @@ class _HomeScreenBaseState extends State<HomeScreenBase> {
                             maxCrossAxisExtent: 600, // カード最大幅を600pxに設定
                             crossAxisSpacing: 4, // 列間隔を4pxに設定
                             mainAxisSpacing: 4, // 行間隔を4pxに設定
-                            mainAxisExtent: 250, // カードの固定高さを250pxに削減
+                            mainAxisExtent: 230, // カードの固定高さを230pxに設定
                           ),
                           itemCount: filteredExperiments.length,
                           itemBuilder: (context, index) {
