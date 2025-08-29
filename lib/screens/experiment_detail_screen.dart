@@ -192,7 +192,7 @@ class ExperimentDetailScreen extends StatelessWidget {
             ),
             const SizedBox(height: 16),
 
-            // 実験内容
+            // 実験概要
             Card(
               child: Padding(
                 padding: const EdgeInsets.all(16),
@@ -200,7 +200,7 @@ class ExperimentDetailScreen extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      '実験内容',
+                      '実験概要',
                       style: Theme.of(context).textTheme.titleMedium?.copyWith(
                         fontWeight: FontWeight.bold,
                       ),
@@ -214,6 +214,56 @@ class ExperimentDetailScreen extends StatelessWidget {
                 ),
               ),
             ),
+            
+            // 詳細内容
+            if (experiment.detailedContent != null) ...[
+              const SizedBox(height: 16),
+              Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          const Icon(
+                            Icons.description,
+                            color: Color(0xFF8E1728),
+                            size: 20,
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            '詳細内容',
+                            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                              fontWeight: FontWeight.bold,
+                              color: const Color(0xFF8E1728),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Colors.grey.shade50,
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(
+                            color: Colors.grey.shade300,
+                            width: 1,
+                          ),
+                        ),
+                        child: Text(
+                          experiment.detailedContent!,
+                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                            height: 1.6,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
 
             // 参加条件
             if (experiment.requirements.isNotEmpty) ...[

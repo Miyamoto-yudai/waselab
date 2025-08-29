@@ -14,7 +14,8 @@ enum ExperimentType {
 class Experiment {
   final String id;
   final String title;           // 実験タイトル
-  final String description;      // 実験内容
+  final String description;      // 実験概要（カードに表示）
+  final String? detailedContent; // 詳細内容（詳細画面のみ表示）
   final int reward;             // 報酬（円）
   final String location;         // 場所
   final ExperimentType type;     // 種別
@@ -32,6 +33,7 @@ class Experiment {
     required this.id,
     required this.title,
     required this.description,
+    this.detailedContent,
     required this.reward,
     required this.location,
     required this.type,
@@ -54,6 +56,7 @@ class Experiment {
       id: doc.id,
       title: data['title'] ?? '',
       description: data['description'] ?? '',
+      detailedContent: data['detailedContent'],
       reward: data['reward'] ?? 0,
       location: data['location'] ?? '',
       type: ExperimentType.values.firstWhere(
@@ -77,6 +80,7 @@ class Experiment {
     return {
       'title': title,
       'description': description,
+      'detailedContent': detailedContent,
       'reward': reward,
       'location': location,
       'type': type.name,
