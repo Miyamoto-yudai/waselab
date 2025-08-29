@@ -43,7 +43,8 @@ class _MyPageScreenDemoState extends State<MyPageScreenDemo> with SingleTickerPr
       isPaid: true,
       creatorId: 'demo_creator',
       createdAt: DateTime.now().subtract(const Duration(days: 30)),
-      experimentDate: DateTime.now().subtract(const Duration(days: 25)),
+      recruitmentStartDate: DateTime.now().subtract(const Duration(days: 25)),
+      allowFlexibleSchedule: false,
     ),
     Experiment(
       id: '2',
@@ -55,7 +56,8 @@ class _MyPageScreenDemoState extends State<MyPageScreenDemo> with SingleTickerPr
       isPaid: true,
       creatorId: 'demo_creator2',
       createdAt: DateTime.now().subtract(const Duration(days: 45)),
-      experimentDate: DateTime.now().subtract(const Duration(days: 40)),
+      recruitmentStartDate: DateTime.now().subtract(const Duration(days: 40)),
+      allowFlexibleSchedule: false,
     ),
     Experiment(
       id: '3',
@@ -67,7 +69,8 @@ class _MyPageScreenDemoState extends State<MyPageScreenDemo> with SingleTickerPr
       isPaid: true,
       creatorId: 'demo_creator3',
       createdAt: DateTime.now().subtract(const Duration(days: 60)),
-      experimentDate: DateTime.now().subtract(const Duration(days: 55)),
+      recruitmentStartDate: DateTime.now().subtract(const Duration(days: 55)),
+      allowFlexibleSchedule: false,
     ),
   ];
   
@@ -82,7 +85,8 @@ class _MyPageScreenDemoState extends State<MyPageScreenDemo> with SingleTickerPr
       isPaid: true,
       creatorId: 'current_user',
       createdAt: DateTime.now().subtract(const Duration(days: 10)),
-      experimentDate: DateTime.now().add(const Duration(days: 5)),
+      recruitmentStartDate: DateTime.now().add(const Duration(days: 5)),
+      allowFlexibleSchedule: false,
     ),
     Experiment(
       id: '5',
@@ -94,7 +98,8 @@ class _MyPageScreenDemoState extends State<MyPageScreenDemo> with SingleTickerPr
       isPaid: true,
       creatorId: 'current_user',
       createdAt: DateTime.now().subtract(const Duration(days: 20)),
-      experimentDate: DateTime.now().subtract(const Duration(days: 15)),
+      recruitmentStartDate: DateTime.now().subtract(const Duration(days: 15)),
+      allowFlexibleSchedule: false,
     ),
   ];
 
@@ -641,8 +646,8 @@ class _MyPageScreenDemoState extends State<MyPageScreenDemo> with SingleTickerPr
                     Icon(Icons.calendar_today, size: 14, color: Colors.grey[600]),
                     const SizedBox(width: 4),
                     Text(
-                      experiment.experimentDate != null
-                        ? DateFormat('yyyy/MM/dd').format(experiment.experimentDate!)
+                      experiment.recruitmentStartDate != null
+                        ? DateFormat('yyyy/MM/dd').format(experiment.recruitmentStartDate!)
                         : '日程未定',
                       style: TextStyle(fontSize: 12, color: Colors.grey[600]),
                     ),

@@ -22,13 +22,20 @@ class Experiment {
   final bool isPaid;            // 有償/無償
   final String creatorId;       // 作成者ID
   final DateTime createdAt;      // 作成日時
-  final DateTime? experimentDate; // 実験実施日時（募集開始日）
-  final DateTime? endDate;       // 募集終了日
+  final DateTime? recruitmentStartDate; // 募集開始日
+  final DateTime? recruitmentEndDate;   // 募集終了日
+  final DateTime? experimentPeriodStart; // 実験実施期間開始
+  final DateTime? experimentPeriodEnd;   // 実験実施期間終了
+  final bool allowFlexibleSchedule;      // 柔軟なスケジュール調整可能
   final String? labName;         // 研究室名
   final int? duration;          // 所要時間（分）
   final int? maxParticipants;   // 最大参加者数
   final List<String> requirements; // 参加条件
   final List<String> participants; // 参加者IDリスト
+  
+  // 旧フィールドとの互換性のため
+  DateTime? get experimentDate => recruitmentStartDate;
+  DateTime? get endDate => recruitmentEndDate;
 
   Experiment({
     required this.id,
@@ -41,8 +48,11 @@ class Experiment {
     required this.isPaid,
     required this.creatorId,
     required this.createdAt,
-    this.experimentDate,
-    this.endDate,
+    this.recruitmentStartDate,
+    this.recruitmentEndDate,
+    this.experimentPeriodStart,
+    this.experimentPeriodEnd,
+    this.allowFlexibleSchedule = false,
     this.labName,
     this.duration,
     this.maxParticipants,
@@ -68,8 +78,13 @@ class Experiment {
       isPaid: data['isPaid'] ?? false,
       creatorId: data['creatorId'] ?? '',
       createdAt: (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
-      experimentDate: (data['experimentDate'] as Timestamp?)?.toDate(),
-      endDate: (data['endDate'] as Timestamp?)?.toDate(),
+      recruitmentStartDate: (data['recruitmentStartDate'] as Timestamp?)?.toDate() ??
+          (data['experimentDate'] as Timestamp?)?.toDate(), // 旧フィールドとの互換性
+      recruitmentEndDate: (data['recruitmentEndDate'] as Timestamp?)?.toDate() ??
+          (data['endDate'] as Timestamp?)?.toDate(), // 旧フィールドとの互換性
+      experimentPeriodStart: (data['experimentPeriodStart'] as Timestamp?)?.toDate(),
+      experimentPeriodEnd: (data['experimentPeriodEnd'] as Timestamp?)?.toDate(),
+      allowFlexibleSchedule: data['allowFlexibleSchedule'] ?? false,
       labName: data['labName'],
       duration: data['duration'],
       maxParticipants: data['maxParticipants'],
@@ -90,12 +105,19 @@ class Experiment {
       'isPaid': isPaid,
       'creatorId': creatorId,
       'createdAt': Timestamp.fromDate(createdAt),
-      'experimentDate': experimentDate != null 
-        ? Timestamp.fromDate(experimentDate!) 
+      'recruitmentStartDate': recruitmentStartDate != null 
+        ? Timestamp.fromDate(recruitmentStartDate!) 
         : null,
-      'endDate': endDate != null
-        ? Timestamp.fromDate(endDate!)
+      'recruitmentEndDate': recruitmentEndDate != null
+        ? Timestamp.fromDate(recruitmentEndDate!)
         : null,
+      'experimentPeriodStart': experimentPeriodStart != null
+        ? Timestamp.fromDate(experimentPeriodStart!)
+        : null,
+      'experimentPeriodEnd': experimentPeriodEnd != null
+        ? Timestamp.fromDate(experimentPeriodEnd!)
+        : null,
+      'allowFlexibleSchedule': allowFlexibleSchedule,
       'labName': labName,
       'duration': duration,
       'maxParticipants': maxParticipants,

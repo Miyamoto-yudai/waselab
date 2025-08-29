@@ -28,9 +28,11 @@ class _CreateExperimentScreenState extends State<CreateExperimentScreen> {
   // 選択項目
   ExperimentType _selectedType = ExperimentType.onsite;
   bool _isPaid = false;
-  DateTime? _experimentDate;
-  DateTime? _endDate;
-  TimeOfDay? _experimentTime;
+  bool _allowFlexibleSchedule = false;
+  DateTime? _recruitmentStartDate;
+  DateTime? _recruitmentEndDate;
+  DateTime? _experimentPeriodStart;
+  DateTime? _experimentPeriodEnd;
   final List<String> _requirements = [];
   final _requirementController = TextEditingController();
   
@@ -49,62 +51,66 @@ class _CreateExperimentScreenState extends State<CreateExperimentScreen> {
     super.dispose();
   }
 
-  /// 実施日選択
-  Future<void> _selectDate(BuildContext context) async {
+  /// 募集開始日選択
+  Future<void> _selectRecruitmentStartDate(BuildContext context) async {
     final DateTime? picked = await showDatePicker(
       context: context,
-      initialDate: DateTime.now().add(const Duration(days: 7)),
+      initialDate: DateTime.now(),
       firstDate: DateTime.now(),
       lastDate: DateTime.now().add(const Duration(days: 365)),
     );
-    if (picked != null && picked != _experimentDate) {
+    if (picked != null) {
       setState(() {
-        _experimentDate = picked;
+        _recruitmentStartDate = picked;
       });
     }
   }
 
-  /// 終了日選択
-  Future<void> _selectEndDate(BuildContext context) async {
+  /// 募集終了日選択
+  Future<void> _selectRecruitmentEndDate(BuildContext context) async {
     final DateTime? picked = await showDatePicker(
       context: context,
-      initialDate: _experimentDate?.add(const Duration(days: 7)) ?? DateTime.now().add(const Duration(days: 14)),
-      firstDate: _experimentDate ?? DateTime.now(),
+      initialDate: _recruitmentStartDate?.add(const Duration(days: 7)) ?? DateTime.now().add(const Duration(days: 7)),
+      firstDate: _recruitmentStartDate ?? DateTime.now(),
       lastDate: DateTime.now().add(const Duration(days: 365)),
     );
-    if (picked != null && picked != _endDate) {
+    if (picked != null) {
       setState(() {
-        _endDate = picked;
+        _recruitmentEndDate = picked;
       });
     }
   }
 
-  /// 時間選択
-  Future<void> _selectTime(BuildContext context) async {
-    final TimeOfDay? picked = await showTimePicker(
+  /// 実験実施期間開始日選択
+  Future<void> _selectExperimentPeriodStart(BuildContext context) async {
+    final DateTime? picked = await showDatePicker(
       context: context,
-      initialTime: TimeOfDay.now(),
+      initialDate: _recruitmentStartDate?.add(const Duration(days: 1)) ?? DateTime.now().add(const Duration(days: 1)),
+      firstDate: _recruitmentStartDate ?? DateTime.now(),
+      lastDate: DateTime.now().add(const Duration(days: 365)),
     );
-    if (picked != null && picked != _experimentTime) {
+    if (picked != null) {
       setState(() {
-        _experimentTime = picked;
+        _experimentPeriodStart = picked;
       });
     }
   }
 
-  /// 実験日時を結合
-  DateTime? get _combinedDateTime {
-    if (_experimentDate == null) return null;
-    if (_experimentTime == null) return _experimentDate;
-    
-    return DateTime(
-      _experimentDate!.year,
-      _experimentDate!.month,
-      _experimentDate!.day,
-      _experimentTime!.hour,
-      _experimentTime!.minute,
+  /// 実験実施期間終了日選択
+  Future<void> _selectExperimentPeriodEnd(BuildContext context) async {
+    final DateTime? picked = await showDatePicker(
+      context: context,
+      initialDate: _experimentPeriodStart?.add(const Duration(days: 7)) ?? DateTime.now().add(const Duration(days: 14)),
+      firstDate: _experimentPeriodStart ?? DateTime.now(),
+      lastDate: DateTime.now().add(const Duration(days: 365)),
     );
+    if (picked != null) {
+      setState(() {
+        _experimentPeriodEnd = picked;
+      });
+    }
   }
+
 
   /// 参加条件を追加
   void _addRequirement() {
@@ -139,12 +145,19 @@ class _CreateExperimentScreenState extends State<CreateExperimentScreen> {
         'isPaid': _isPaid,
         'creatorId': user.uid,
         'createdAt': FieldValue.serverTimestamp(),
-        'experimentDate': _combinedDateTime != null 
-          ? Timestamp.fromDate(_combinedDateTime!) 
+        'recruitmentStartDate': _recruitmentStartDate != null 
+          ? Timestamp.fromDate(_recruitmentStartDate!) 
           : null,
-        'endDate': _endDate != null
-          ? Timestamp.fromDate(_endDate!)
+        'recruitmentEndDate': _recruitmentEndDate != null
+          ? Timestamp.fromDate(_recruitmentEndDate!)
           : null,
+        'experimentPeriodStart': _experimentPeriodStart != null
+          ? Timestamp.fromDate(_experimentPeriodStart!)
+          : null,
+        'experimentPeriodEnd': _experimentPeriodEnd != null
+          ? Timestamp.fromDate(_experimentPeriodEnd!)
+          : null,
+        'allowFlexibleSchedule': _allowFlexibleSchedule,
         'labName': _labNameController.text.trim().isNotEmpty
           ? _labNameController.text.trim()
           : null,
@@ -322,48 +335,127 @@ class _CreateExperimentScreenState extends State<CreateExperimentScreen> {
               ),
               const SizedBox(height: 16),
 
-              // 募集開始日時
-              const Text('募集開始日時', style: TextStyle(fontSize: 16)),
-              const SizedBox(height: 8),
-              Row(
-                children: [
-                  Expanded(
-                    child: OutlinedButton.icon(
-                      onPressed: () => _selectDate(context),
-                      icon: const Icon(Icons.calendar_today),
-                      label: Text(
-                        _experimentDate != null
-                          ? '${_experimentDate!.year}/${_experimentDate!.month}/${_experimentDate!.day}'
-                          : '開始日を選択',
+              // 柔軟なスケジュール調整
+              Card(
+                elevation: 2,
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Icon(
+                            Icons.schedule,
+                            color: Theme.of(context).primaryColor,
+                          ),
+                          const SizedBox(width: 8),
+                          const Text(
+                            'スケジュール設定',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
                       ),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: OutlinedButton.icon(
-                      onPressed: () => _selectTime(context),
-                      icon: const Icon(Icons.access_time),
-                      label: Text(
-                        _experimentTime != null
-                          ? '${_experimentTime!.hour}:${_experimentTime!.minute.toString().padLeft(2, '0')}'
-                          : '時間を選択',
+                      const SizedBox(height: 16),
+                      SwitchListTile(
+                        title: const Text('柔軟なスケジュール調整'),
+                        subtitle: Text(
+                          _allowFlexibleSchedule
+                            ? '参加者が予約可能な日時から選択できます'
+                            : '固定の日時で実施します',
+                        ),
+                        value: _allowFlexibleSchedule,
+                        onChanged: (value) {
+                          setState(() {
+                            _allowFlexibleSchedule = value;
+                          });
+                        },
                       ),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
-
-              // 募集終了日
-              const Text('募集終了日', style: TextStyle(fontSize: 16)),
-              const SizedBox(height: 8),
-              OutlinedButton.icon(
-                onPressed: () => _selectEndDate(context),
-                icon: const Icon(Icons.event),
-                label: Text(
-                  _endDate != null
-                    ? '${_endDate!.year}/${_endDate!.month}/${_endDate!.day}'
-                    : '終了日を選択',
+                      const Divider(),
+                      const SizedBox(height: 8),
+                      
+                      // 募集期間
+                      const Text('募集期間', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
+                      const SizedBox(height: 8),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: OutlinedButton.icon(
+                              onPressed: () => _selectRecruitmentStartDate(context),
+                              icon: const Icon(Icons.calendar_today, size: 20),
+                              label: Text(
+                                _recruitmentStartDate != null
+                                  ? '${_recruitmentStartDate!.year}/${_recruitmentStartDate!.month.toString().padLeft(2, '0')}/${_recruitmentStartDate!.day.toString().padLeft(2, '0')}'
+                                  : '開始日',
+                                style: const TextStyle(fontSize: 12),
+                              ),
+                            ),
+                          ),
+                          const Padding(
+                            padding: EdgeInsets.symmetric(horizontal: 8),
+                            child: Text('〜'),
+                          ),
+                          Expanded(
+                            child: OutlinedButton.icon(
+                              onPressed: () => _selectRecruitmentEndDate(context),
+                              icon: const Icon(Icons.calendar_today, size: 20),
+                              label: Text(
+                                _recruitmentEndDate != null
+                                  ? '${_recruitmentEndDate!.year}/${_recruitmentEndDate!.month.toString().padLeft(2, '0')}/${_recruitmentEndDate!.day.toString().padLeft(2, '0')}'
+                                  : '終了日',
+                                style: const TextStyle(fontSize: 12),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      
+                      if (_allowFlexibleSchedule) ...[
+                        const SizedBox(height: 16),
+                        const Text('実験実施期間', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
+                        const Text(
+                          'この期間内で参加者が予約可能な日時を選択できます',
+                          style: TextStyle(fontSize: 12, color: Colors.grey),
+                        ),
+                        const SizedBox(height: 8),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: OutlinedButton.icon(
+                                onPressed: () => _selectExperimentPeriodStart(context),
+                                icon: const Icon(Icons.event, size: 20),
+                                label: Text(
+                                  _experimentPeriodStart != null
+                                    ? '${_experimentPeriodStart!.year}/${_experimentPeriodStart!.month.toString().padLeft(2, '0')}/${_experimentPeriodStart!.day.toString().padLeft(2, '0')}'
+                                    : '開始日',
+                                  style: const TextStyle(fontSize: 12),
+                                ),
+                              ),
+                            ),
+                            const Padding(
+                              padding: EdgeInsets.symmetric(horizontal: 8),
+                              child: Text('〜'),
+                            ),
+                            Expanded(
+                              child: OutlinedButton.icon(
+                                onPressed: () => _selectExperimentPeriodEnd(context),
+                                icon: const Icon(Icons.event, size: 20),
+                                label: Text(
+                                  _experimentPeriodEnd != null
+                                    ? '${_experimentPeriodEnd!.year}/${_experimentPeriodEnd!.month.toString().padLeft(2, '0')}/${_experimentPeriodEnd!.day.toString().padLeft(2, '0')}'
+                                    : '終了日',
+                                  style: const TextStyle(fontSize: 12),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ],
                 ),
               ),
               const SizedBox(height: 16),

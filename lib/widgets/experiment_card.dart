@@ -1,14 +1,17 @@
 import 'package:flutter/material.dart';
 import '../models/experiment.dart';
 import '../screens/experiment_detail_screen.dart';
+import '../screens/experiment_detail_screen_demo.dart';
 
 /// 実験カードの共通ウィジェット
 class ExperimentCard extends StatelessWidget {
   final Experiment experiment;
+  final bool isDemo;
   
   const ExperimentCard({
     super.key,
     required this.experiment,
+    this.isDemo = false,
   });
 
   /// 実験種別のアイコンを取得
@@ -63,7 +66,9 @@ class ExperimentCard extends StatelessWidget {
             Navigator.push(
               context,
               MaterialPageRoute(
-                builder: (context) => ExperimentDetailScreen(experiment: experiment),
+                builder: (context) => isDemo
+                  ? ExperimentDetailScreenDemo(experiment: experiment)
+                  : ExperimentDetailScreen(experiment: experiment),
               ),
             );
           },

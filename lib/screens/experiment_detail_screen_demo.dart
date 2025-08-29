@@ -1,29 +1,21 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../models/experiment.dart';
-import '../models/experiment_slot.dart';
-import '../models/experiment_reservation.dart';
-import '../services/reservation_service.dart';
-import '../widgets/experiment_calendar_view.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 
-/// 実験詳細画面
-/// 選択された実験の詳細情報を表示する
-class ExperimentDetailScreen extends StatefulWidget {
+/// デモ用実験詳細画面（Firebase不要）
+class ExperimentDetailScreenDemo extends StatefulWidget {
   final Experiment experiment;
 
-  const ExperimentDetailScreen({
+  const ExperimentDetailScreenDemo({
     super.key,
     required this.experiment,
   });
 
   @override
-  State<ExperimentDetailScreen> createState() => _ExperimentDetailScreenState();
+  State<ExperimentDetailScreenDemo> createState() => _ExperimentDetailScreenDemoState();
 }
 
-class _ExperimentDetailScreenState extends State<ExperimentDetailScreen> {
-  final ReservationService _reservationService = ReservationService();
-  final FirebaseAuth _auth = FirebaseAuth.instance;
+class _ExperimentDetailScreenDemoState extends State<ExperimentDetailScreenDemo> {
   bool _showCalendar = false;
 
   /// 実験種別のアイコンを取得
@@ -67,144 +59,6 @@ class _ExperimentDetailScreenState extends State<ExperimentDetailScreen> {
   String _formatDate(DateTime? date) {
     if (date == null) return '未定';
     return DateFormat('yyyy年MM月dd日').format(date);
-  }
-
-  /// スロット選択時の処理
-  Future<void> _handleSlotSelection(ExperimentSlot slot) async {
-    // 予約確認ダイアログを表示
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('予約確認'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              '以下の日時で予約しますか？',
-              style: Theme.of(context).textTheme.bodyLarge,
-            ),
-            const SizedBox(height: 16),
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Colors.grey.shade100,
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      const Icon(Icons.calendar_today, size: 16),
-                      const SizedBox(width: 8),
-                      Text(
-                        DateFormat('yyyy年MM月dd日(E)', 'ja').format(slot.startTime),
-                        style: const TextStyle(fontWeight: FontWeight.bold),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 4),
-                  Row(
-                    children: [
-                      const Icon(Icons.access_time, size: 16),
-                      const SizedBox(width: 8),
-                      Text(
-                        '${DateFormat('HH:mm').format(slot.startTime)} - ${DateFormat('HH:mm').format(slot.endTime)}',
-                        style: const TextStyle(fontWeight: FontWeight.bold),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('キャンセル'),
-          ),
-          ElevatedButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('予約する'),
-          ),
-        ],
-      ),
-    );
-
-    if (confirmed == true) {
-      await _makeReservation(slot);
-    }
-  }
-
-  /// 予約を実行
-  Future<void> _makeReservation(ExperimentSlot slot) async {
-    try {
-      final user = _auth.currentUser;
-      if (user == null) {
-        throw Exception('ログインが必要です');
-      }
-
-      // 既に予約しているかチェック
-      final hasReserved = await _reservationService.hasUserReserved(
-        user.uid,
-        widget.experiment.id,
-      );
-
-      if (hasReserved) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('既にこの実験に予約済みです'),
-              backgroundColor: Colors.orange,
-            ),
-          );
-        }
-        return;
-      }
-
-      // 予約を作成
-      await _reservationService.createReservation(
-        userId: user.uid,
-        experimentId: widget.experiment.id,
-        slotId: slot.id,
-      );
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('予約が完了しました'),
-            backgroundColor: Colors.green,
-          ),
-        );
-        
-        // カレンダーを閉じる
-        setState(() {
-          _showCalendar = false;
-        });
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('予約に失敗しました: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-    }
-  }
-
-  /// 直接応募（固定日時の場合）
-  Future<void> _handleDirectApplication() async {
-    // デモ版では実装しない
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('応募機能は開発中です'),
-        backgroundColor: Colors.orange,
-      ),
-    );
   }
 
   @override
@@ -524,7 +378,7 @@ class _ExperimentDetailScreenState extends State<ExperimentDetailScreen> {
               ),
             ],
 
-            // 柔軟なスケジュール調整の場合はカレンダー表示
+            // 柔軟なスケジュール調整の場合はカレンダー表示（デモ版）
             if (widget.experiment.allowFlexibleSchedule) ...[
               const SizedBox(height: 16),
               Card(
@@ -561,9 +415,33 @@ class _ExperimentDetailScreenState extends State<ExperimentDetailScreen> {
                       },
                     ),
                     if (_showCalendar)
-                      ExperimentCalendarView(
-                        experiment: widget.experiment,
-                        onSlotSelected: _handleSlotSelection,
+                      Container(
+                        padding: const EdgeInsets.all(16),
+                        child: Column(
+                          children: [
+                            const Icon(
+                              Icons.calendar_today,
+                              size: 48,
+                              color: Colors.grey,
+                            ),
+                            const SizedBox(height: 16),
+                            const Text(
+                              'デモ版では予約機能は利用できません',
+                              style: TextStyle(
+                                color: Colors.grey,
+                                fontSize: 14,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              '実施期間: ${_formatDate(widget.experiment.experimentPeriodStart)} ~ ${_formatDate(widget.experiment.experimentPeriodEnd)}',
+                              style: const TextStyle(
+                                fontSize: 12,
+                                color: Colors.grey,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                   ],
                 ),
@@ -577,23 +455,15 @@ class _ExperimentDetailScreenState extends State<ExperimentDetailScreen> {
               width: double.infinity,
               height: 48,
               child: ElevatedButton.icon(
-                onPressed: widget.experiment.allowFlexibleSchedule && !_showCalendar
-                  ? () {
-                      setState(() {
-                        _showCalendar = true;
-                      });
-                      // カレンダーセクションまでスクロール
-                      Future.delayed(const Duration(milliseconds: 300), () {
-                        Scrollable.ensureVisible(
-                          context,
-                          duration: const Duration(milliseconds: 500),
-                          curve: Curves.easeInOut,
-                        );
-                      });
-                    }
-                  : !widget.experiment.allowFlexibleSchedule
-                    ? () => _handleDirectApplication()
-                    : null,
+                onPressed: () {
+                  // デモ版では実装しない
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('応募機能は開発中です'),
+                      backgroundColor: Colors.orange,
+                    ),
+                  );
+                },
                 icon: Icon(
                   widget.experiment.allowFlexibleSchedule
                     ? Icons.calendar_today

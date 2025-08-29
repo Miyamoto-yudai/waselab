@@ -11,6 +11,7 @@ class HomeScreenBase extends StatefulWidget {
   final bool isWasedaUser;
   final VoidCallback onLogout;
   final VoidCallback? onCreateExperiment;
+  final bool isDemo;
   
   const HomeScreenBase({
     super.key,
@@ -21,6 +22,7 @@ class HomeScreenBase extends StatefulWidget {
     required this.isWasedaUser,
     required this.onLogout,
     this.onCreateExperiment,
+    this.isDemo = false,
   });
 
   @override
@@ -453,7 +455,10 @@ class _HomeScreenBaseState extends State<HomeScreenBase> {
                           itemCount: filteredExperiments.length,
                           itemBuilder: (context, index) {
                             final experiment = filteredExperiments[index];
-                            return ExperimentCard(experiment: experiment);
+                            return ExperimentCard(
+                              experiment: experiment,
+                              isDemo: widget.isDemo,
+                            );
                           },
                         );
                       },

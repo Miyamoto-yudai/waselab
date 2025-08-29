@@ -43,6 +43,9 @@ dependencies:
   
   # 日付フォーマット用
   intl: ^0.19.0
+  
+  # カレンダー表示用
+  table_calendar: ^3.1.2
 
 dev_dependencies:
   flutter_test:
