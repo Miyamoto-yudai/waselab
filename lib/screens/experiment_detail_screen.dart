@@ -3,13 +3,19 @@ import '../models/experiment.dart';
 
 /// 実験詳細画面
 /// 選択された実験の詳細情報を表示する
-class ExperimentDetailScreen extends StatelessWidget {
+class ExperimentDetailScreen extends StatefulWidget {
   final Experiment experiment;
 
   const ExperimentDetailScreen({
     super.key,
     required this.experiment,
   });
+
+  @override
+  State<ExperimentDetailScreen> createState() => _ExperimentDetailScreenState();
+}
+
+class _ExperimentDetailScreenState extends State<ExperimentDetailScreen> {
 
   /// 実験種別のアイコンを取得
   IconData _getTypeIcon(ExperimentType type) {
@@ -54,6 +60,24 @@ class ExperimentDetailScreen extends StatelessWidget {
       appBar: AppBar(
         title: const Text('実験詳細'),
       ),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () {
+          // デモ版では実装しないメッセージ機能
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('メッセージ機能は開発中です'),
+              backgroundColor: Colors.orange,
+            ),
+          );
+        },
+        backgroundColor: const Color(0xFF8E1728),
+        icon: const Icon(Icons.message, color: Colors.white),
+        label: const Text(
+          '質問する',
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+        ),
+        tooltip: '実験者に質問',
+      ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -69,14 +93,14 @@ class ExperimentDetailScreen extends StatelessWidget {
                     Row(
                       children: [
                         Icon(
-                          _getTypeIcon(experiment.type),
-                          color: _getTypeColor(experiment.type),
+                          _getTypeIcon(widget.experiment.type),
+                          color: _getTypeColor(widget.experiment.type),
                           size: 28,
                         ),
                         const SizedBox(width: 8),
                         Expanded(
                           child: Text(
-                            experiment.title,
+                            widget.experiment.title,
                             style: Theme.of(context).textTheme.headlineSmall,
                           ),
                         ),
@@ -92,13 +116,13 @@ class ExperimentDetailScreen extends StatelessWidget {
                             vertical: 4,
                           ),
                           decoration: BoxDecoration(
-                            color: _getTypeColor(experiment.type).withValues(alpha: 0.2),
+                            color: _getTypeColor(widget.experiment.type).withValues(alpha: 0.2),
                             borderRadius: BorderRadius.circular(16),
                           ),
                           child: Text(
-                            experiment.type.label,
+                            widget.experiment.type.label,
                             style: TextStyle(
-                              color: _getTypeColor(experiment.type),
+                              color: _getTypeColor(widget.experiment.type),
                               fontWeight: FontWeight.bold,
                             ),
                           ),
@@ -111,15 +135,15 @@ class ExperimentDetailScreen extends StatelessWidget {
                             vertical: 4,
                           ),
                           decoration: BoxDecoration(
-                            color: experiment.isPaid 
+                            color: widget.experiment.isPaid 
                               ? Colors.amber.withValues(alpha: 0.2)
                               : Colors.grey.withValues(alpha: 0.2),
                             borderRadius: BorderRadius.circular(16),
                           ),
                           child: Text(
-                            experiment.isPaid ? '有償' : '無償',
+                            widget.experiment.isPaid ? '有償' : '無償',
                             style: TextStyle(
-                              color: experiment.isPaid 
+                              color: widget.experiment.isPaid 
                                 ? Colors.amber[700] 
                                 : Colors.grey[700],
                               fontWeight: FontWeight.bold,
@@ -151,38 +175,38 @@ class ExperimentDetailScreen extends StatelessWidget {
                     _buildInfoRow(
                       Icons.monetization_on,
                       '報酬',
-                      experiment.isPaid ? '¥${experiment.reward}' : 'なし',
+                      widget.experiment.isPaid ? '¥${widget.experiment.reward}' : 'なし',
                       Colors.amber,
                     ),
                     const SizedBox(height: 8),
                     _buildInfoRow(
                       Icons.location_on,
                       '場所',
-                      experiment.location,
+                      widget.experiment.location,
                       Colors.red,
                     ),
                     const SizedBox(height: 8),
                     _buildInfoRow(
                       Icons.calendar_today,
                       '実施日時',
-                      _formatDateTime(experiment.experimentDate),
+                      _formatDateTime(widget.experiment.experimentDate),
                       Colors.blue,
                     ),
-                    if (experiment.duration != null) ...[
+                    if (widget.experiment.duration != null) ...[
                       const SizedBox(height: 8),
                       _buildInfoRow(
                         Icons.timer,
                         '所要時間',
-                        '約${experiment.duration}分',
+                        '約${widget.experiment.duration}分',
                         Colors.green,
                       ),
                     ],
-                    if (experiment.maxParticipants != null) ...[
+                    if (widget.experiment.maxParticipants != null) ...[
                       const SizedBox(height: 8),
                       _buildInfoRow(
                         Icons.group,
                         '募集人数',
-                        '最大${experiment.maxParticipants}名',
+                        '最大${widget.experiment.maxParticipants}名',
                         Colors.purple,
                       ),
                     ],
@@ -207,7 +231,7 @@ class ExperimentDetailScreen extends StatelessWidget {
                     ),
                     const SizedBox(height: 12),
                     Text(
-                      experiment.description,
+                      widget.experiment.description,
                       style: Theme.of(context).textTheme.bodyMedium,
                     ),
                   ],
@@ -216,7 +240,7 @@ class ExperimentDetailScreen extends StatelessWidget {
             ),
             
             // 詳細内容
-            if (experiment.detailedContent != null) ...[
+            if (widget.experiment.detailedContent != null) ...[
               const SizedBox(height: 16),
               Card(
                 child: Padding(
@@ -253,7 +277,7 @@ class ExperimentDetailScreen extends StatelessWidget {
                           ),
                         ),
                         child: Text(
-                          experiment.detailedContent!,
+                          widget.experiment.detailedContent!,
                           style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                             height: 1.6,
                           ),
@@ -266,7 +290,7 @@ class ExperimentDetailScreen extends StatelessWidget {
             ],
 
             // 参加条件
-            if (experiment.requirements.isNotEmpty) ...[
+            if (widget.experiment.requirements.isNotEmpty) ...[
               const SizedBox(height: 16),
               Card(
                 child: Padding(
@@ -281,7 +305,7 @@ class ExperimentDetailScreen extends StatelessWidget {
                         ),
                       ),
                       const SizedBox(height: 12),
-                      ...experiment.requirements.map((requirement) {
+                      ...widget.experiment.requirements.map((requirement) {
                         return Padding(
                           padding: const EdgeInsets.only(bottom: 8),
                           child: Row(
