@@ -5,7 +5,7 @@ import 'time_slot.dart';
 enum ExperimentType {
   online('オンライン'),
   onsite('対面'),
-  survey('アンケート');
+  survey('アンケートのみ');
 
   final String label;
   const ExperimentType(this.label);
@@ -35,6 +35,9 @@ class Experiment {
   final List<String> participants; // 参加者IDリスト
   final List<TimeSlot> timeSlots; // 利用可能な時間枠リスト
   final int simultaneousCapacity; // 同時実験可能人数（デフォルト1）
+  final DateTime? fixedExperimentDate; // 固定日時の場合の実施日
+  final Map<String, int>? fixedExperimentTime; // 固定日時の場合の実施時刻
+  final int reservationDeadlineDays; // 予約締切日数（デフォルト1日前）
   
   // 旧フィールドとの互換性のため
   DateTime? get experimentDate => recruitmentStartDate;
@@ -63,6 +66,9 @@ class Experiment {
     this.participants = const [],
     this.timeSlots = const [],
     this.simultaneousCapacity = 1,
+    this.fixedExperimentDate,
+    this.fixedExperimentTime,
+    this.reservationDeadlineDays = 1,
   });
 
   /// FirestoreのドキュメントからExperimentを作成
@@ -99,6 +105,11 @@ class Experiment {
           ?.map((slot) => TimeSlot.fromJson(slot as Map<String, dynamic>))
           .toList() ?? [],
       simultaneousCapacity: data['simultaneousCapacity'] ?? 1,
+      fixedExperimentDate: (data['fixedExperimentDate'] as Timestamp?)?.toDate(),
+      fixedExperimentTime: data['fixedExperimentTime'] != null
+          ? Map<String, int>.from(data['fixedExperimentTime'] as Map)
+          : null,
+      reservationDeadlineDays: data['reservationDeadlineDays'] ?? 1,
     );
   }
 
@@ -134,6 +145,11 @@ class Experiment {
       'participants': participants,
       'timeSlots': timeSlots.map((slot) => slot.toJson()).toList(),
       'simultaneousCapacity': simultaneousCapacity,
+      'fixedExperimentDate': fixedExperimentDate != null
+        ? Timestamp.fromDate(fixedExperimentDate!)
+        : null,
+      'fixedExperimentTime': fixedExperimentTime,
+      'reservationDeadlineDays': reservationDeadlineDays,
     };
   }
 }

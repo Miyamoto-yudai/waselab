@@ -35,6 +35,8 @@ class _CreateExperimentBaseState extends State<CreateExperimentBase> {
   final _durationController = TextEditingController();
   final _maxParticipantsController = TextEditingController();
   final _labNameController = TextEditingController();
+  final _reservationDeadlineController = TextEditingController(text: '1'); // 予約締切日数（デフォルト1日前）
+  bool _isLabExperiment = true; // true: 研究室, false: 個人
   
   // 選択項目
   ExperimentType _selectedType = ExperimentType.onsite;
@@ -44,6 +46,8 @@ class _CreateExperimentBaseState extends State<CreateExperimentBase> {
   DateTime? _recruitmentEndDate;
   DateTime? _experimentPeriodStart;
   DateTime? _experimentPeriodEnd;
+  DateTime? _fixedExperimentDate; // 固定日時の場合の実施日
+  TimeOfDay? _fixedExperimentTime; // 固定日時の場合の実施時刻
   final List<String> _requirements = [];
   final _requirementController = TextEditingController();
   List<TimeSlot> _timeSlots = [];
@@ -64,6 +68,7 @@ class _CreateExperimentBaseState extends State<CreateExperimentBase> {
     _maxParticipantsController.dispose();
     _labNameController.dispose();
     _requirementController.dispose();
+    _reservationDeadlineController.dispose();
     _pageController.dispose();
     super.dispose();
   }
@@ -200,6 +205,11 @@ class _CreateExperimentBaseState extends State<CreateExperimentBase> {
       requirements: _requirements,
       timeSlots: _timeSlots,
       simultaneousCapacity: _simultaneousCapacity,
+      fixedExperimentDate: _fixedExperimentDate,
+      fixedExperimentTime: _fixedExperimentTime != null
+        ? {'hour': _fixedExperimentTime!.hour, 'minute': _fixedExperimentTime!.minute}
+        : null,
+      reservationDeadlineDays: int.tryParse(_reservationDeadlineController.text) ?? 1,
     );
   }
 
@@ -228,6 +238,11 @@ class _CreateExperimentBaseState extends State<CreateExperimentBase> {
       'requirements': _requirements,
       'timeSlots': _timeSlots.map((slot) => slot.toJson()).toList(),
       'simultaneousCapacity': _simultaneousCapacity,
+      'fixedExperimentDate': _fixedExperimentDate,
+      'fixedExperimentTime': _fixedExperimentTime != null 
+        ? {'hour': _fixedExperimentTime!.hour, 'minute': _fixedExperimentTime!.minute}
+        : null,
+      'reservationDeadlineDays': int.tryParse(_reservationDeadlineController.text) ?? 1,
     };
     
     try {
@@ -274,9 +289,113 @@ class _CreateExperimentBaseState extends State<CreateExperimentBase> {
     }
   }
 
+  /// 次のステップに進めるかチェック
+  bool _canProceedToNextStep() {
+    switch (_currentStep) {
+      case 0: // 基本情報
+        return _titleController.text.trim().isNotEmpty &&
+               _descriptionController.text.trim().isNotEmpty &&
+               _detailedContentController.text.trim().isNotEmpty &&
+               _labNameController.text.trim().isNotEmpty;
+      case 1: // 詳細設定
+        if (_locationController.text.trim().isEmpty) {
+          return false;
+        }
+        if (_isPaid && _rewardController.text.trim().isEmpty) {
+          return false;
+        }
+        if (_durationController.text.trim().isEmpty) {
+          return false;
+        }
+        return true;
+      case 2: // 日程設定
+        if (_recruitmentStartDate == null || _recruitmentEndDate == null) {
+          return false;
+        }
+        // アンケートの場合は日程調整不要
+        if (_selectedType == ExperimentType.survey) {
+          return true;
+        }
+        if (_allowFlexibleSchedule) {
+          return _experimentPeriodStart != null &&
+                 _experimentPeriodEnd != null &&
+                 _timeSlots.isNotEmpty;
+        }
+        return true;
+      case 3: // 募集要項
+        return _maxParticipantsController.text.trim().isNotEmpty; // 募集人数は必須
+      default:
+        return true;
+    }
+  }
+  
+  /// バリデーションエラーメッセージを取得
+  String _getValidationErrorMessage() {
+    switch (_currentStep) {
+      case 0:
+        if (_titleController.text.trim().isEmpty) {
+          return 'タイトルを入力してください';
+        }
+        if (_descriptionController.text.trim().isEmpty) {
+          return '簡単な説明を入力してください';
+        }
+        if (_detailedContentController.text.trim().isEmpty) {
+          return '詳細内容を入力してください';
+        }
+        if (_labNameController.text.trim().isEmpty) {
+          return _isLabExperiment ? '研究室名を入力してください' : '個人名を入力してください';
+        }
+        break;
+      case 1:
+        if (_locationController.text.trim().isEmpty) {
+          return '場所を入力してください';
+        }
+        if (_isPaid && _rewardController.text.trim().isEmpty) {
+          return '報酬額を入力してください';
+        }
+        if (_durationController.text.trim().isEmpty) {
+          return '所要時間を入力してください';
+        }
+        break;
+      case 2:
+        if (_recruitmentStartDate == null) {
+          return '募集開始日を選択してください';
+        }
+        if (_recruitmentEndDate == null) {
+          return '募集終了日を選択してください';
+        }
+        // アンケート以外の場合のみ日程調整をチェック
+        if (_selectedType != ExperimentType.survey && _allowFlexibleSchedule) {
+          if (_experimentPeriodStart == null || _experimentPeriodEnd == null) {
+            return '実施期間を選択してください';
+          }
+          if (_timeSlots.isEmpty) {
+            return '時間枠を設定してください';
+          }
+        }
+        break;
+      case 3:
+        if (_maxParticipantsController.text.trim().isEmpty) {
+          return '募集人数を入力してください';
+        }
+        break;
+    }
+    return '';
+  }
+  
   /// 次のステップへ
   void _nextStep() {
     if (_currentStep < 4) {
+      if (!_canProceedToNextStep()) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(_getValidationErrorMessage()),
+            backgroundColor: Colors.red,
+          ),
+        );
+        return;
+      }
+      
       setState(() {
         _currentStep++;
       });
@@ -417,10 +536,11 @@ class _CreateExperimentBaseState extends State<CreateExperimentBase> {
                 Expanded(
                   child: ElevatedButton(
                     onPressed: _currentStep < 4 
-                      ? _nextStep
+                      ? (_canProceedToNextStep() ? _nextStep : null)
                       : _isLoading ? null : _saveExperiment,
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFF8E1728),
+                      disabledBackgroundColor: Colors.grey.shade400,
                     ),
                     child: _isLoading
                       ? const SizedBox(
@@ -463,7 +583,8 @@ class _CreateExperimentBaseState extends State<CreateExperimentBase> {
               border: OutlineInputBorder(),
               prefixIcon: Icon(Icons.title),
             ),
-            maxLength: 50,
+            maxLength: 20,
+            onChanged: (_) => setState(() {}),
             validator: (value) {
               if (value == null || value.trim().isEmpty) {
                 return 'タイトルを入力してください';
@@ -482,7 +603,8 @@ class _CreateExperimentBaseState extends State<CreateExperimentBase> {
               prefixIcon: Icon(Icons.description),
             ),
             maxLines: 3,
-            maxLength: 200,
+            maxLength: 50,
+            onChanged: (_) => setState(() {}),
             validator: (value) {
               if (value == null || value.trim().isEmpty) {
                 return '説明を入力してください';
@@ -495,24 +617,74 @@ class _CreateExperimentBaseState extends State<CreateExperimentBase> {
           TextFormField(
             controller: _detailedContentController,
             decoration: const InputDecoration(
-              labelText: '詳細内容',
+              labelText: '詳細内容 *',
               hintText: '実験の詳細な内容、手順、注意事項など',
               border: OutlineInputBorder(),
               prefixIcon: Icon(Icons.article),
             ),
             maxLines: 8,
             maxLength: 1000,
+            onChanged: (_) => setState(() {}),
+            validator: (value) {
+              if (value == null || value.trim().isEmpty) {
+                return '詳細内容を入力してください';
+              }
+              return null;
+            },
           ),
           const SizedBox(height: 16),
           
+          // 研究室/個人選択
+          const Text('実施主体 *', style: TextStyle(fontWeight: FontWeight.bold)),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              Expanded(
+                child: RadioListTile<bool>(
+                  title: const Text('研究室'),
+                  value: true,
+                  groupValue: _isLabExperiment,
+                  onChanged: (value) {
+                    setState(() {
+                      _isLabExperiment = value!;
+                      _labNameController.clear();
+                    });
+                  },
+                  activeColor: const Color(0xFF8E1728),
+                ),
+              ),
+              Expanded(
+                child: RadioListTile<bool>(
+                  title: const Text('個人'),
+                  value: false,
+                  groupValue: _isLabExperiment,
+                  onChanged: (value) {
+                    setState(() {
+                      _isLabExperiment = value!;
+                      _labNameController.clear();
+                    });
+                  },
+                  activeColor: const Color(0xFF8E1728),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
           TextFormField(
             controller: _labNameController,
-            decoration: const InputDecoration(
-              labelText: '研究室名',
-              hintText: '例: 認知科学研究室',
-              border: OutlineInputBorder(),
-              prefixIcon: Icon(Icons.school),
+            decoration: InputDecoration(
+              labelText: _isLabExperiment ? '研究室名 *' : '個人名 *',
+              hintText: _isLabExperiment ? '例: 認知科学研究室' : '例: 山田太郎',
+              border: const OutlineInputBorder(),
+              prefixIcon: Icon(_isLabExperiment ? Icons.school : Icons.person),
             ),
+            onChanged: (_) => setState(() {}),
+            validator: (value) {
+              if (value == null || value.trim().isEmpty) {
+                return _isLabExperiment ? '研究室名を入力してください' : '個人名を入力してください';
+              }
+              return null;
+            },
           ),
         ],
       ),
@@ -549,6 +721,10 @@ class _CreateExperimentBaseState extends State<CreateExperimentBase> {
                       if (type == ExperimentType.online || type == ExperimentType.survey) {
                         _locationController.text = 'オンライン';
                       }
+                      // アンケートの場合、日程調整フラグをリセット
+                      if (type == ExperimentType.survey) {
+                        _allowFlexibleSchedule = false;
+                      }
                     });
                   }
                 },
@@ -567,6 +743,7 @@ class _CreateExperimentBaseState extends State<CreateExperimentBase> {
               border: OutlineInputBorder(),
               prefixIcon: Icon(Icons.location_on),
             ),
+            onChanged: (_) => setState(() {}),
             validator: (value) {
               if (value == null || value.trim().isEmpty) {
                 return '場所を入力してください';
@@ -596,15 +773,16 @@ class _CreateExperimentBaseState extends State<CreateExperimentBase> {
             const SizedBox(height: 16),
             TextFormField(
               controller: _rewardController,
-              decoration: const InputDecoration(
-                labelText: '報酬額（円）',
+              decoration: InputDecoration(
+                labelText: _isPaid ? '報酬額（円） *' : '報酬額（円）',
                 hintText: '例: 1500',
-                border: OutlineInputBorder(),
-                prefixIcon: Icon(Icons.monetization_on),
+                border: const OutlineInputBorder(),
+                prefixIcon: const Icon(Icons.monetization_on),
                 suffixText: '円',
               ),
               keyboardType: TextInputType.number,
               inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+              onChanged: (_) => setState(() {}),
               validator: (value) {
                 if (_isPaid && (value == null || value.isEmpty)) {
                   return '報酬額を入力してください';
@@ -622,7 +800,7 @@ class _CreateExperimentBaseState extends State<CreateExperimentBase> {
           TextFormField(
             controller: _durationController,
             decoration: const InputDecoration(
-              labelText: '所要時間（分）',
+              labelText: '所要時間（分） *',
               hintText: '例: 30',
               border: OutlineInputBorder(),
               prefixIcon: Icon(Icons.timer),
@@ -630,6 +808,16 @@ class _CreateExperimentBaseState extends State<CreateExperimentBase> {
             ),
             keyboardType: TextInputType.number,
             inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+            onChanged: (_) => setState(() {}),
+            validator: (value) {
+              if (value == null || value.trim().isEmpty) {
+                return '所要時間を入力してください';
+              }
+              if (int.tryParse(value) == null) {
+                return '数値を入力してください';
+              }
+              return null;
+            },
           ),
         ],
       ),
@@ -638,6 +826,93 @@ class _CreateExperimentBaseState extends State<CreateExperimentBase> {
 
   /// ステップ3: 日程設定
   Widget _buildScheduleStep() {
+    // アンケートのみの場合は簡略化された表示
+    if (_selectedType == ExperimentType.survey) {
+      return SingleChildScrollView(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              '募集期間を設定してください',
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
+            const SizedBox(height: 24),
+            
+            // 募集期間
+            const Text('募集期間', style: TextStyle(fontWeight: FontWeight.bold)),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                Expanded(
+                  child: InkWell(
+                    onTap: () => _selectDate(context, 'recruitmentStart'),
+                    child: InputDecorator(
+                      decoration: const InputDecoration(
+                        labelText: '開始日',
+                        border: OutlineInputBorder(),
+                        prefixIcon: Icon(Icons.calendar_today),
+                      ),
+                      child: Text(
+                        _recruitmentStartDate != null
+                          ? '${_recruitmentStartDate!.year}/${_recruitmentStartDate!.month.toString().padLeft(2, '0')}/${_recruitmentStartDate!.day.toString().padLeft(2, '0')}'
+                          : '選択してください',
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: InkWell(
+                    onTap: () => _selectDate(context, 'recruitmentEnd'),
+                    child: InputDecorator(
+                      decoration: const InputDecoration(
+                        labelText: '終了日',
+                        border: OutlineInputBorder(),
+                        prefixIcon: Icon(Icons.calendar_today),
+                      ),
+                      child: Text(
+                        _recruitmentEndDate != null
+                          ? '${_recruitmentEndDate!.year}/${_recruitmentEndDate!.month.toString().padLeft(2, '0')}/${_recruitmentEndDate!.day.toString().padLeft(2, '0')}'
+                          : '選択してください',
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 24),
+            
+            // アンケート用の案内
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.purple.shade50,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.purple.shade200),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.assignment, size: 20, color: Colors.purple.shade700),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'アンケートは募集期間中いつでも回答可能です',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.purple.shade700,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+    
+    // 通常の実験の場合
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
       child: Column(
@@ -693,18 +968,20 @@ class _CreateExperimentBaseState extends State<CreateExperimentBase> {
           ),
           const SizedBox(height: 24),
           
-          // 日程調整オプション
-          SwitchListTile(
-            title: const Text('柔軟な日程調整'),
-            subtitle: const Text('参加者が実施日時を選択できるようにする'),
-            value: _allowFlexibleSchedule,
-            onChanged: (value) {
-              setState(() {
-                _allowFlexibleSchedule = value;
-              });
-            },
-            activeColor: const Color(0xFF8E1728),
-          ),
+          // 日程調整オプション（アンケート以外）
+          if (_selectedType != ExperimentType.survey) ...[
+            SwitchListTile(
+              title: const Text('柔軟な日程調整'),
+              subtitle: const Text('参加者が実施日時を選択できるようにする'),
+              value: _allowFlexibleSchedule,
+              onChanged: (value) {
+                setState(() {
+                  _allowFlexibleSchedule = value;
+                });
+              },
+              activeColor: const Color(0xFF8E1728),
+            ),
+          ],
           const SizedBox(height: 16),
           
           // カレンダーベースの実施期間と時間枠設定
@@ -770,7 +1047,7 @@ class _CreateExperimentBaseState extends State<CreateExperimentBase> {
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
-                      '実施日時は募集後に個別に連絡します',
+                      '実施日時を指定するか、募集後に個別に連絡できます',
                       style: TextStyle(
                         fontSize: 12,
                         color: Colors.purple.shade700,
@@ -778,6 +1055,130 @@ class _CreateExperimentBaseState extends State<CreateExperimentBase> {
                     ),
                   ),
                 ],
+              ),
+            ),
+            const SizedBox(height: 16),
+            
+            // 固定日時の設定
+            const Text('実施日時（任意）', style: TextStyle(fontSize: 14)),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                Expanded(
+                  child: InkWell(
+                    onTap: () async {
+                      final DateTime? picked = await showDatePicker(
+                        context: context,
+                        initialDate: _fixedExperimentDate ?? DateTime.now().add(const Duration(days: 7)),
+                        firstDate: _recruitmentStartDate ?? DateTime.now(),
+                        lastDate: DateTime.now().add(const Duration(days: 365)),
+                        builder: (context, child) {
+                          return Theme(
+                            data: Theme.of(context).copyWith(
+                              colorScheme: const ColorScheme.light(
+                                primary: Color(0xFF8E1728),
+                                onPrimary: Colors.white,
+                              ),
+                            ),
+                            child: child!,
+                          );
+                        },
+                      );
+                      if (picked != null) {
+                        setState(() {
+                          _fixedExperimentDate = picked;
+                        });
+                      }
+                    },
+                    child: InputDecorator(
+                      decoration: const InputDecoration(
+                        labelText: '実施日',
+                        border: OutlineInputBorder(),
+                        prefixIcon: Icon(Icons.event),
+                      ),
+                      child: Text(
+                        _fixedExperimentDate != null
+                          ? '${_fixedExperimentDate!.year}/${_fixedExperimentDate!.month.toString().padLeft(2, '0')}/${_fixedExperimentDate!.day.toString().padLeft(2, '0')}'
+                          : '未設定',
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: InkWell(
+                    onTap: () async {
+                      final TimeOfDay? picked = await showTimePicker(
+                        context: context,
+                        initialTime: _fixedExperimentTime ?? const TimeOfDay(hour: 14, minute: 0),
+                        builder: (context, child) {
+                          return Theme(
+                            data: Theme.of(context).copyWith(
+                              colorScheme: const ColorScheme.light(
+                                primary: Color(0xFF8E1728),
+                                onPrimary: Colors.white,
+                              ),
+                            ),
+                            child: child!,
+                          );
+                        },
+                      );
+                      if (picked != null) {
+                        setState(() {
+                          _fixedExperimentTime = picked;
+                        });
+                      }
+                    },
+                    child: InputDecorator(
+                      decoration: const InputDecoration(
+                        labelText: '開始時刻',
+                        border: OutlineInputBorder(),
+                        prefixIcon: Icon(Icons.access_time),
+                      ),
+                      child: Text(
+                        _fixedExperimentTime != null
+                          ? '${_fixedExperimentTime!.hour.toString().padLeft(2, '0')}:${_fixedExperimentTime!.minute.toString().padLeft(2, '0')}'
+                          : '未設定',
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
+          
+          // 予約締切日数の設定（アンケート以外）
+          if (_selectedType != ExperimentType.survey) ...[
+            const SizedBox(height: 24),
+            const Text('予約締切', style: TextStyle(fontWeight: FontWeight.bold)),
+            const SizedBox(height: 8),
+            TextFormField(
+              controller: _reservationDeadlineController,
+              decoration: const InputDecoration(
+                labelText: '実施何日前までに予約が必要か',
+                hintText: '例: 1',
+                border: OutlineInputBorder(),
+                prefixIcon: Icon(Icons.schedule),
+                suffixText: '日前',
+              ),
+              keyboardType: TextInputType.number,
+              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+              validator: (value) {
+                if (value == null || value.trim().isEmpty) {
+                  return '予約締切日数を入力してください';
+                }
+                if (int.tryParse(value) == null) {
+                  return '数値を入力してください';
+                }
+                return null;
+              },
+            ),
+            const SizedBox(height: 8),
+            Text(
+              '例: 1日前に設定すると、実施日の前日まで予約可能です',
+              style: TextStyle(
+                fontSize: 12,
+                color: Colors.grey.shade600,
               ),
             ),
           ],
@@ -803,7 +1204,7 @@ class _CreateExperimentBaseState extends State<CreateExperimentBase> {
           TextFormField(
             controller: _maxParticipantsController,
             decoration: const InputDecoration(
-              labelText: '募集人数',
+              labelText: '募集人数 *',
               hintText: '例: 20',
               border: OutlineInputBorder(),
               prefixIcon: Icon(Icons.group),
@@ -811,6 +1212,7 @@ class _CreateExperimentBaseState extends State<CreateExperimentBase> {
             ),
             keyboardType: TextInputType.number,
             inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+            onChanged: (_) => setState(() {}),
           ),
           const SizedBox(height: 24),
           
@@ -948,7 +1350,10 @@ class _CreateExperimentBaseState extends State<CreateExperimentBase> {
             _buildConfirmationItem('タイトル', previewExperiment.title),
             _buildConfirmationItem('説明', previewExperiment.description),
             if (previewExperiment.labName != null)
-              _buildConfirmationItem('研究室', previewExperiment.labName!),
+              _buildConfirmationItem(
+                _isLabExperiment ? '研究室' : '実施者',
+                previewExperiment.labName!,
+              ),
           ]),
           const SizedBox(height: 16),
           
@@ -978,6 +1383,16 @@ class _CreateExperimentBaseState extends State<CreateExperimentBase> {
               '日程調整',
               _allowFlexibleSchedule ? '柔軟（予約制）' : '固定',
             ),
+            if (!_allowFlexibleSchedule && _fixedExperimentDate != null)
+              _buildConfirmationItem(
+                '実施日時',
+                '${_formatDate(_fixedExperimentDate)}${_fixedExperimentTime != null ? " ${_fixedExperimentTime!.hour.toString().padLeft(2, '0')}:${_fixedExperimentTime!.minute.toString().padLeft(2, '0')}" : ""}',
+              ),
+            if (_selectedType != ExperimentType.survey)
+              _buildConfirmationItem(
+                '予約締切',
+                '${_reservationDeadlineController.text}日前',
+              ),
           ]),
           const SizedBox(height: 16),
           
