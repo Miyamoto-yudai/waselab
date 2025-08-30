@@ -1,15 +1,25 @@
 import 'package:flutter/material.dart';
 import '../services/demo_auth_service.dart';
+import '../widgets/message_templates.dart';
+import '../models/app_user.dart';
 
 /// デモモード用のチャット画面
 class ChatScreenDemo extends StatefulWidget {
   final String otherUserName;
   final DemoAuthService authService;
+  final String? experimentTitle;
+  final String? currentUserName;
+  final String? currentUserDepartment;
+  final String? currentUserGrade;
 
   const ChatScreenDemo({
     super.key,
     required this.otherUserName,
     required this.authService,
+    this.experimentTitle,
+    this.currentUserName,
+    this.currentUserDepartment,
+    this.currentUserGrade,
   });
 
   @override
@@ -19,6 +29,7 @@ class ChatScreenDemo extends StatefulWidget {
 class _ChatScreenDemoState extends State<ChatScreenDemo> {
   final TextEditingController _messageController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
+  bool _showTemplates = false;
   
   final List<Map<String, dynamic>> _messages = [
     {
@@ -42,6 +53,115 @@ class _ChatScreenDemoState extends State<ChatScreenDemo> {
       'time': '14:35',
     },
   ];
+
+  void _selectTemplate(String templateType) {
+    final templates = _getQuickTemplates();
+    final selected = templates.firstWhere((t) => t['type'] == templateType);
+    if (selected != null) {
+      _messageController.text = selected['template'] as String;
+      setState(() {
+        _showTemplates = false;
+      });
+    }
+  }
+
+  List<Map<String, dynamic>> _getQuickTemplates() {
+    final experiment = widget.experimentTitle ?? '[実験名]';
+    final userInfo = widget.currentUserName ?? 'デモユーザー';
+    String affiliation = '';
+    
+    if (widget.currentUserDepartment != null) {
+      affiliation = '早稲田大学';
+      affiliation += widget.currentUserDepartment!;
+      if (widget.currentUserGrade != null) {
+        affiliation += widget.currentUserGrade!;
+      }
+      affiliation += 'の';
+    }
+    
+    return [
+      {
+        'type': 'intro',
+        'label': '自己紹介',
+        'icon': Icons.person_outline,
+        'template': 'お世話になっております。\n'
+            '$affiliation$userInfoと申します。\n\n'
+            '「$experiment」の実験を拝見し、大変興味を持ちました。\n'
+            'ぜひ参加させていただきたく、ご連絡差し上げました。\n\n'
+            '実験の詳細について、いくつかお伺いしたいことがございます。\n'
+            'お忙しいところ恐れ入りますが、ご教示いただけますと幸いです。\n\n'
+            'どうぞよろしくお願いいたします。',
+      },
+      {
+        'type': 'question',
+        'label': '質問',
+        'icon': Icons.help_outline,
+        'template': 'お世話になっております。$userInfoです。\n\n'
+            '「$experiment」の実験について、以下の点をお伺いできますでしょうか。\n\n'
+            '1. \n'
+            '2. \n\n'
+            'お手数をおかけしますが、ご回答いただけますと幸いです。\n'
+            'よろしくお願いいたします。',
+      },
+      {
+        'type': 'schedule',
+        'label': '日程調整',
+        'icon': Icons.calendar_today,
+        'template': 'お世話になっております。$userInfoです。\n\n'
+            '「$experiment」の実験に参加させていただきたく存じます。\n\n'
+            '私の参加可能な日時は以下の通りです：\n'
+            '・\n'
+            '・\n\n'
+            '上記の中でご都合のよろしい日時はございますでしょうか。\n'
+            'ご検討のほど、よろしくお願いいたします。',
+      },
+      {
+        'type': 'requirements',
+        'label': '参加条件',
+        'icon': Icons.checklist,
+        'template': 'お世話になっております。$userInfoです。\n\n'
+            '「$experiment」の実験への参加を検討しております。\n'
+            '参加条件について確認させていただけますでしょうか。\n\n'
+            'ご確認のほど、よろしくお願いいたします。',
+      },
+      {
+        'type': 'access',
+        'label': 'アクセス',
+        'icon': Icons.location_on,
+        'template': 'お世話になっております。$userInfoです。\n\n'
+            '「$experiment」の実験会場へのアクセスについて、\n'
+            '詳細を教えていただけますでしょうか。\n\n'
+            'よろしくお願いいたします。',
+      },
+      {
+        'type': 'thanks',
+        'label': 'お礼',
+        'icon': Icons.favorite,
+        'template': 'お世話になっております。$userInfoです。\n\n'
+            '先日は「$experiment」の実験でお世話になり、\n'
+            '誠にありがとうございました。\n\n'
+            '貴重な経験をさせていただき、大変勉強になりました。\n'
+            '今後ともどうぞよろしくお願いいたします。',
+      },
+    ];
+  }
+
+  void _showTemplatesSheet() {
+    // デモ用のユーザー情報を作成
+    final demoUser = AppUser(
+      uid: 'demo',
+      email: 'demo@waseda.jp',
+      name: widget.currentUserName ?? 'デモユーザー',
+      isWasedaUser: true,
+      canCreateExperiment: false,
+      createdAt: DateTime.now(),
+      department: widget.currentUserDepartment ?? '基幹理工学部',
+      grade: widget.currentUserGrade ?? '3年',
+    );
+    
+    // この関数は使用しないため、空実装にする
+    // テンプレートは上部のチップリストから選択
+  }
 
   void _sendMessage() {
     if (_messageController.text.trim().isEmpty) return;
@@ -113,7 +233,17 @@ class _ChatScreenDemoState extends State<ChatScreenDemo> {
       body: Column(
         children: [
           Expanded(
-            child: ListView.builder(
+            child: _messages.isEmpty
+                ? const Center(
+                    child: Text(
+                      'メッセージを開始しましょう',
+                      style: TextStyle(
+                        color: Colors.grey,
+                        fontSize: 16,
+                      ),
+                    ),
+                  )
+                : ListView.builder(
               controller: _scrollController,
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 16),
               itemCount: _messages.length,
@@ -174,55 +304,107 @@ class _ChatScreenDemoState extends State<ChatScreenDemo> {
               },
             ),
           ),
-          Container(
-            decoration: BoxDecoration(
-              color: Colors.white,
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.grey.withValues(alpha: 0.2),
-                  blurRadius: 4,
-                  offset: const Offset(0, -2),
-                ),
-              ],
-            ),
-            padding: const EdgeInsets.all(8),
-            child: SafeArea(
-              child: Row(
-                children: [
-                  Expanded(
-                    child: TextField(
-                      controller: _messageController,
-                      maxLines: null,
-                      textInputAction: TextInputAction.send,
-                      onSubmitted: (_) => _sendMessage(),
-                      decoration: InputDecoration(
-                        hintText: 'メッセージを入力',
-                        hintStyle: const TextStyle(color: Colors.grey),
-                        filled: true,
-                        fillColor: Colors.grey[100],
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(24),
-                          borderSide: BorderSide.none,
+          Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                height: _showTemplates ? 50 : 0,
+                child: _showTemplates
+                    ? Container(
+                        color: Colors.grey[50],
+                        padding: const EdgeInsets.symmetric(vertical: 8),
+                        child: ListView(
+                          scrollDirection: Axis.horizontal,
+                          padding: const EdgeInsets.symmetric(horizontal: 8),
+                          children: _getQuickTemplates()
+                              .map((template) => Padding(
+                                    padding: const EdgeInsets.symmetric(horizontal: 4),
+                                    child: ActionChip(
+                                      avatar: Icon(
+                                        template['icon'] as IconData,
+                                        size: 18,
+                                        color: const Color(0xFF8E1728),
+                                      ),
+                                      label: Text(
+                                        template['label'] as String,
+                                        style: const TextStyle(
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w500,
+                                        ),
+                                      ),
+                                      backgroundColor: Colors.white,
+                                      onPressed: () => _selectTemplate(template['type'] as String),
+                                    ),
+                                  ))
+                              .toList(),
                         ),
-                        contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 20,
-                          vertical: 10,
+                      )
+                    : null,
+              ),
+              Container(
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.grey.withValues(alpha: 0.2),
+                      blurRadius: 4,
+                      offset: const Offset(0, -2),
+                    ),
+                  ],
+                ),
+                padding: const EdgeInsets.all(8),
+                child: SafeArea(
+                  child: Row(
+                    children: [
+                      IconButton(
+                        icon: Icon(
+                          _showTemplates ? Icons.expand_more : Icons.expand_less,
+                          color: Colors.grey[700],
+                        ),
+                        onPressed: () {
+                          setState(() {
+                            _showTemplates = !_showTemplates;
+                          });
+                        },
+                        tooltip: 'テンプレート',
+                      ),
+                      Expanded(
+                        child: TextField(
+                          controller: _messageController,
+                          maxLines: null,
+                          textInputAction: TextInputAction.send,
+                          onSubmitted: (_) => _sendMessage(),
+                          decoration: InputDecoration(
+                            hintText: 'メッセージを入力',
+                            hintStyle: const TextStyle(color: Colors.grey),
+                            filled: true,
+                            fillColor: Colors.grey[100],
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(24),
+                              borderSide: BorderSide.none,
+                            ),
+                            contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 20,
+                              vertical: 10,
+                            ),
+                          ),
                         ),
                       ),
-                    ),
+                      const SizedBox(width: 8),
+                      CircleAvatar(
+                        backgroundColor: const Color(0xFF8E1728),
+                        radius: 24,
+                        child: IconButton(
+                          icon: const Icon(Icons.send, color: Colors.white),
+                          onPressed: _sendMessage,
+                        ),
+                      ),
+                    ],
                   ),
-                  const SizedBox(width: 8),
-                  CircleAvatar(
-                    backgroundColor: const Color(0xFF8E1728),
-                    radius: 24,
-                    child: IconButton(
-                      icon: const Icon(Icons.send, color: Colors.white),
-                      onPressed: _sendMessage,
-                    ),
-                  ),
-                ],
+                ),
               ),
-            ),
+            ],
           ),
         ],
       ),

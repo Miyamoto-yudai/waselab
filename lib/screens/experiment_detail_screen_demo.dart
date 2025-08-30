@@ -27,6 +27,7 @@ class ExperimentDetailScreenDemo extends StatelessWidget {
         builder: (context) => ChatScreenDemo(
           otherUserName: experimenterName,
           authService: authService ?? DemoAuthService(),
+          experimentTitle: experiment.title,
         ),
       ),
     );
