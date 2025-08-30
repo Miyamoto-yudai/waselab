@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../models/experiment.dart';
 import '../services/demo_auth_service.dart';
 import '../widgets/home_screen_base.dart';
+import 'create_experiment_screen_demo.dart';
 
 /// デモ用ホーム画面（Firebase不要）
 class HomeScreenDemo extends StatefulWidget {
@@ -761,11 +762,10 @@ ARデバイスの操作は簡単で、事前に丁寧な説明を行います。
   ];
 
   void _handleCreateExperiment() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('デモモードでは実験作成機能は利用できません'),
-        backgroundColor: Colors.orange,
-        duration: Duration(seconds: 3),
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => const CreateExperimentScreenDemo(),
       ),
     );
   }

@@ -347,36 +347,26 @@ class _HomeScreenBaseState extends State<HomeScreenBase> {
               toolbarHeight: 60,
               titleSpacing: 0,
               centerTitle: false,
-              leading: LayoutBuilder(
-                builder: (context, constraints) {
-                  // 画面幅が600px以上の場合はフラスコアイコンを表示
-                  final screenWidth = MediaQuery.of(context).size.width;
-                  if (screenWidth >= 600) {
-                    return Container(
-                      margin: const EdgeInsets.only(left: 16),
-                      width: 40,
-                      height: 40,
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        shape: BoxShape.circle,
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.1),
-                            blurRadius: 8,
-                            offset: const Offset(0, 2),
-                          ),
-                        ],
-                      ),
-                      child: const Icon(
-                        Icons.science,
-                        size: 24,
-                        color: Color(0xFF8E1728),
-                      ),
-                    );
-                  } else {
-                    return const SizedBox.shrink();
-                  }
-                },
+              leading: Container(
+                margin: const EdgeInsets.only(left: 16),
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  shape: BoxShape.circle,
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.1),
+                      blurRadius: 8,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: const Icon(
+                  Icons.science,
+                  size: 24,
+                  color: Color(0xFF8E1728),
+                ),
               ),
               title: Padding(
                 padding: const EdgeInsets.only(left: 8),

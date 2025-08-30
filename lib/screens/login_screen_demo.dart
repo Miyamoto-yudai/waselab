@@ -224,7 +224,7 @@ class _LoginScreenDemoState extends State<LoginScreenDemo> {
                         keyboardType: TextInputType.emailAddress,
                         decoration: const InputDecoration(
                           labelText: 'メールアドレス',
-                          hintText: 'example@ruri.waseda.jp',
+                          hintText: 'example@waseda.jp',
                           prefixIcon: Icon(Icons.email),
                           border: OutlineInputBorder(),
                         ),

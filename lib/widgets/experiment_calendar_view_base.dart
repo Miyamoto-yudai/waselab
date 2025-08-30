@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:table_calendar/table_calendar.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import '../models/experiment.dart';
+import '../models/time_slot.dart';
 
 /// 実験予約カレンダービューの共通ベースウィジェット
 class ExperimentCalendarViewBase extends StatefulWidget {
@@ -34,8 +35,11 @@ class _ExperimentCalendarViewBaseState extends State<ExperimentCalendarViewBase>
     '金曜日': ['9:00-10:00', '11:00-12:00', '14:00-15:00', '16:00-17:00'],
   };
 
-  // デモ用の予約状況（ランダムに空き状況を生成）
-  Map<String, int> _demoAvailability = {};
+  // デモ用の予約状況（時間枠ごとの予約済み人数）
+  Map<String, int> _demoBookedCounts = {};
+  
+  // 選択した日の時間枠のTimeSlotオブジェクトを保持
+  List<TimeSlot> _selectedDayTimeSlots = [];
 
   @override
   void initState() {
@@ -63,15 +67,28 @@ class _ExperimentCalendarViewBaseState extends State<ExperimentCalendarViewBase>
   }
 
   void _generateDemoAvailability() {
-    final slots = <String, int>{};
-    for (var daySlots in _demoTimeSlots.values) {
-      for (var slot in daySlots) {
-        // ランダムに0〜3の空き枠を設定
-        slots[slot] = (DateTime.now().microsecond % 4);
+    final bookings = <String, int>{};
+    
+    // 実験に設定された時間枠がある場合
+    if (widget.experiment.timeSlots.isNotEmpty) {
+      for (var slot in widget.experiment.timeSlots) {
+        final key = '${slot.weekday}_${slot.timeRangeString}';
+        // ランダムに0〜maxCapacityの間で予約済み人数を設定
+        final booked = DateTime.now().microsecond % (slot.maxCapacity + 1);
+        bookings[key] = booked;
+      }
+    } else {
+      // 従来のデモデータ
+      for (var daySlots in _demoTimeSlots.values) {
+        for (var slot in daySlots) {
+          // ランダムに0〜3の予約済み人数を設定
+          bookings[slot] = DateTime.now().microsecond % 4;
+        }
       }
     }
+    
     setState(() {
-      _demoAvailability = slots;
+      _demoBookedCounts = bookings;
     });
   }
 
@@ -82,21 +99,41 @@ class _ExperimentCalendarViewBaseState extends State<ExperimentCalendarViewBase>
   }
 
   /// 選択した日の時間枠を取得
-  List<String> _getTimeSlotsForDay(DateTime? day) {
+  List<TimeSlot> _getTimeSlotsForDay(DateTime? day) {
     if (day == null) return [];
     
+    // 実験に時間枠が設定されている場合
+    if (widget.experiment.timeSlots.isNotEmpty) {
+      // 該当する曜日の時間枠を取得（月曜日=1, 日曜日=7）
+      final weekdaySlots = widget.experiment.timeSlots
+          .where((slot) => slot.weekday == day.weekday)
+          .toList();
+      
+      if (weekdaySlots.isNotEmpty) {
+        return weekdaySlots;
+      }
+    }
+    
+    // デモモードまたは時間枠が設定されていない場合は従来の処理
     final weekday = _getWeekday(day);
     // 土日は予約不可
     if (weekday == '土曜日' || weekday == '日曜日') {
       return [];
     }
     
-    if (widget.isDemo) {
-      return _demoTimeSlots[weekday] ?? [];
-    } else {
-      // 本番環境ではFirebaseから取得する処理を追加
-      return _demoTimeSlots[weekday] ?? [];
-    }
+    // デフォルトの時間枠を作成
+    final defaultSlots = _demoTimeSlots[weekday] ?? [];
+    return defaultSlots.map((timeString) {
+      final parts = timeString.split('-');
+      final startParts = parts[0].split(':');
+      final endParts = parts[1].split(':');
+      return TimeSlot(
+        weekday: day.weekday,
+        startTime: TimeOfDay(hour: int.parse(startParts[0]), minute: int.parse(startParts[1])),
+        endTime: TimeOfDay(hour: int.parse(endParts[0]), minute: int.parse(endParts[1])),
+        maxCapacity: widget.experiment.simultaneousCapacity,
+      );
+    }).toList();
   }
 
   /// イベントがある日かどうか（予約可能な日）
@@ -123,12 +160,15 @@ class _ExperimentCalendarViewBaseState extends State<ExperimentCalendarViewBase>
     setState(() {
       _selectedDay = selectedDay;
       _focusedDay = focusedDay;
+      _selectedDayTimeSlots = _getTimeSlotsForDay(selectedDay);
     });
   }
 
   @override
   Widget build(BuildContext context) {
-    final selectedDaySlots = _getTimeSlotsForDay(_selectedDay);
+    if (_selectedDay != null && _selectedDayTimeSlots.isEmpty) {
+      _selectedDayTimeSlots = _getTimeSlotsForDay(_selectedDay);
+    }
     
     // Ensure we have valid dates for the calendar
     final firstDay = widget.experiment.experimentPeriodStart ?? DateTime.now();
@@ -257,9 +297,9 @@ class _ExperimentCalendarViewBaseState extends State<ExperimentCalendarViewBase>
                   ),
                 ),
                 const Spacer(),
-                if (selectedDaySlots.isNotEmpty)
+                if (_selectedDayTimeSlots.isNotEmpty)
                   Text(
-                    '${selectedDaySlots.length}枠あり',
+                    '${_selectedDayTimeSlots.length}枠あり',
                     style: TextStyle(
                       color: Theme.of(context).primaryColor,
                       fontWeight: FontWeight.bold,
@@ -269,7 +309,7 @@ class _ExperimentCalendarViewBaseState extends State<ExperimentCalendarViewBase>
             ),
           ),
           
-          if (selectedDaySlots.isEmpty)
+          if (_selectedDayTimeSlots.isEmpty)
             const Padding(
               padding: EdgeInsets.all(20),
               child: Center(
@@ -284,42 +324,122 @@ class _ExperimentCalendarViewBaseState extends State<ExperimentCalendarViewBase>
               height: 200,
               child: ListView.builder(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
-                itemCount: selectedDaySlots.length,
+                itemCount: _selectedDayTimeSlots.length,
                 itemBuilder: (context, index) {
-                  final slot = selectedDaySlots[index];
-                  final availability = widget.isDemo ? (_demoAvailability[slot] ?? 0) : 3;
-                  final isAvailable = availability > 0;
+                  final timeSlot = _selectedDayTimeSlots[index];
+                  final slotKey = '${timeSlot.weekday}_${timeSlot.timeRangeString}';
+                  
+                  // 予約済み人数を取得
+                  final bookedCount = widget.isDemo 
+                    ? (_demoBookedCounts[slotKey] ?? _demoBookedCounts[timeSlot.timeRangeString] ?? 0)
+                    : 0;
+                  
+                  // 空き枠数を計算
+                  final availableSlots = timeSlot.maxCapacity - bookedCount;
+                  final isAvailable = availableSlots > 0;
+                  
+                  // 満席率に応じて色を変える
+                  Color getAvailabilityColor() {
+                    final ratio = bookedCount / timeSlot.maxCapacity;
+                    if (ratio >= 1.0) return Colors.grey;
+                    if (ratio >= 0.75) return Colors.orange;
+                    if (ratio >= 0.5) return Colors.amber;
+                    return Colors.green;
+                  }
+                  
+                  final availabilityColor = getAvailabilityColor();
                   
                   return Card(
                     margin: const EdgeInsets.only(bottom: 8),
                     child: ListTile(
-                      leading: CircleAvatar(
-                        backgroundColor: isAvailable 
-                          ? Colors.green.withValues(alpha: 0.2)
-                          : Colors.grey.withValues(alpha: 0.2),
-                        child: Icon(
-                          isAvailable ? Icons.check_circle : Icons.block,
-                          color: isAvailable ? Colors.green : Colors.grey,
-                        ),
+                      leading: Stack(
+                        alignment: Alignment.center,
+                        children: [
+                          CircleAvatar(
+                            backgroundColor: availabilityColor.withValues(alpha: 0.2),
+                            child: Icon(
+                              isAvailable ? Icons.group : Icons.block,
+                              color: availabilityColor,
+                              size: 20,
+                            ),
+                          ),
+                          if (timeSlot.maxCapacity > 1)
+                            Positioned(
+                              right: 0,
+                              bottom: 0,
+                              child: Container(
+                                padding: const EdgeInsets.all(2),
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  shape: BoxShape.circle,
+                                  border: Border.all(
+                                    color: availabilityColor,
+                                    width: 1.5,
+                                  ),
+                                ),
+                                child: Text(
+                                  timeSlot.maxCapacity.toString(),
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.bold,
+                                    color: availabilityColor,
+                                  ),
+                                ),
+                              ),
+                            ),
+                        ],
                       ),
-                      title: Text(
-                        slot,
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          color: isAvailable ? null : Colors.grey,
-                        ),
+                      title: Row(
+                        children: [
+                          Text(
+                            timeSlot.timeRangeString,
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              color: isAvailable ? null : Colors.grey,
+                            ),
+                          ),
+                          if (timeSlot.maxCapacity > 1) ...[
+                            const SizedBox(width: 8),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF8E1728).withValues(alpha: 0.1),
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                              child: Text(
+                                '同時${timeSlot.maxCapacity}名',
+                                style: const TextStyle(
+                                  fontSize: 11,
+                                  color: Color(0xFF8E1728),
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ],
                       ),
-                      subtitle: Text(
-                        isAvailable 
-                          ? '残り$availability枠'
-                          : '満員',
-                        style: TextStyle(
-                          color: isAvailable ? Colors.green : Colors.grey,
-                        ),
+                      subtitle: Row(
+                        children: [
+                          Icon(
+                            Icons.person,
+                            size: 14,
+                            color: availabilityColor,
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            isAvailable 
+                              ? '${bookedCount}/${timeSlot.maxCapacity}名予約済み (残り$availableSlots枠)'
+                              : '満員 (${timeSlot.maxCapacity}/${timeSlot.maxCapacity}名)',
+                            style: TextStyle(
+                              color: availabilityColor,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ],
                       ),
                       trailing: isAvailable
                         ? ElevatedButton(
-                            onPressed: () => widget.onSlotSelected(_selectedDay!, slot),
+                            onPressed: () => widget.onSlotSelected(_selectedDay!, timeSlot.timeRangeString),
                             style: ElevatedButton.styleFrom(
                               backgroundColor: const Color(0xFF8E1728),
                               foregroundColor: Colors.white,
@@ -328,7 +448,7 @@ class _ExperimentCalendarViewBaseState extends State<ExperimentCalendarViewBase>
                           )
                         : null,
                       onTap: isAvailable 
-                        ? () => widget.onSlotSelected(_selectedDay!, slot)
+                        ? () => widget.onSlotSelected(_selectedDay!, timeSlot.timeRangeString)
                         : null,
                     ),
                   );

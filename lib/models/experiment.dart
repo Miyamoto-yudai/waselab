@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'time_slot.dart';
 
 /// 実験種別
 enum ExperimentType {
@@ -32,6 +33,8 @@ class Experiment {
   final int? maxParticipants;   // 最大参加者数
   final List<String> requirements; // 参加条件
   final List<String> participants; // 参加者IDリスト
+  final List<TimeSlot> timeSlots; // 利用可能な時間枠リスト
+  final int simultaneousCapacity; // 同時実験可能人数（デフォルト1）
   
   // 旧フィールドとの互換性のため
   DateTime? get experimentDate => recruitmentStartDate;
@@ -58,6 +61,8 @@ class Experiment {
     this.maxParticipants,
     this.requirements = const [],
     this.participants = const [],
+    this.timeSlots = const [],
+    this.simultaneousCapacity = 1,
   });
 
   /// FirestoreのドキュメントからExperimentを作成
@@ -90,6 +95,10 @@ class Experiment {
       maxParticipants: data['maxParticipants'],
       requirements: List<String>.from(data['requirements'] ?? []),
       participants: List<String>.from(data['participants'] ?? []),
+      timeSlots: (data['timeSlots'] as List<dynamic>?)
+          ?.map((slot) => TimeSlot.fromJson(slot as Map<String, dynamic>))
+          .toList() ?? [],
+      simultaneousCapacity: data['simultaneousCapacity'] ?? 1,
     );
   }
 
@@ -123,6 +132,8 @@ class Experiment {
       'maxParticipants': maxParticipants,
       'requirements': requirements,
       'participants': participants,
+      'timeSlots': timeSlots.map((slot) => slot.toJson()).toList(),
+      'simultaneousCapacity': simultaneousCapacity,
     };
   }
 }
