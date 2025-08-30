@@ -33,7 +33,7 @@ class MessageService {
     required String senderName,
     required String receiverName,
   }) async {
-    String conversationId = await _getOrCreateConversation(
+    String conversationId = await getOrCreateConversation(
       senderId,
       receiverId,
       senderName,
@@ -61,7 +61,7 @@ class MessageService {
     return conversationId;
   }
 
-  Future<String> _getOrCreateConversation(
+  Future<String> getOrCreateConversation(
     String userId1,
     String userId2,
     String userName1,

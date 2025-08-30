@@ -6,6 +6,9 @@ import '../models/experiment_reservation.dart';
 import '../services/reservation_service.dart';
 import '../widgets/experiment_calendar_view.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import '../services/message_service.dart';
+import '../services/auth_service.dart';
+import 'chat_screen.dart';
 
 /// 実験詳細画面
 /// 選択された実験の詳細情報を表示する
@@ -24,6 +27,8 @@ class ExperimentDetailScreen extends StatefulWidget {
 class _ExperimentDetailScreenState extends State<ExperimentDetailScreen> {
   final ReservationService _reservationService = ReservationService();
   final FirebaseAuth _auth = FirebaseAuth.instance;
+  final MessageService _messageService = MessageService();
+  final AuthService _authService = AuthService();
   bool _showCalendar = false;
 
   /// 実験種別のアイコンを取得
@@ -207,6 +212,68 @@ class _ExperimentDetailScreenState extends State<ExperimentDetailScreen> {
     );
   }
 
+  /// 質問するボタンの処理
+  Future<void> _handleMessageButton() async {
+    try {
+      final user = _auth.currentUser;
+      if (user == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('ログインが必要です'),
+            backgroundColor: Colors.orange,
+          ),
+        );
+        return;
+      }
+
+      // 現在のユーザー情報を取得
+      final currentUser = await _authService.getCurrentAppUser();
+      if (currentUser == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('ユーザー情報の取得に失敗しました'),
+            backgroundColor: Colors.red,
+          ),
+        );
+        return;
+      }
+
+      // 実験者名を取得（labNameがあればそれを使用、なければデフォルト）
+      final experimenterName = widget.experiment.labName ?? '実験者';
+
+      // 既存の会話を確認または新規作成
+      final conversationId = await _messageService.getOrCreateConversation(
+        user.uid,
+        widget.experiment.creatorId,
+        currentUser.name,
+        experimenterName,
+      );
+
+      if (mounted) {
+        // チャット画面に遷移
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => ChatScreen(
+              conversationId: conversationId,
+              otherUserId: widget.experiment.creatorId,
+              otherUserName: experimenterName,
+            ),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('エラーが発生しました: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -214,15 +281,7 @@ class _ExperimentDetailScreenState extends State<ExperimentDetailScreen> {
         title: const Text('実験詳細'),
       ),
       floatingActionButton: FloatingActionButton.extended(
-        onPressed: () {
-          // デモ版では実装しないメッセージ機能
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('メッセージ機能は開発中です'),
-              backgroundColor: Colors.orange,
-            ),
-          );
-        },
+        onPressed: _handleMessageButton,
         backgroundColor: const Color(0xFF8E1728),
         icon: const Icon(Icons.message, color: Colors.white),
         label: const Text(
