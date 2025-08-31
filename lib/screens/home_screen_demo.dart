@@ -3,6 +3,8 @@ import '../models/experiment.dart';
 import '../services/demo_auth_service.dart';
 import '../widgets/home_screen_base.dart';
 import 'create_experiment_screen_demo.dart';
+import 'my_page_screen_demo.dart';
+import 'messages_screen_demo.dart';
 
 /// デモ用ホーム画面（Firebase不要）
 class HomeScreenDemo extends StatefulWidget {
@@ -20,8 +22,14 @@ class HomeScreenDemo extends StatefulWidget {
 }
 
 class _HomeScreenDemoState extends State<HomeScreenDemo> {
-  // デモ用の実験データ
-  final List<Experiment> _experiments = [
+  // デモ用の未読メッセージ数
+  final int _unreadMessages = 3;
+  
+  // 現在のユーザーのIDを取得（一貫性のあるIDを使用）
+  String? get currentUserId => widget.authService.currentUser?.uid ?? 'demo_user_main';
+  
+  // デモ用の実験データ（一部を現在のユーザーの実験として設定）
+  late final List<Experiment> _experiments = [
     Experiment(
       id: '1',
       title: '視覚認知実験への参加者募集',
@@ -31,7 +39,7 @@ class _HomeScreenDemoState extends State<HomeScreenDemo> {
       location: '早稲田大学 戸山キャンパス 33号館',
       type: ExperimentType.onsite,
       isPaid: true,
-      creatorId: 'demo_user_1',
+      creatorId: 'demo_user_main', // 自分の実験として設定
       createdAt: DateTime.now().subtract(const Duration(days: 2)),
       recruitmentStartDate: DateTime.now(),
       recruitmentEndDate: DateTime.now().add(const Duration(days: 14)),
@@ -72,6 +80,7 @@ class _HomeScreenDemoState extends State<HomeScreenDemo> {
       type: ExperimentType.onsite,
       isPaid: false,
       creatorId: 'demo_user_3',
+      participants: ['demo_user_main'], // 参加予定として設定
       createdAt: DateTime.now().subtract(const Duration(hours: 5)),
       recruitmentStartDate: DateTime.now(),
       recruitmentEndDate: DateTime.now().add(const Duration(days: 12)),
@@ -113,7 +122,7 @@ class _HomeScreenDemoState extends State<HomeScreenDemo> {
       location: '早稲田大学 西早稲田キャンパス 63号館',
       type: ExperimentType.onsite,
       isPaid: true,
-      creatorId: 'demo_user_5',
+      creatorId: 'demo_user_main', // 自分の実験として設定
       createdAt: DateTime.now().subtract(const Duration(days: 1)),
       recruitmentStartDate: DateTime.now(),
       recruitmentEndDate: DateTime.now().add(const Duration(days: 20)),
@@ -156,6 +165,7 @@ class _HomeScreenDemoState extends State<HomeScreenDemo> {
       type: ExperimentType.online,
       isPaid: true,
       creatorId: 'demo_user_7',
+      participants: ['demo_user_main'], // 参加予定として設定
       createdAt: DateTime.now().subtract(const Duration(days: 2)),
       recruitmentStartDate: DateTime.now(),
       recruitmentEndDate: DateTime.now().add(const Duration(days: 5)),
@@ -770,6 +780,31 @@ ARデバイスの操作は簡単で、事前に丁寧な説明を行います。
     );
   }
 
+  /// マイページへ遷移
+  void _navigateToMyPage() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => MyPageScreenDemo(
+          authService: widget.authService,
+          onLogout: widget.onLogout,
+        ),
+      ),
+    );
+  }
+
+  /// メッセージ画面へ遷移
+  void _navigateToMessages() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => MessagesScreenDemo(
+          authService: widget.authService,
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return HomeScreenBase(
@@ -783,6 +818,10 @@ ARデバイスの操作は簡単で、事前に丁寧な説明を行います。
       onCreateExperiment: widget.authService.canCreateExperiment 
           ? _handleCreateExperiment 
           : null,
+      currentUserId: currentUserId,
+      unreadMessages: _unreadMessages,
+      onNavigateToMyPage: _navigateToMyPage,
+      onNavigateToMessages: _navigateToMessages,
     );
   }
 }

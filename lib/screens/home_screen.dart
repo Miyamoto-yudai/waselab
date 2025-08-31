@@ -3,9 +3,12 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/experiment.dart';
 import '../models/app_user.dart';
 import '../services/auth_service.dart';
+import '../services/message_service.dart';
 import '../widgets/home_screen_base.dart';
 import 'create_experiment_screen.dart';
 import 'login_screen.dart';
+import 'my_page_screen.dart';
+import 'messages_screen.dart';
 
 /// ホーム画面（実験一覧画面）
 /// Firestoreから実験データを取得して一覧表示する
@@ -19,9 +22,11 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   final AuthService _authService = AuthService();
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final MessageService _messageService = MessageService();
   AppUser? _currentUser;
   List<Experiment> _experiments = [];
   bool _isLoading = true;
+  int _unreadMessages = 0;
 
   @override
   void initState() {
@@ -31,6 +36,7 @@ class _HomeScreenState extends State<HomeScreen> {
       _loadCurrentUser();
       _loadExperiments();
       _createSampleData();
+      _loadUnreadMessages();
     });
   }
 
@@ -163,6 +169,19 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
+  /// 未読メッセージ数を取得
+  Future<void> _loadUnreadMessages() async {
+    final user = _authService.currentUser;
+    if (user != null) {
+      final count = await _messageService.getUnreadMessageCount(user.uid);
+      if (mounted) {
+        setState(() {
+          _unreadMessages = count;
+        });
+      }
+    }
+  }
+
   /// 実験作成画面へ遷移
   void _navigateToCreateExperiment() {
     Navigator.push(
@@ -171,6 +190,30 @@ class _HomeScreenState extends State<HomeScreen> {
         builder: (context) => const CreateExperimentScreen(),
       ),
     );
+  }
+
+  /// マイページへ遷移（NavigationScreenを使用している場合は変更が必要）
+  void _navigateToMyPage() {
+    // NavigationScreenを使用している場合はこの実装を変更する必要があります
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => const MyPageScreen(),
+      ),
+    );
+  }
+
+  /// メッセージ画面へ遷移（NavigationScreenを使用している場合は変更が必要）
+  void _navigateToMessages() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => const MessagesScreen(),
+      ),
+    ).then((_) {
+      // メッセージ画面から戻ってきたら未読数を再取得
+      _loadUnreadMessages();
+    });
   }
 
   @override
@@ -195,6 +238,10 @@ class _HomeScreenState extends State<HomeScreen> {
       isWasedaUser: _currentUser?.isWasedaUser ?? false,
       onLogout: _handleLogout,
       onCreateExperiment: _navigateToCreateExperiment,
+      currentUserId: _currentUser?.uid,
+      unreadMessages: _unreadMessages,
+      onNavigateToMyPage: _navigateToMyPage,
+      onNavigateToMessages: _navigateToMessages,
     );
   }
 }

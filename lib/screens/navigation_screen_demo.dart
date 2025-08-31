@@ -23,6 +23,7 @@ class NavigationScreenDemo extends StatefulWidget {
 class _NavigationScreenDemoState extends State<NavigationScreenDemo> {
   int _selectedIndex = 0;
   final int _unreadCount = 3; // デモ用の固定値
+  int _activityNotifications = 2; // デモ用の活動通知数
 
   late final List<Widget> _screens;
 
@@ -58,6 +59,10 @@ class _NavigationScreenDemoState extends State<NavigationScreenDemo> {
           onDestinationSelected: (index) {
             setState(() {
               _selectedIndex = index;
+              if (index == 2) {
+                // マイページに遷移したら通知をクリア
+                _activityNotifications = 0;
+              }
             });
           },
           backgroundColor: Colors.white,
@@ -81,9 +86,17 @@ class _NavigationScreenDemoState extends State<NavigationScreenDemo> {
               ),
               label: 'メッセージ',
             ),
-            const NavigationDestination(
-              icon: Icon(Icons.person_outline),
-              selectedIcon: Icon(Icons.person, color: Color(0xFF8E1728)),
+            NavigationDestination(
+              icon: Badge(
+                label: Text('$_activityNotifications'),
+                isLabelVisible: _activityNotifications > 0,
+                child: const Icon(Icons.person_outline),
+              ),
+              selectedIcon: Badge(
+                label: Text('$_activityNotifications'),
+                isLabelVisible: _activityNotifications > 0,
+                child: const Icon(Icons.person, color: Color(0xFF8E1728)),
+              ),
               label: 'マイページ',
             ),
           ],
@@ -98,6 +111,10 @@ class _NavigationScreenDemoState extends State<NavigationScreenDemo> {
               onDestinationSelected: (index) {
                 setState(() {
                   _selectedIndex = index;
+                  if (index == 2) {
+                    // マイページに遷移したら通知をクリア
+                    _activityNotifications = 0;
+                  }
                 });
               },
               backgroundColor: Colors.white,
@@ -122,10 +139,18 @@ class _NavigationScreenDemoState extends State<NavigationScreenDemo> {
                   ),
                   label: const Text('メッセージ'),
                 ),
-                const NavigationRailDestination(
-                  icon: Icon(Icons.person_outline),
-                  selectedIcon: Icon(Icons.person, color: Color(0xFF8E1728)),
-                  label: Text('マイページ'),
+                NavigationRailDestination(
+                  icon: Badge(
+                    label: Text('$_activityNotifications'),
+                    isLabelVisible: _activityNotifications > 0,
+                    child: const Icon(Icons.person_outline),
+                  ),
+                  selectedIcon: Badge(
+                    label: Text('$_activityNotifications'),
+                    isLabelVisible: _activityNotifications > 0,
+                    child: const Icon(Icons.person, color: Color(0xFF8E1728)),
+                  ),
+                  label: const Text('マイページ'),
                 ),
               ],
             ),

@@ -8,11 +8,13 @@ import 'chat_screen_demo.dart';
 class ExperimentDetailScreenDemo extends StatelessWidget {
   final Experiment experiment;
   final DemoAuthService? authService;
+  final bool isMyExperiment;
 
   const ExperimentDetailScreenDemo({
     super.key,
     required this.experiment,
     this.authService,
+    this.isMyExperiment = false,
   });
 
   /// 質問するボタンの処理（デモ版）
@@ -38,6 +40,7 @@ class ExperimentDetailScreenDemo extends StatelessWidget {
     return ExperimentDetailBase(
       experiment: experiment,
       isDemo: true,
+      isMyExperiment: isMyExperiment,
       onMessage: () async => _handleMessageButton(context),
     );
   }

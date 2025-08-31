@@ -14,10 +14,12 @@ import 'chat_screen.dart';
 /// 選択された実験の詳細情報を表示する
 class ExperimentDetailScreen extends StatefulWidget {
   final Experiment experiment;
+  final bool isMyExperiment;
 
   const ExperimentDetailScreen({
     super.key,
     required this.experiment,
+    this.isMyExperiment = false,
   });
 
   @override
@@ -281,10 +283,12 @@ class _ExperimentDetailScreenState extends State<ExperimentDetailScreen> {
       appBar: AppBar(
         title: const Text('実験詳細'),
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: _handleMessageButton,
-        backgroundColor: const Color(0xFF8E1728),
-        icon: const Icon(Icons.message, color: Colors.white),
+      floatingActionButton: widget.isMyExperiment
+          ? null // 自分の実験の場合はFABを表示しない
+          : FloatingActionButton.extended(
+              onPressed: _handleMessageButton,
+              backgroundColor: const Color(0xFF8E1728),
+              icon: const Icon(Icons.message, color: Colors.white),
         label: const Text(
           '質問する',
           style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
@@ -296,6 +300,72 @@ class _ExperimentDetailScreenState extends State<ExperimentDetailScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // 自分の実験の場合のバナー
+            if (widget.isMyExperiment)
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                margin: const EdgeInsets.only(bottom: 16),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF8E1728).withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: const Color(0xFF8E1728).withValues(alpha: 0.3),
+                    width: 1,
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(
+                      Icons.info_outline,
+                      color: Color(0xFF8E1728),
+                      size: 20,
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'あなたが募集中の実験',
+                            style: TextStyle(
+                              color: Color(0xFF8E1728),
+                              fontWeight: FontWeight.bold,
+                              fontSize: 14,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            '参加者数: ${widget.experiment.participants?.length ?? 0}名',
+                            style: TextStyle(
+                              color: Colors.grey[700],
+                              fontSize: 12,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    TextButton.icon(
+                      onPressed: () {
+                        // 今後実装: 参加者管理画面への遷移
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('参加者管理機能は開発中です'),
+                            backgroundColor: Colors.orange,
+                          ),
+                        );
+                      },
+                      icon: const Icon(
+                        Icons.people,
+                        size: 18,
+                      ),
+                      label: const Text('管理'),
+                      style: TextButton.styleFrom(
+                        foregroundColor: const Color(0xFF8E1728),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             // タイトル
             Card(
               child: Padding(

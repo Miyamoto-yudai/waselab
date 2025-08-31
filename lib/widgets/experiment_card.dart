@@ -7,11 +7,13 @@ import '../screens/experiment_detail_screen_demo.dart';
 class ExperimentCard extends StatelessWidget {
   final Experiment experiment;
   final bool isDemo;
+  final String? currentUserId;
   
   const ExperimentCard({
     super.key,
     required this.experiment,
     this.isDemo = false,
+    this.currentUserId,
   });
 
   /// 実験種別のアイコンを取得
@@ -80,9 +82,76 @@ class ExperimentCard extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-              // 締切タグとスケジュールタイプ表示
+              // 締切タグとスケジュールタイプ表示、状態バッジ
               Row(
                 children: [
+                  // 状態バッジ（自分の実験または参加予定）
+                  if (currentUserId != null && experiment.creatorId == currentUserId)
+                    Container(
+                      margin: const EdgeInsets.only(bottom: 6, right: 8),
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF8E1728).withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(6),
+                        border: Border.all(
+                          color: const Color(0xFF8E1728).withValues(alpha: 0.3),
+                          width: 1,
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(
+                            Icons.campaign,
+                            size: 12,
+                            color: Color(0xFF8E1728),
+                          ),
+                          const SizedBox(width: 4),
+                          const Text(
+                            '募集中',
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.bold,
+                              color: Color(0xFF8E1728),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  if (currentUserId != null && 
+                      experiment.participants != null &&
+                      experiment.participants!.contains(currentUserId))
+                    Container(
+                      margin: const EdgeInsets.only(bottom: 6, right: 8),
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: Colors.blue.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(6),
+                        border: Border.all(
+                          color: Colors.blue.withValues(alpha: 0.3),
+                          width: 1,
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.check_circle,
+                            size: 12,
+                            color: Colors.blue[700],
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            '参加予定',
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.blue[700],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                   // 柔軟なスケジュール調整のバッジ
                   if (experiment.allowFlexibleSchedule)
                     Container(

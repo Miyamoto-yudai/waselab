@@ -6,6 +6,7 @@ import 'experiment_calendar_view_base.dart';
 class ExperimentDetailBase extends StatefulWidget {
   final Experiment experiment;
   final bool isDemo;
+  final bool isMyExperiment;
   final Future<void> Function()? onApply;
   final Future<void> Function()? onMessage;
   final Future<void> Function(DateTime, String)? onSlotSelected;
@@ -14,6 +15,7 @@ class ExperimentDetailBase extends StatefulWidget {
     super.key,
     required this.experiment,
     this.isDemo = false,
+    this.isMyExperiment = false,
     this.onApply,
     this.onMessage,
     this.onSlotSelected,
@@ -165,29 +167,97 @@ class _ExperimentDetailBaseState extends State<ExperimentDetailBase> {
       appBar: AppBar(
         title: const Text('実験詳細'),
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        heroTag: 'experiment_detail_fab_${widget.experiment.id}',
-        onPressed: widget.onMessage ?? () {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('メッセージ機能は開発中です'),
-              backgroundColor: Colors.orange,
+      floatingActionButton: widget.isMyExperiment
+          ? null // 自分の実験の場合はFABを表示しない
+          : FloatingActionButton.extended(
+              heroTag: 'experiment_detail_fab_${widget.experiment.id}',
+              onPressed: widget.onMessage ?? () {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('メッセージ機能は開発中です'),
+                    backgroundColor: Colors.orange,
+                  ),
+                );
+              },
+              backgroundColor: const Color(0xFF8E1728),
+              icon: const Icon(Icons.message, color: Colors.white),
+              label: const Text(
+                '質問する',
+                style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+              ),
+              tooltip: '実験者に質問',
             ),
-          );
-        },
-        backgroundColor: const Color(0xFF8E1728),
-        icon: const Icon(Icons.message, color: Colors.white),
-        label: const Text(
-          '質問する',
-          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-        ),
-        tooltip: '実験者に質問',
-      ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // 自分の実験の場合のバナー
+            if (widget.isMyExperiment)
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                margin: const EdgeInsets.only(bottom: 16),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF8E1728).withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: const Color(0xFF8E1728).withValues(alpha: 0.3),
+                    width: 1,
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(
+                      Icons.info_outline,
+                      color: Color(0xFF8E1728),
+                      size: 20,
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'あなたが募集中の実験',
+                            style: TextStyle(
+                              color: Color(0xFF8E1728),
+                              fontWeight: FontWeight.bold,
+                              fontSize: 14,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            '参加者数: ${widget.experiment.participants?.length ?? 0}名',
+                            style: TextStyle(
+                              color: Colors.grey[700],
+                              fontSize: 12,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    TextButton.icon(
+                      onPressed: () {
+                        // 今後実装: 参加者管理画面への遷移
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('参加者管理機能は開発中です'),
+                            backgroundColor: Colors.orange,
+                          ),
+                        );
+                      },
+                      icon: const Icon(
+                        Icons.people,
+                        size: 18,
+                      ),
+                      label: const Text('管理'),
+                      style: TextButton.styleFrom(
+                        foregroundColor: const Color(0xFF8E1728),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             // タイトル
             Card(
               child: Padding(

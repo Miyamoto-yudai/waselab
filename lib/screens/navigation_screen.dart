@@ -17,6 +17,7 @@ class _NavigationScreenState extends State<NavigationScreen> {
   final MessageService _messageService = MessageService();
   final AuthService _authService = AuthService();
   int _unreadCount = 0;
+  int _activityNotifications = 0; // 活動に関する通知数
 
   final List<Widget> _screens = [
     const HomeScreen(),
@@ -28,6 +29,7 @@ class _NavigationScreenState extends State<NavigationScreen> {
   void initState() {
     super.initState();
     _loadUnreadCount();
+    _loadActivityNotifications();
   }
 
   Future<void> _loadUnreadCount() async {
@@ -39,6 +41,16 @@ class _NavigationScreenState extends State<NavigationScreen> {
           _unreadCount = count;
         });
       }
+    }
+  }
+
+  Future<void> _loadActivityNotifications() async {
+    // TODO: 実際の通知数を取得するロジックを実装
+    // 例: 新しい参加申込み、実験日程の変更など
+    if (mounted) {
+      setState(() {
+        _activityNotifications = 2; // デモ用の固定値
+      });
     }
   }
 
@@ -58,6 +70,10 @@ class _NavigationScreenState extends State<NavigationScreen> {
           onDestinationSelected: (index) {
             setState(() {
               _selectedIndex = index;
+              if (index == 2) {
+                // マイページに遷移したら通知をクリア
+                _activityNotifications = 0;
+              }
             });
             if (index == 1) {
               _loadUnreadCount();
@@ -84,9 +100,17 @@ class _NavigationScreenState extends State<NavigationScreen> {
               ),
               label: 'メッセージ',
             ),
-            const NavigationDestination(
-              icon: Icon(Icons.person_outline),
-              selectedIcon: Icon(Icons.person, color: Color(0xFF8E1728)),
+            NavigationDestination(
+              icon: Badge(
+                label: Text('$_activityNotifications'),
+                isLabelVisible: _activityNotifications > 0,
+                child: const Icon(Icons.person_outline),
+              ),
+              selectedIcon: Badge(
+                label: Text('$_activityNotifications'),
+                isLabelVisible: _activityNotifications > 0,
+                child: const Icon(Icons.person, color: Color(0xFF8E1728)),
+              ),
               label: 'マイページ',
             ),
           ],
@@ -101,6 +125,10 @@ class _NavigationScreenState extends State<NavigationScreen> {
               onDestinationSelected: (index) {
                 setState(() {
                   _selectedIndex = index;
+                  if (index == 2) {
+                    // マイページに遷移したら通知をクリア
+                    _activityNotifications = 0;
+                  }
                 });
                 if (index == 1) {
                   _loadUnreadCount();
@@ -128,10 +156,18 @@ class _NavigationScreenState extends State<NavigationScreen> {
                   ),
                   label: const Text('メッセージ'),
                 ),
-                const NavigationRailDestination(
-                  icon: Icon(Icons.person_outline),
-                  selectedIcon: Icon(Icons.person, color: Color(0xFF8E1728)),
-                  label: Text('マイページ'),
+                NavigationRailDestination(
+                  icon: Badge(
+                    label: Text('$_activityNotifications'),
+                    isLabelVisible: _activityNotifications > 0,
+                    child: const Icon(Icons.person_outline),
+                  ),
+                  selectedIcon: Badge(
+                    label: Text('$_activityNotifications'),
+                    isLabelVisible: _activityNotifications > 0,
+                    child: const Icon(Icons.person, color: Color(0xFF8E1728)),
+                  ),
+                  label: const Text('マイページ'),
                 ),
               ],
             ),

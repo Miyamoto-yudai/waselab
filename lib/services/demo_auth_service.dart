@@ -114,6 +114,7 @@ class DemoAuthService {
 
 /// デモ用のユーザーモデル
 class DemoUser {
+  final String uid;
   final String email;
   final String name;
   final bool isWasedaUser;
@@ -124,5 +125,5 @@ class DemoUser {
     required this.name,
     required this.isWasedaUser,
     required this.canCreateExperiment,
-  });
+  }) : uid = 'demo_user_${email.hashCode}';
 }

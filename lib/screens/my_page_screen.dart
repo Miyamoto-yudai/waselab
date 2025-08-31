@@ -5,6 +5,7 @@ import '../services/experiment_service.dart';
 import '../models/app_user.dart';
 import '../models/experiment.dart';
 import 'login_screen.dart';
+import 'experiment_detail_screen.dart';
 import 'package:intl/intl.dart';
 
 class MyPageScreen extends StatefulWidget {
@@ -304,6 +305,60 @@ class _MyPageScreenState extends State<MyPageScreen> with SingleTickerProviderSt
                                   fontWeight: FontWeight.bold,
                                   color: Color(0xFF8E1728),
                                 ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                // あなたの活動セクション
+                Card(
+                  elevation: 2,
+                  child: Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'あなたの活動',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: _buildActivityCard(
+                                icon: Icons.campaign,
+                                title: '募集中',
+                                count: _createdExperiments.where((e) => 
+                                  e.recruitmentEndDate != null && 
+                                  e.recruitmentEndDate!.isAfter(DateTime.now())
+                                ).length,
+                                color: const Color(0xFF8E1728),
+                                onTap: () {
+                                  _tabController.animateTo(2);
+                                },
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: _buildActivityCard(
+                                icon: Icons.science,
+                                title: '参加予定',
+                                count: _participatedExperiments.where((e) =>
+                                  e.experimentPeriodEnd != null &&
+                                  e.experimentPeriodEnd!.isAfter(DateTime.now())
+                                ).length,
+                                color: Colors.blue,
+                                onTap: () {
+                                  _tabController.animateTo(1);
+                                },
                               ),
                             ),
                           ],
@@ -632,74 +687,141 @@ class _MyPageScreenState extends State<MyPageScreen> with SingleTickerProviderSt
       itemCount: experiments.length,
       itemBuilder: (context, index) {
         final experiment = experiments[index];
+        final isMyExperiment = experiment.creatorId == _currentUser?.uid;
+        
         return Card(
           elevation: 2,
           margin: const EdgeInsets.only(bottom: 12),
-          child: ListTile(
-            leading: CircleAvatar(
-              backgroundColor: _getTypeColor(experiment.type),
-              child: Icon(
-                _getTypeIcon(experiment.type),
-                color: Colors.white,
-                size: 20,
-              ),
-            ),
-            title: Text(
-              experiment.title,
-              style: const TextStyle(fontWeight: FontWeight.bold),
-            ),
-            subtitle: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const SizedBox(height: 4),
-                Text(
-                  experiment.description,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
+          child: InkWell(
+            borderRadius: BorderRadius.circular(12),
+            onTap: () {
+              // 実験詳細画面に遷移
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => ExperimentDetailScreen(
+                    experiment: experiment,
+                    isMyExperiment: isMyExperiment,
+                  ),
                 ),
-                const SizedBox(height: 4),
-                Row(
-                  children: [
-                    Icon(Icons.calendar_today, size: 14, color: Colors.grey[600]),
-                    const SizedBox(width: 4),
-                    Text(
-                      experiment.experimentDate != null
-                        ? DateFormat('yyyy/MM/dd').format(experiment.experimentDate!)
-                        : '日程未定',
-                      style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+              );
+            },
+            child: Padding(
+              padding: const EdgeInsets.all(12),
+              child: Row(
+                children: [
+                  CircleAvatar(
+                    backgroundColor: _getTypeColor(experiment.type),
+                    child: Icon(
+                      _getTypeIcon(experiment.type),
+                      color: Colors.white,
+                      size: 20,
                     ),
-                    const SizedBox(width: 16),
-                    Icon(Icons.payments, size: 14, color: Colors.grey[600]),
-                    const SizedBox(width: 4),
-                    Text(
-                      experiment.isPaid ? '¥${experiment.reward}' : '無償',
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                experiment.title,
+                                style: const TextStyle(fontWeight: FontWeight.bold),
+                              ),
+                            ),
+                            if (isMyExperiment)
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFF8E1728).withValues(alpha: 0.1),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: const Text(
+                                  '募集中',
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    color: Color(0xFF8E1728),
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+                          ],
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          experiment.description,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: Colors.grey[700],
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Row(
+                          children: [
+                            Icon(Icons.calendar_today, size: 14, color: Colors.grey[600]),
+                            const SizedBox(width: 4),
+                            Text(
+                              experiment.experimentDate != null
+                                ? DateFormat('yyyy/MM/dd').format(experiment.experimentDate!)
+                                : '日程未定',
+                              style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                            ),
+                            const SizedBox(width: 16),
+                            Icon(Icons.payments, size: 14, color: Colors.grey[600]),
+                            const SizedBox(width: 4),
+                            Text(
+                              experiment.isPaid ? '¥${experiment.reward}' : '無償',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: experiment.isPaid ? Colors.green[700] : Colors.grey[600],
+                                fontWeight: experiment.isPaid ? FontWeight.bold : FontWeight.normal,
+                              ),
+                            ),
+                            if (isMyExperiment) ...[
+                              const SizedBox(width: 16),
+                              Icon(Icons.people, size: 14, color: Colors.grey[600]),
+                              const SizedBox(width: 4),
+                              Text(
+                                '参加者: ${experiment.participants?.length ?? 0}名',
+                                style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                              ),
+                            ],
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: experiment.type == ExperimentType.online
+                          ? Colors.blue.withValues(alpha: 0.1)
+                          : experiment.type == ExperimentType.onsite
+                              ? Colors.orange.withValues(alpha: 0.1)
+                              : Colors.green.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text(
+                      experiment.type.label,
                       style: TextStyle(
                         fontSize: 12,
-                        color: experiment.isPaid ? Colors.green[700] : Colors.grey[600],
-                        fontWeight: experiment.isPaid ? FontWeight.bold : FontWeight.normal,
+                        color: _getTypeColor(experiment.type),
+                        fontWeight: FontWeight.bold,
                       ),
                     ),
-                  ],
-                ),
-              ],
-            ),
-            trailing: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-              decoration: BoxDecoration(
-                color: experiment.type == ExperimentType.online
-                    ? Colors.blue.withValues(alpha: 0.1)
-                    : experiment.type == ExperimentType.onsite
-                        ? Colors.orange.withValues(alpha: 0.1)
-                        : Colors.green.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Text(
-                experiment.type.label,
-                style: TextStyle(
-                  fontSize: 12,
-                  color: _getTypeColor(experiment.type),
-                  fontWeight: FontWeight.bold,
-                ),
+                  ),
+                  const SizedBox(width: 4),
+                  Icon(
+                    Icons.arrow_forward_ios,
+                    size: 16,
+                    color: Colors.grey[400],
+                  ),
+                ],
               ),
             ),
           ),
@@ -794,5 +916,57 @@ class _MyPageScreenState extends State<MyPageScreen> with SingleTickerProviderSt
     _departmentController.dispose();
     _gradeController.dispose();
     super.dispose();
+  }
+
+  Widget _buildActivityCard({
+    required IconData icon,
+    required String title,
+    required int count,
+    required Color color,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.1),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: color.withValues(alpha: 0.3),
+            width: 1,
+          ),
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              icon,
+              size: 32,
+              color: color,
+            ),
+            const SizedBox(height: 8),
+            Text(
+              title,
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
+                color: color,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              count.toString(),
+              style: TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.bold,
+                color: color,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }
