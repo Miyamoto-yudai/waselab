@@ -59,39 +59,9 @@ class _HomeScreenBaseState extends State<HomeScreenBase> {
   bool _isHeaderVisible = true;
   DateTime? _startDateFilter;
   DateTime? _endDateFilter;
-  bool _showOnlyMyExperiments = false;
-  bool _showOnlyParticipating = false;
   
-  // 自分の募集中の実験を取得
-  List<Experiment> get myExperiments {
-    if (widget.currentUserId == null) return [];
-    return widget.experiments
-        .where((e) => e.creatorId == widget.currentUserId)
-        .toList();
-  }
-
-  // 参加予定の実験を取得
-  List<Experiment> get participatingExperiments {
-    if (widget.currentUserId == null) return [];
-    return widget.experiments
-        .where((e) => e.participants?.contains(widget.currentUserId) ?? false)
-        .toList();
-  }
-
   List<Experiment> get filteredExperiments {
     List<Experiment> filtered = List.from(widget.experiments);
-    
-    // 自分の実験のみフィルター
-    if (_showOnlyMyExperiments && widget.currentUserId != null) {
-      filtered = filtered.where((e) => e.creatorId == widget.currentUserId).toList();
-    }
-    
-    // 参加予定のみフィルター
-    if (_showOnlyParticipating && widget.currentUserId != null) {
-      filtered = filtered.where((e) => 
-        e.participants?.contains(widget.currentUserId) ?? false
-      ).toList();
-    }
     
     // 検索フィルター
     if (_searchQuery.isNotEmpty) {
@@ -643,33 +613,9 @@ class _HomeScreenBaseState extends State<HomeScreenBase> {
                               scrollDirection: Axis.horizontal,
                               child: Row(
                                 children: [
-                                  // 募集中フィルター
-                                  if (widget.currentUserId != null) ...[
-                                    _buildCompactFilterChip('募集中 (${myExperiments.length})', _showOnlyMyExperiments, () {
-                                      setState(() {
-                                        _showOnlyMyExperiments = !_showOnlyMyExperiments;
-                                        _showOnlyParticipating = false;
-                                        _selectedType = null;
-                                      });
-                                    }),
-                                    const SizedBox(width: 6),
-                                  ],
-                                  // 参加予定フィルター
-                                  if (widget.currentUserId != null) ...[
-                                    _buildCompactFilterChip('参加予定 (${participatingExperiments.length})', _showOnlyParticipating, () {
-                                      setState(() {
-                                        _showOnlyParticipating = !_showOnlyParticipating;
-                                        _showOnlyMyExperiments = false;
-                                        _selectedType = null;
-                                      });
-                                    }),
-                                    const SizedBox(width: 6),
-                                  ],
-                                  _buildCompactFilterChip('すべて', _selectedType == null && !_showOnlyMyExperiments && !_showOnlyParticipating, () {
+                                  _buildCompactFilterChip('すべて', _selectedType == null, () {
                                     setState(() {
                                       _selectedType = null;
-                                      _showOnlyMyExperiments = false;
-                                      _showOnlyParticipating = false;
                                     });
                                   }),
                                   const SizedBox(width: 6),
