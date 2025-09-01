@@ -1,0 +1,54 @@
+{
+  "project_info": {
+    "project_number": "788143974236",
+    "project_id": "waselab-30308",
+    "storage_bucket": "waselab-30308.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:788143974236:android:6246f4d13556d4b6000399",
+        "android_client_info": {
+          "package_name": "com.example.experiment_cooperation_app"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "788143974236-6caopbt5bouttf0iroftapv8t0o426a2.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.experiment_cooperation_app",
+            "certificate_hash": "198a8184a37b1657ef82d868e8c41089e4d9da23"
+          }
+        },
+        {
+          "client_id": "788143974236-jqi4c0558nu50cda3jams444dov43lue.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCffoMNl-fzWljHKHoqwzIuc5jas042aJA"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "788143974236-jqi4c0558nu50cda3jams444dov43lue.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "788143974236-d754dc95umuapbaam5c3vj784fbek596.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.experimentCooperationApp"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
