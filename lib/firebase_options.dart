@@ -33,52 +33,52 @@ class DefaultFirebaseOptions {
     }
   }
 
-  // Web設定（仮の値）
+  // Web設定
   static const FirebaseOptions web = FirebaseOptions(
-    apiKey: 'YOUR-WEB-API-KEY',
-    appId: 'YOUR-WEB-APP-ID',
-    messagingSenderId: 'YOUR-SENDER-ID',
-    projectId: 'experiment-cooperation-app',
-    authDomain: 'experiment-cooperation-app.firebaseapp.com',
-    storageBucket: 'experiment-cooperation-app.appspot.com',
+    apiKey: 'AIzaSyClIA2_3fHJuHoOKY5AVG1OXdpIyJTkqy0',
+    appId: '1:788143974236:web:YOUR-WEB-APP-ID',
+    messagingSenderId: '788143974236',
+    projectId: 'waselab-30308',
+    authDomain: 'waselab-30308.firebaseapp.com',
+    storageBucket: 'waselab-30308.firebasestorage.app',
   );
 
-  // Android設定（仮の値）
+  // Android設定
   static const FirebaseOptions android = FirebaseOptions(
-    apiKey: 'YOUR-ANDROID-API-KEY',
-    appId: 'YOUR-ANDROID-APP-ID',
-    messagingSenderId: 'YOUR-SENDER-ID',
-    projectId: 'experiment-cooperation-app',
-    storageBucket: 'experiment-cooperation-app.appspot.com',
+    apiKey: 'AIzaSyCffoMNl-fzWljHKHoqwzIuc5jas042aJA',
+    appId: '1:788143974236:android:6246f4d13556d4b6000399',
+    messagingSenderId: '788143974236',
+    projectId: 'waselab-30308',
+    storageBucket: 'waselab-30308.firebasestorage.app',
   );
 
-  // iOS設定（仮の値）
+  // iOS設定
   static const FirebaseOptions ios = FirebaseOptions(
-    apiKey: 'YOUR-IOS-API-KEY',
-    appId: 'YOUR-IOS-APP-ID',
-    messagingSenderId: 'YOUR-SENDER-ID',
-    projectId: 'experiment-cooperation-app',
+    apiKey: 'AIzaSyClIA2_3fHJuHoOKY5AVG1OXdpIyJTkqy0',
+    appId: '1:788143974236:ios:05d9fcc433f53e6f000399',
+    messagingSenderId: '788143974236',
+    projectId: 'waselab-30308',
     iosBundleId: 'com.example.experimentCooperationApp',
-    storageBucket: 'experiment-cooperation-app.appspot.com',
+    storageBucket: 'waselab-30308.firebasestorage.app',
   );
 
-  // macOS設定（仮の値）
+  // macOS設定
   static const FirebaseOptions macos = FirebaseOptions(
-    apiKey: 'YOUR-MACOS-API-KEY',
-    appId: 'YOUR-MACOS-APP-ID',
-    messagingSenderId: 'YOUR-SENDER-ID',
-    projectId: 'experiment-cooperation-app',
+    apiKey: 'AIzaSyClIA2_3fHJuHoOKY5AVG1OXdpIyJTkqy0',
+    appId: '1:788143974236:ios:05d9fcc433f53e6f000399',
+    messagingSenderId: '788143974236',
+    projectId: 'waselab-30308',
     iosBundleId: 'com.example.experimentCooperationApp',
-    storageBucket: 'experiment-cooperation-app.appspot.com',
+    storageBucket: 'waselab-30308.firebasestorage.app',
   );
 
-  // Windows設定（仮の値）
+  // Windows設定
   static const FirebaseOptions windows = FirebaseOptions(
-    apiKey: 'YOUR-WINDOWS-API-KEY',
-    appId: 'YOUR-WINDOWS-APP-ID',
-    messagingSenderId: 'YOUR-SENDER-ID',
-    projectId: 'experiment-cooperation-app',
-    authDomain: 'experiment-cooperation-app.firebaseapp.com',
-    storageBucket: 'experiment-cooperation-app.appspot.com',
+    apiKey: 'AIzaSyClIA2_3fHJuHoOKY5AVG1OXdpIyJTkqy0',
+    appId: '1:788143974236:web:YOUR-WINDOWS-APP-ID',
+    messagingSenderId: '788143974236',
+    projectId: 'waselab-30308',
+    authDomain: 'waselab-30308.firebaseapp.com',
+    storageBucket: 'waselab-30308.firebasestorage.app',
   );
 }

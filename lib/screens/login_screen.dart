@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-// import '../services/auth_service.dart';  // Firebase使用時はこちらを有効化
-import '../services/demo_auth_service.dart';  // デモモード用
-import 'home_screen.dart';
+import '../services/auth_service.dart';  // Firebase使用時はこちらを有効化
+// import '../services/demo_auth_service.dart';  // デモモード用
+import 'navigation_screen.dart';
 
 /// ログイン画面
 /// 早稲田大学メールアドレス（@waseda.jp）でのみログイン・新規登録が可能
@@ -14,8 +14,8 @@ class LoginScreen extends StatefulWidget {
 
 class _LoginScreenState extends State<LoginScreen> {
   // デモモード用: AuthServiceの代わりにDemoAuthServiceを使用
-  // final AuthService _authService = AuthService();
-  final DemoAuthService _authService = DemoAuthService();
+  final AuthService _authService = AuthService();
+  // final DemoAuthService _authService = DemoAuthService();
   final _formKey = GlobalKey<FormState>();
   
   // テキストフィールドのコントローラー
@@ -51,11 +51,11 @@ class _LoginScreenState extends State<LoginScreen> {
     setState(() => _isLoading = false);
 
     if (result == null && mounted) {
-      // ログイン成功：ホーム画面へ遷移
+      // ログイン成功：ナビゲーション画面へ遷移
       Navigator.pushReplacement(
         context,
         PageRouteBuilder(
-          pageBuilder: (context, animation, secondaryAnimation) => const HomeScreen(),
+          pageBuilder: (context, animation, secondaryAnimation) => const NavigationScreen(),
           transitionDuration: const Duration(milliseconds: 300),
           transitionsBuilder: (context, animation, secondaryAnimation, child) {
             return FadeTransition(
@@ -91,10 +91,10 @@ class _LoginScreenState extends State<LoginScreen> {
     setState(() => _isLoading = false);
 
     if (result == null && mounted) {
-      // 登録成功：ホーム画面へ遷移
+      // 登録成功：ナビゲーション画面へ遷移
       Navigator.pushReplacement(
         context,
-        MaterialPageRoute(builder: (context) => const HomeScreen()),
+        MaterialPageRoute(builder: (context) => const NavigationScreen()),
       );
     } else if (result != null && mounted) {
       // エラー表示
@@ -119,7 +119,7 @@ class _LoginScreenState extends State<LoginScreen> {
       // ログイン成功
       Navigator.pushReplacement(
         context,
-        MaterialPageRoute(builder: (context) => const HomeScreen()),
+        MaterialPageRoute(builder: (context) => const NavigationScreen()),
       );
     } else if (result != null && mounted) {
       // エラー表示
@@ -395,7 +395,7 @@ class _LoginScreenState extends State<LoginScreen> {
                               return const Icon(Icons.g_mobiledata, size: 24);
                             },
                           ),
-                          label: const Text('Googleでログイン'),
+                          label: Text(_isLogin ? 'Googleでログイン' : 'Googleで新規登録'),
                           style: OutlinedButton.styleFrom(
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(8),
