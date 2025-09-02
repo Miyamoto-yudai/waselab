@@ -125,14 +125,21 @@ class ExperimentService {
             'participants': FieldValue.arrayUnion([userId]),
           });
           
-          // ユーザーの参加実験数を更新
+          // ユーザーの参加予定実験数を更新（参加済みではなく予定として）
           final userData = userDoc.data() as Map<String, dynamic>;
-          final currentCount = userData['participatedExperiments'] ?? 0;
-          debugPrint('Current participatedExperiments count: $currentCount');
+          final currentScheduled = userData['scheduledExperiments'] ?? 0;
+          debugPrint('Current scheduledExperiments count: $currentScheduled');
           
-          transaction.update(userDocRef, {
-            'participatedExperiments': FieldValue.increment(1),
-          });
+          // フィールドが存在しない場合は初期値を設定してから更新
+          if (!userData.containsKey('scheduledExperiments')) {
+            transaction.update(userDocRef, {
+              'scheduledExperiments': 1,
+            });
+          } else {
+            transaction.update(userDocRef, {
+              'scheduledExperiments': FieldValue.increment(1),
+            });
+          }
         }
       });
       
@@ -171,11 +178,23 @@ class ExperimentService {
           'participants': FieldValue.arrayRemove([userId]),
         });
         
-        // ユーザーの参加実験数を減らす
-        final userDoc = _firestore.collection('users').doc(userId);
-        transaction.update(userDoc, {
-          'participatedExperiments': FieldValue.increment(-1),
-        });
+        // ユーザーの参加予定実験数を減らす（まだ完了していない場合）
+        final userDocRef = _firestore.collection('users').doc(userId);
+        final userDoc = await transaction.get(userDocRef);
+        final experiment = Experiment.fromFirestore(experimentDoc);
+        
+        // 実験がまだ完了していない場合は参加予定から削除
+        if (experiment.status != ExperimentStatus.completed && userDoc.exists) {
+          final userData = userDoc.data() as Map<String, dynamic>;
+          final currentScheduled = userData['scheduledExperiments'] ?? 0;
+          
+          // 0より大きい場合のみデクリメント
+          if (currentScheduled > 0) {
+            transaction.update(userDocRef, {
+              'scheduledExperiments': FieldValue.increment(-1),
+            });
+          }
+        }
       });
     } catch (e) {
       debugPrint('Error leaving experiment: $e');

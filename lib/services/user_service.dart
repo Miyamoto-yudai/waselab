@@ -49,6 +49,43 @@ class UserService {
     });
   }
 
+  /// 既存ユーザーのscheduledExperimentsフィールドを初期化
+  Future<void> initializeScheduledExperimentsField(String userId) async {
+    try {
+      final doc = await _firestore.collection('users').doc(userId).get();
+      if (doc.exists) {
+        final data = doc.data() as Map<String, dynamic>;
+        
+        // scheduledExperimentsフィールドが存在しない場合のみ初期化
+        if (!data.containsKey('scheduledExperiments')) {
+          await _firestore.collection('users').doc(userId).update({
+            'scheduledExperiments': 0,
+          });
+          debugPrint('Initialized scheduledExperiments field for user: $userId');
+        }
+      }
+    } catch (e) {
+      debugPrint('Error initializing scheduledExperiments field: $e');
+    }
+  }
+
+  Future<void> incrementScheduledExperiments(String userId) async {
+    await _firestore.collection('users').doc(userId).update({
+      'scheduledExperiments': FieldValue.increment(1),
+    });
+  }
+
+  Future<void> completeExperiment({
+    required String userId,
+    required String experimentId,
+  }) async {
+    await _firestore.collection('users').doc(userId).update({
+      'scheduledExperiments': FieldValue.increment(-1),
+      'participatedExperiments': FieldValue.increment(1),
+      'completedExperimentIds': FieldValue.arrayUnion([experimentId]),
+    });
+  }
+
   Future<List<AppUser>> searchUsers(String query) async {
     if (query.isEmpty) return [];
     

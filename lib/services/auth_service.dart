@@ -134,7 +134,8 @@ class AuthService {
       final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
       
       if (googleUser == null) {
-        return 'サインインがキャンセルされました';
+        // ユーザーがキャンセルした場合は特別な値を返す
+        return 'CANCELLED';
       }
 
       // 認証情報を取得

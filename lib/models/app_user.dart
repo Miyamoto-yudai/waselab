@@ -11,7 +11,9 @@ class AppUser {
   final DateTime createdAt;
   final String? photoUrl;          // プロフィール画像URL（Googleアカウント用）
   final String? bio;               // 自己紹介
-  final int participatedExperiments; // 参加実験数
+  final int participatedExperiments; // 完了済み実験数
+  final int scheduledExperiments;  // 参加予定実験数
+  final List<String> completedExperimentIds; // 完了済み実験IDリスト
   final String? department;        // 学部・学科
   final String? grade;             // 学年
   final int goodCount;             // Good評価数
@@ -34,6 +36,8 @@ class AppUser {
     this.photoUrl,
     this.bio,
     this.participatedExperiments = 0,
+    this.scheduledExperiments = 0,
+    this.completedExperimentIds = const [],
     this.department,
     this.grade,
     this.goodCount = 0,
@@ -61,6 +65,8 @@ class AppUser {
       photoUrl: data['photoUrl'],
       bio: data['bio'],
       participatedExperiments: data['participatedExperiments'] ?? 0,
+      scheduledExperiments: data['scheduledExperiments'] ?? 0,
+      completedExperimentIds: List<String>.from(data['completedExperimentIds'] ?? []),
       department: data['department'],
       grade: data['grade'],
       goodCount: data['goodCount'] ?? 0,
@@ -87,6 +93,8 @@ class AppUser {
       'photoUrl': photoUrl,
       'bio': bio,
       'participatedExperiments': participatedExperiments,
+      'scheduledExperiments': scheduledExperiments,
+      'completedExperimentIds': completedExperimentIds,
       'department': department,
       'grade': grade,
       'goodCount': goodCount,

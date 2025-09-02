@@ -46,6 +46,7 @@ class _LoginScreenState extends State<LoginScreen> {
   /// ログイン処理
   Future<void> _handleLogin() async {
     if (!_formKey.currentState!.validate()) return;
+    if (!mounted) return;
 
     setState(() => _isLoading = true);
 
@@ -54,6 +55,8 @@ class _LoginScreenState extends State<LoginScreen> {
       password: _passwordController.text,
     );
 
+    if (!mounted) return;
+    
     setState(() => _isLoading = false);
 
     if (result == null && mounted) {
@@ -103,6 +106,7 @@ class _LoginScreenState extends State<LoginScreen> {
   /// 新規登録処理
   Future<void> _handleSignUp() async {
     if (!_formKey.currentState!.validate()) return;
+    if (!mounted) return;
 
     setState(() => _isLoading = true);
 
@@ -114,6 +118,8 @@ class _LoginScreenState extends State<LoginScreen> {
       age: int.tryParse(_ageController.text),
     );
 
+    if (!mounted) return;
+    
     setState(() => _isLoading = false);
 
     if (result == null && mounted) {
@@ -152,10 +158,15 @@ class _LoginScreenState extends State<LoginScreen> {
 
   /// Googleサインイン処理
   Future<void> _handleGoogleSignIn() async {
+    if (!mounted) return;
+    
     setState(() => _isLoading = true);
 
     final result = await _authService.signInWithGoogle();
 
+    // mountedチェックをsetStateの前に行う
+    if (!mounted) return;
+    
     setState(() => _isLoading = false);
 
     if (result == null && mounted) {
@@ -164,8 +175,8 @@ class _LoginScreenState extends State<LoginScreen> {
         context,
         MaterialPageRoute(builder: (context) => const NavigationScreen()),
       );
-    } else if (result != null && mounted) {
-      // エラー表示
+    } else if (result != null && result != 'CANCELLED' && mounted) {
+      // エラー表示（キャンセルの場合は表示しない）
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(result),
@@ -173,6 +184,7 @@ class _LoginScreenState extends State<LoginScreen> {
         ),
       );
     }
+    // result == 'CANCELLED' の場合は何もしない（エラー表示なし）
   }
 
   /// パスワードリセット処理

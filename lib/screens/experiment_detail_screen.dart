@@ -857,10 +857,10 @@ class _ExperimentDetailScreenState extends State<ExperimentDetailScreen> {
                       ),
                   label: Text(
                     _isParticipating
-                      ? '参加申請済み'
+                      ? '参加予定'
                       : widget.experiment.allowFlexibleSchedule
                         ? '日時を選択して予約'
-                        : 'この実験に参加する',
+                        : '参加申請する',
                   ),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: _isParticipating ? Colors.grey : null,

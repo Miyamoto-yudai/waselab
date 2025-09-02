@@ -197,13 +197,8 @@ class Experiment {
 
   /// 実験が評価可能かどうかをチェック
   bool canEvaluate(String userId) {
-    // ステータスが評価待ちまたは完了済みで、参加者である場合
-    if (status != ExperimentStatus.waitingEvaluation && 
-        status != ExperimentStatus.completed) {
-      return false;
-    }
-    
-    // 実験者または参加者である場合
+    // 実験者または参加者である場合は評価可能
+    // ステータスに関わらず、関係者であれば評価できる
     return creatorId == userId || participants.contains(userId);
   }
 
@@ -216,12 +211,25 @@ class Experiment {
 
   /// 実験が自動完了の対象かどうかをチェック（1週間経過）
   bool shouldAutoComplete() {
-    if (status != ExperimentStatus.waitingEvaluation) return false;
+    // 既に完了している場合はスキップ
+    if (status == ExperimentStatus.completed) return false;
     
-    final endDate = experimentPeriodEnd ?? actualStartDate;
-    if (endDate == null) return false;
+    // 評価待ち状態の場合：最初の評価（actualStartDate）から1週間経過
+    if (status == ExperimentStatus.waitingEvaluation) {
+      final startDate = actualStartDate;
+      if (startDate != null) {
+        final oneWeekLater = startDate.add(const Duration(days: 7));
+        if (DateTime.now().isAfter(oneWeekLater)) return true;
+      }
+    }
     
-    final oneWeekLater = endDate.add(const Duration(days: 7));
-    return DateTime.now().isAfter(oneWeekLater);
+    // その他の状態：実験期間終了から1週間経過
+    final endDate = experimentPeriodEnd;
+    if (endDate != null) {
+      final oneWeekLater = endDate.add(const Duration(days: 7));
+      return DateTime.now().isAfter(oneWeekLater);
+    }
+    
+    return false;
   }
 }

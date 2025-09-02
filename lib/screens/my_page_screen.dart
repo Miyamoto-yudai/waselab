@@ -55,24 +55,38 @@ class _MyPageScreenState extends State<MyPageScreen> with SingleTickerProviderSt
 
   Future<void> _loadUserData() async {
     try {
-      final user = await _authService.getCurrentAppUser();
+      var user = await _authService.getCurrentAppUser();
       if (user != null) {
-        // 実験履歴を取得
-        final participated = await _experimentService.getUserParticipatedExperiments(user.uid);
-        final created = await _experimentService.getUserCreatedExperiments(user.uid);
-        final pendingEvals = await _experimentService.getPendingEvaluations(user.uid);
+        // scheduledExperimentsフィールドが存在しない場合は初期化
+        await _userService.initializeScheduledExperimentsField(user.uid);
         
-        if (mounted) {
-          setState(() {
-            _currentUser = user;
-            _bioController.text = user.bio ?? '';
-            _departmentController.text = user.department ?? '';
-            _gradeController.text = user.grade ?? '';
-            _participatedExperiments = participated;
-            _createdExperiments = created;
-            _pendingEvaluations = pendingEvals;
-            _isLoading = false;
-          });
+        // 初期化後、最新のユーザー情報を再取得
+        user = await _authService.getCurrentAppUser();
+        
+        if (user != null) {
+          // 実験履歴を取得
+          final participated = await _experimentService.getUserParticipatedExperiments(user.uid);
+          final created = await _experimentService.getUserCreatedExperiments(user.uid);
+          final pendingEvals = await _experimentService.getPendingEvaluations(user.uid);
+          
+          if (mounted) {
+            setState(() {
+              _currentUser = user;
+              _bioController.text = user?.bio ?? '';
+              _departmentController.text = user?.department ?? '';
+              _gradeController.text = user?.grade ?? '';
+              _participatedExperiments = participated;
+              _createdExperiments = created;
+              _pendingEvaluations = pendingEvals;
+              _isLoading = false;
+            });
+          }
+        } else {
+          if (mounted) {
+            setState(() {
+              _isLoading = false;
+            });
+          }
         }
       } else {
         if (mounted) {
@@ -308,7 +322,7 @@ class _MyPageScreenState extends State<MyPageScreen> with SingleTickerProviderSt
                                 borderRadius: BorderRadius.circular(12),
                               ),
                               child: Text(
-                                '参加実験数: ${_currentUser!.participatedExperiments}',
+                                '完了実験数: ${_currentUser!.participatedExperiments}',
                                 style: const TextStyle(
                                   fontSize: 14,
                                   fontWeight: FontWeight.bold,
@@ -360,10 +374,7 @@ class _MyPageScreenState extends State<MyPageScreen> with SingleTickerProviderSt
                               child: _buildActivityCard(
                                 icon: Icons.science,
                                 title: '参加予定',
-                                count: _participatedExperiments.where((e) =>
-                                  e.experimentPeriodEnd != null &&
-                                  e.experimentPeriodEnd!.isAfter(DateTime.now())
-                                ).length,
+                                count: _currentUser?.scheduledExperiments ?? 0,
                                 color: Colors.blue,
                                 onTap: () {
                                   _tabController.animateTo(1);
@@ -674,10 +685,237 @@ class _MyPageScreenState extends State<MyPageScreen> with SingleTickerProviderSt
         ),
           ),
           // 参加履歴タブ
-          _buildExperimentHistoryTab(_participatedExperiments, '参加した実験'),
+          _buildParticipatedExperimentsTab(),
           // 募集履歴タブ
           _buildExperimentHistoryTab(_createdExperiments, '募集した実験'),
         ],
+      ),
+    );
+  }
+
+  Widget _buildParticipatedExperimentsTab() {
+    // 実験を3つのカテゴリに分類
+    final scheduledExperiments = <Experiment>[];
+    final waitingEvaluationExperiments = <Experiment>[];
+    final completedExperiments = <Experiment>[];
+    
+    debugPrint('Total participated experiments: ${_participatedExperiments.length}');
+    
+    for (final experiment in _participatedExperiments) {
+      debugPrint('Experiment ${experiment.id}: status=${experiment.status.name}');
+      
+      if (experiment.status == ExperimentStatus.completed ||
+          (_currentUser != null && 
+           _currentUser!.completedExperimentIds.contains(experiment.id))) {
+        completedExperiments.add(experiment);
+      } else if (experiment.status == ExperimentStatus.waitingEvaluation) {
+        waitingEvaluationExperiments.add(experiment);
+      } else {
+        scheduledExperiments.add(experiment);
+      }
+    }
+    
+    debugPrint('Scheduled: ${scheduledExperiments.length}, Waiting: ${waitingEvaluationExperiments.length}, Completed: ${completedExperiments.length}');
+    
+    if (_participatedExperiments.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.history,
+              size: 64,
+              color: Colors.grey[400],
+            ),
+            const SizedBox(height: 16),
+            Text(
+              '参加した実験がありません',
+              style: TextStyle(
+                fontSize: 16,
+                color: Colors.grey[600],
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+    
+    return ListView(
+      padding: const EdgeInsets.all(16),
+      children: [
+        // 参加予定セクション
+        if (scheduledExperiments.isNotEmpty) ...[
+          _buildSectionHeader('参加予定', Icons.schedule, Colors.blue),
+          ...scheduledExperiments.map((e) => _buildExperimentCard(e)),
+          const SizedBox(height: 16),
+        ],
+        
+        // 評価待ちセクション
+        if (waitingEvaluationExperiments.isNotEmpty) ...[
+          _buildSectionHeader('評価待ち', Icons.rate_review, Colors.orange),
+          ...waitingEvaluationExperiments.map((e) => _buildExperimentCard(e)),
+          const SizedBox(height: 16),
+        ],
+        
+        // 完了済みセクション
+        if (completedExperiments.isNotEmpty) ...[
+          _buildSectionHeader('完了済み', Icons.check_circle, Colors.green),
+          ...completedExperiments.map((e) => _buildExperimentCard(e)),
+        ],
+      ],
+    );
+  }
+  
+  Widget _buildSectionHeader(String title, IconData icon, Color color) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Row(
+        children: [
+          Icon(icon, size: 20, color: color),
+          const SizedBox(width: 8),
+          Text(
+            title,
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+              color: color,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+  
+  Widget _buildExperimentCard(Experiment experiment) {
+    final isMyExperiment = experiment.creatorId == _currentUser?.uid;
+    
+    return Card(
+      elevation: 2,
+      margin: const EdgeInsets.only(bottom: 12),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(12),
+        onTap: () {
+          // 未評価の場合は評価画面へ（ステータスに関わらず）、評価済みなら詳細画面へ
+          if (!experiment.hasEvaluated(_currentUser?.uid ?? '')) {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => ExperimentEvaluationScreen(
+                  experiment: experiment,
+                ),
+              ),
+            ).then((result) {
+              // 評価完了後にデータを再読み込み
+              if (result == true) {
+                _loadUserData();
+              }
+            });
+          } else {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => ExperimentDetailScreen(
+                  experiment: experiment,
+                  isMyExperiment: isMyExperiment,
+                ),
+              ),
+            );
+          }
+        },
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Row(
+            children: [
+              CircleAvatar(
+                backgroundColor: _getTypeColor(experiment.type),
+                child: Icon(
+                  _getTypeIcon(experiment.type),
+                  color: Colors.white,
+                  size: 20,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            experiment.title,
+                            style: const TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                        ),
+                        // ステータスバッジを表示
+                        _buildStatusBadge(experiment, isMyExperiment),
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      experiment.description,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(fontSize: 13, color: Colors.grey[600]),
+                    ),
+                    const SizedBox(height: 4),
+                    Row(
+                      children: [
+                        if (experiment.isPaid) ...[
+                          Icon(Icons.monetization_on, size: 14, color: Colors.grey[600]),
+                          const SizedBox(width: 4),
+                          Text(
+                            '¥${experiment.reward}',
+                            style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                          ),
+                          const SizedBox(width: 12),
+                        ],
+                        if (experiment.location.isNotEmpty) ...[
+                          Icon(Icons.location_on, size: 14, color: Colors.grey[600]),
+                          const SizedBox(width: 4),
+                          Flexible(
+                            child: Text(
+                              experiment.location,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: experiment.type == ExperimentType.online
+                      ? Colors.blue.withValues(alpha: 0.1)
+                      : experiment.type == ExperimentType.onsite
+                          ? Colors.orange.withValues(alpha: 0.1)
+                          : Colors.green.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Text(
+                  experiment.type.label,
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: _getTypeColor(experiment.type),
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 4),
+              Icon(
+                Icons.arrow_forward_ios,
+                size: 16,
+                color: Colors.grey[400],
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -858,42 +1096,44 @@ class _MyPageScreenState extends State<MyPageScreen> with SingleTickerProviderSt
   }
 
   Widget _buildStatusBadge(Experiment experiment, bool isMyExperiment) {
-    // 評価待ちの場合
-    if (experiment.status == ExperimentStatus.waitingEvaluation) {
-      final hasEvaluated = experiment.hasEvaluated(_currentUser?.uid ?? '');
-      if (!hasEvaluated) {
-        return Container(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-          decoration: BoxDecoration(
-            color: Colors.orange,
-            borderRadius: BorderRadius.circular(8),
+    final hasEvaluated = experiment.hasEvaluated(_currentUser?.uid ?? '');
+    
+    // 未評価の場合（ステータスに関わらず）
+    if (!hasEvaluated && experiment.canEvaluate(_currentUser?.uid ?? '')) {
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+        decoration: BoxDecoration(
+          color: Colors.orange,
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: const Text(
+          '評価可能',
+          style: TextStyle(
+            fontSize: 11,
+            color: Colors.white,
+            fontWeight: FontWeight.bold,
           ),
-          child: const Text(
-            '評価待ち',
-            style: TextStyle(
-              fontSize: 11,
-              color: Colors.white,
-              fontWeight: FontWeight.bold,
-            ),
+        ),
+      );
+    }
+    
+    // 評価済みだが相手がまだの場合
+    if (hasEvaluated && experiment.status == ExperimentStatus.waitingEvaluation) {
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+        decoration: BoxDecoration(
+          color: Colors.blue.withValues(alpha: 0.1),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: const Text(
+          '相手の評価待ち',
+          style: TextStyle(
+            fontSize: 11,
+            color: Colors.blue,
+            fontWeight: FontWeight.bold,
           ),
-        );
-      } else {
-        return Container(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-          decoration: BoxDecoration(
-            color: Colors.green.withValues(alpha: 0.1),
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: const Text(
-            '評価済み',
-            style: TextStyle(
-              fontSize: 11,
-              color: Colors.green,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-        );
-      }
+        ),
+      );
     }
     
     // 完了済みの場合

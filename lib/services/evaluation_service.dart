@@ -65,9 +65,19 @@ class EvaluationService {
           'evaluatedAt': Timestamp.fromDate(DateTime.now()),
         };
         
-        transaction.update(experimentDoc.reference, {
+        // 最初の評価の場合、ステータスをwaitingEvaluationに変更
+        final updateData = <String, dynamic>{
           'evaluations': evaluations,
-        });
+        };
+        
+        // まだ誰も評価していない場合（最初の評価）、ステータスを更新
+        if (experiment.status != ExperimentStatus.waitingEvaluation && 
+            experiment.status != ExperimentStatus.completed) {
+          updateData['status'] = ExperimentStatus.waitingEvaluation.name;
+          updateData['actualStartDate'] = Timestamp.fromDate(DateTime.now());
+        }
+        
+        transaction.update(experimentDoc.reference, updateData);
         
         // 被評価者のユーザー統計を更新
         await _updateUserRatings(transaction, evaluatedUserId, type);
@@ -137,10 +147,24 @@ class EvaluationService {
         'completedAt': Timestamp.fromDate(DateTime.now()),
       });
       
-      // 報酬を付与（有償の場合）
-      if (experiment.isPaid) {
-        for (final participantId in experiment.participants) {
-          await _awardReward(transaction, participantId, experiment.reward);
+      // 参加者の統計を更新
+      for (final participantId in experiment.participants) {
+        final participantDoc = await transaction.get(
+          _firestore.collection('users').doc(participantId),
+        );
+        
+        if (participantDoc.exists) {
+          // 参加予定から参加済みに移行
+          transaction.update(participantDoc.reference, {
+            'scheduledExperiments': FieldValue.increment(-1),
+            'participatedExperiments': FieldValue.increment(1),
+            'completedExperimentIds': FieldValue.arrayUnion([experiment.id]),
+          });
+          
+          // 報酬を付与（有償の場合）
+          if (experiment.isPaid) {
+            await _awardReward(transaction, participantId, experiment.reward);
+          }
         }
       }
       
@@ -246,10 +270,14 @@ class EvaluationService {
   /// 期限切れの実験を自動完了する（バッチ処理用）
   Future<void> autoCompleteExpiredExperiments() async {
     try {
-      // waitingEvaluationステータスの実験を取得
+      // 完了していないすべての実験を取得
       final snapshot = await _firestore
           .collection('experiments')
-          .where('status', isEqualTo: ExperimentStatus.waitingEvaluation.name)
+          .where('status', whereIn: [
+            ExperimentStatus.recruiting.name,
+            ExperimentStatus.ongoing.name,
+            ExperimentStatus.waitingEvaluation.name,
+          ])
           .get();
       
       for (final doc in snapshot.docs) {
@@ -300,10 +328,24 @@ class EvaluationService {
               'evaluations': evaluations,
             });
             
-            // 報酬を付与（有償の場合）
-            if (experiment.isPaid) {
-              for (final participantId in experiment.participants) {
-                await _awardReward(transaction, participantId, experiment.reward);
+            // 参加者の統計を更新
+            for (final participantId in experiment.participants) {
+              final participantDoc = await transaction.get(
+                _firestore.collection('users').doc(participantId),
+              );
+              
+              if (participantDoc.exists) {
+                // 参加予定から参加済みに移行
+                transaction.update(participantDoc.reference, {
+                  'scheduledExperiments': FieldValue.increment(-1),
+                  'participatedExperiments': FieldValue.increment(1),
+                  'completedExperimentIds': FieldValue.arrayUnion([experiment.id]),
+                });
+                
+                // 報酬を付与（有償の場合）
+                if (experiment.isPaid) {
+                  await _awardReward(transaction, participantId, experiment.reward);
+                }
               }
             }
           });
