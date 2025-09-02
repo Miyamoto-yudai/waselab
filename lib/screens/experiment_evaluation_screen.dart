@@ -210,16 +210,31 @@ class _ExperimentEvaluationScreenState extends State<ExperimentEvaluationScreen>
         );
         Navigator.pop(context, true); // 評価完了を親画面に通知
       }
-    } catch (e) {
+    } catch (e, stackTrace) {
       debugPrint('Error submitting evaluation: $e');
+      debugPrint('Stack trace: $stackTrace');
       if (mounted) {
         setState(() {
           _isSubmitting = false;
         });
+        
+        // より詳細なエラーメッセージを表示
+        String errorMessage = '評価の送信に失敗しました';
+        if (e.toString().contains('権限がありません')) {
+          errorMessage = 'この実験を評価する権限がありません';
+        } else if (e.toString().contains('既に評価済み')) {
+          errorMessage = '既に評価済みです';
+        } else if (e.toString().contains('実験が見つかりません')) {
+          errorMessage = '実験が見つかりません';
+        } else {
+          errorMessage = '評価の送信に失敗しました: ${e.toString()}';
+        }
+        
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('評価の送信に失敗しました: $e'),
+            content: Text(errorMessage),
             backgroundColor: Colors.red,
+            duration: const Duration(seconds: 5),
           ),
         );
       }
@@ -479,7 +494,7 @@ class _ExperimentEvaluationScreenState extends State<ExperimentEvaluationScreen>
                       const SizedBox(width: 8),
                       Expanded(
                         child: Text(
-                          '双方の評価が完了すると実験が完了し、報酬が付与されます。\n実験終了から1週間経過すると自動的に完了となります。',
+                          '双方の評価が完了すると、実験が正式に完了となります。\n評価は実験の品質向上と信頼性確保のために使用されます。\n実験終了から1週間経過すると自動的に完了となります。',
                           style: TextStyle(fontSize: 12, color: Colors.blue[700]),
                         ),
                       ),

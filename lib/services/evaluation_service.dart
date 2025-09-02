@@ -17,83 +17,137 @@ class EvaluationService {
     required EvaluationType type,
     String? comment,
   }) async {
+    debugPrint('Creating evaluation - experimentId: $experimentId, evaluatorId: $evaluatorId, evaluatedUserId: $evaluatedUserId');
+    
     try {
-      // トランザクションで評価を作成し、実験の状態を更新
-      await _firestore.runTransaction((transaction) async {
-        // 実験ドキュメントを取得
-        final experimentDoc = await transaction.get(
-          _firestore.collection('experiments').doc(experimentId),
-        );
+      // まず実験を取得して検証
+      final experimentDoc = await _firestore
+          .collection('experiments')
+          .doc(experimentId)
+          .get();
+      
+      if (!experimentDoc.exists) {
+        debugPrint('Experiment not found: $experimentId');
+        throw Exception('実験が見つかりません');
+      }
+      
+      final experiment = Experiment.fromFirestore(experimentDoc);
+      debugPrint('Experiment loaded - creatorId: ${experiment.creatorId}, participants: ${experiment.participants}');
+      
+      // 評価可能かチェック
+      if (!experiment.canEvaluate(evaluatorId)) {
+        debugPrint('User cannot evaluate - evaluatorId: $evaluatorId');
+        throw Exception('この実験を評価する権限がありません');
+      }
+      
+      // 既に評価済みかチェック
+      if (experiment.hasEvaluated(evaluatorId)) {
+        debugPrint('User has already evaluated - evaluatorId: $evaluatorId');
+        throw Exception('既に評価済みです');
+      }
+      
+      // 評価を作成
+      final evaluation = ExperimentEvaluation.create(
+        experimentId: experimentId,
+        evaluatorId: evaluatorId,
+        evaluatedUserId: evaluatedUserId,
+        evaluatorRole: evaluatorRole,
+        type: type,
+        comment: comment,
+      );
+      
+      debugPrint('Creating evaluation document...');
+      
+      // evaluationsコレクションに評価を追加
+      await _firestore.collection('evaluations').add(evaluation.toFirestore());
+      
+      debugPrint('Updating experiment document...');
+      
+      // 実験のevaluationsフィールドを更新
+      final evaluations = Map<String, Map<String, dynamic>>.from(
+        experiment.evaluations ?? {},
+      );
+      evaluations[evaluatorId] = {
+        'evaluated': true,
+        'evaluationType': type.name,
+        'evaluatedAt': Timestamp.fromDate(DateTime.now()),
+      };
+      
+      // 実験ドキュメントを更新
+      final updateData = <String, dynamic>{
+        'evaluations': evaluations,
+      };
+      
+      // まだ誰も評価していない場合（最初の評価）、ステータスを更新
+      if (experiment.status != ExperimentStatus.waitingEvaluation && 
+          experiment.status != ExperimentStatus.completed) {
+        updateData['status'] = ExperimentStatus.waitingEvaluation.name;
+        updateData['actualStartDate'] = Timestamp.fromDate(DateTime.now());
+      }
+      
+      await _firestore.collection('experiments').doc(experimentId).update(updateData);
+      
+      debugPrint('Updating user statistics for user: $evaluatedUserId');
+      
+      // 被評価者のユーザー統計を更新
+      try {
+        // まずユーザードキュメントが存在するか確認
+        final userDoc = await _firestore.collection('users').doc(evaluatedUserId).get();
         
-        if (!experimentDoc.exists) {
-          throw Exception('実験が見つかりません');
+        if (userDoc.exists) {
+          final userUpdateData = <String, dynamic>{};
+          if (type == EvaluationType.good) {
+            userUpdateData['goodCount'] = FieldValue.increment(1);
+          } else if (type == EvaluationType.bad) {
+            userUpdateData['badCount'] = FieldValue.increment(1);
+          }
+          
+          if (userUpdateData.isNotEmpty) {
+            debugPrint('Updating user document with: $userUpdateData');
+            await _firestore.collection('users').doc(evaluatedUserId).update(userUpdateData);
+            debugPrint('User statistics updated successfully');
+          }
+        } else {
+          debugPrint('User document not found: $evaluatedUserId');
+          // ユーザードキュメントがない場合は作成
+          await _firestore.collection('users').doc(evaluatedUserId).set({
+            'goodCount': type == EvaluationType.good ? 1 : 0,
+            'badCount': type == EvaluationType.bad ? 1 : 0,
+          }, SetOptions(merge: true));
+          debugPrint('User document created with initial statistics');
         }
-        
-        final experiment = Experiment.fromFirestore(experimentDoc);
-        
-        // 評価可能かチェック
-        if (!experiment.canEvaluate(evaluatorId)) {
-          throw Exception('この実験を評価する権限がありません');
+      } catch (userUpdateError) {
+        debugPrint('Error updating user statistics: $userUpdateError');
+        // ユーザー統計の更新に失敗しても評価自体は成功とする
+      }
+      
+      debugPrint('Checking if all evaluations are complete...');
+      
+      // 双方の評価が完了したかチェック
+      final allUsers = [experiment.creatorId, ...experiment.participants];
+      bool allEvaluated = true;
+      
+      for (final userId in allUsers) {
+        if (evaluations[userId] == null || 
+            evaluations[userId]!['evaluated'] != true) {
+          allEvaluated = false;
+          break;
         }
-        
-        // 既に評価済みかチェック
-        if (experiment.hasEvaluated(evaluatorId)) {
-          throw Exception('既に評価済みです');
-        }
-        
-        // 評価を作成
-        final evaluation = ExperimentEvaluation.create(
-          experimentId: experimentId,
-          evaluatorId: evaluatorId,
-          evaluatedUserId: evaluatedUserId,
-          evaluatorRole: evaluatorRole,
-          type: type,
-          comment: comment,
-        );
-        
-        // evaluationsコレクションに評価を追加
-        final evaluationRef = _firestore.collection('evaluations').doc();
-        transaction.set(evaluationRef, evaluation.toFirestore());
-        
-        // 実験のevaluationsフィールドを更新
-        final evaluations = Map<String, Map<String, dynamic>>.from(
-          experiment.evaluations ?? {},
-        );
-        evaluations[evaluatorId] = {
-          'evaluated': true,
-          'evaluationType': type.name,
-          'evaluatedAt': Timestamp.fromDate(DateTime.now()),
-        };
-        
-        // 最初の評価の場合、ステータスをwaitingEvaluationに変更
-        final updateData = <String, dynamic>{
-          'evaluations': evaluations,
-        };
-        
-        // まだ誰も評価していない場合（最初の評価）、ステータスを更新
-        if (experiment.status != ExperimentStatus.waitingEvaluation && 
-            experiment.status != ExperimentStatus.completed) {
-          updateData['status'] = ExperimentStatus.waitingEvaluation.name;
-          updateData['actualStartDate'] = Timestamp.fromDate(DateTime.now());
-        }
-        
-        transaction.update(experimentDoc.reference, updateData);
-        
-        // 被評価者のユーザー統計を更新
-        await _updateUserRatings(transaction, evaluatedUserId, type);
-        
-        // 双方の評価が完了したかチェック
-        await _checkAndCompleteExperiment(
-          transaction,
-          experimentDoc,
-          experiment,
-          evaluations,
-        );
-      });
+      }
+      
+      if (allEvaluated) {
+        debugPrint('All evaluations complete, marking experiment as completed');
+        // 全員が評価済みの場合、実験を完了状態にする
+        await _firestore.collection('experiments').doc(experimentId).update({
+          'status': ExperimentStatus.completed.name,
+          'completedAt': Timestamp.fromDate(DateTime.now()),
+        });
+      }
       
       debugPrint('Successfully created evaluation for experiment: $experimentId');
-    } catch (e) {
+    } catch (e, stackTrace) {
       debugPrint('Error creating evaluation: $e');
+      debugPrint('Stack trace: $stackTrace');
       rethrow;
     }
   }
