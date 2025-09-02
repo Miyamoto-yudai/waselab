@@ -35,6 +35,20 @@ class _MyPageScreenState extends State<MyPageScreen> with SingleTickerProviderSt
     super.initState();
     _tabController = TabController(length: 3, vsync: this);
     _loadUserData();
+    
+    // タブ切り替え時にデータを再読み込み
+    _tabController.addListener(() {
+      if (_tabController.indexIsChanging) {
+        _loadUserData();
+      }
+    });
+  }
+  
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // 画面に戻ってきた時にデータを再読み込み
+    _loadUserData();
   }
 
   Future<void> _loadUserData() async {
@@ -181,15 +195,6 @@ class _MyPageScreenState extends State<MyPageScreen> with SingleTickerProviderSt
           ],
         ),
         actions: [
-          if (!_isEditing && _tabController.index == 0)
-            IconButton(
-              icon: const Icon(Icons.edit),
-              onPressed: () {
-                setState(() {
-                  _isEditing = true;
-                });
-              },
-            ),
           IconButton(
             icon: const Icon(Icons.logout),
             onPressed: _handleLogout,
@@ -552,12 +557,27 @@ class _MyPageScreenState extends State<MyPageScreen> with SingleTickerProviderSt
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            const Text(
-                              'プロフィール情報',
-                              style: TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                              ),
+                            Row(
+                              children: [
+                                const Text(
+                                  'プロフィール情報',
+                                  style: TextStyle(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                if (!_isEditing)
+                                  IconButton(
+                                    icon: const Icon(Icons.edit, size: 18),
+                                    color: const Color(0xFF8E1728),
+                                    tooltip: '編集',
+                                    onPressed: () {
+                                      setState(() {
+                                        _isEditing = true;
+                                      });
+                                    },
+                                  ),
+                              ],
                             ),
                             if (_isEditing)
                               Row(

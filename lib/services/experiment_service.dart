@@ -8,16 +8,29 @@ class ExperimentService {
   /// ユーザーが参加した実験履歴を取得
   Future<List<Experiment>> getUserParticipatedExperiments(String userId) async {
     try {
+      debugPrint('Fetching participated experiments for user: $userId');
+      
       // participantsフィールドにユーザーIDが含まれる実験を取得
       final snapshot = await _firestore
           .collection('experiments')
           .where('participants', arrayContains: userId)
-          .orderBy('experimentDate', descending: true)
           .get();
 
-      return snapshot.docs
+      debugPrint('Found ${snapshot.docs.length} participated experiments');
+      
+      final experiments = snapshot.docs
           .map((doc) => Experiment.fromFirestore(doc))
           .toList();
+      
+      // メモリ上でソート（experimentDateがnullの可能性があるため）
+      experiments.sort((a, b) {
+        if (a.experimentDate == null && b.experimentDate == null) return 0;
+        if (a.experimentDate == null) return 1;
+        if (b.experimentDate == null) return -1;
+        return b.experimentDate!.compareTo(a.experimentDate!);
+      });
+      
+      return experiments;
     } catch (e) {
       debugPrint('Error fetching participated experiments: $e');
       return [];
@@ -27,15 +40,28 @@ class ExperimentService {
   /// ユーザーが募集した実験履歴を取得
   Future<List<Experiment>> getUserCreatedExperiments(String userId) async {
     try {
+      debugPrint('Fetching created experiments for user: $userId');
+      
       final snapshot = await _firestore
           .collection('experiments')
           .where('creatorId', isEqualTo: userId)
-          .orderBy('createdAt', descending: true)
           .get();
 
-      return snapshot.docs
+      debugPrint('Found ${snapshot.docs.length} created experiments');
+      
+      final experiments = snapshot.docs
           .map((doc) => Experiment.fromFirestore(doc))
           .toList();
+      
+      // メモリ上でソート（createdAtがnullの可能性があるため）
+      experiments.sort((a, b) {
+        if (a.createdAt == null && b.createdAt == null) return 0;
+        if (a.createdAt == null) return 1;
+        if (b.createdAt == null) return -1;
+        return b.createdAt!.compareTo(a.createdAt!);
+      });
+      
+      return experiments;
     } catch (e) {
       debugPrint('Error fetching created experiments: $e');
       return [];
@@ -58,24 +84,116 @@ class ExperimentService {
   /// 実験に参加
   Future<void> joinExperiment(String experimentId, String userId) async {
     try {
-      await _firestore.collection('experiments').doc(experimentId).update({
-        'participants': FieldValue.arrayUnion([userId]),
+      debugPrint('Joining experiment: experimentId=$experimentId, userId=$userId');
+      
+      // トランザクションで実験への参加を処理
+      await _firestore.runTransaction((transaction) async {
+        // 実験ドキュメントを取得
+        final experimentDoc = await transaction.get(
+          _firestore.collection('experiments').doc(experimentId),
+        );
+        
+        if (!experimentDoc.exists) {
+          debugPrint('Experiment document does not exist: $experimentId');
+          throw Exception('実験が見つかりません');
+        }
+        
+        final data = experimentDoc.data()!;
+        final participants = List<String>.from(data['participants'] ?? []);
+        
+        debugPrint('Current participants: $participants');
+        
+        // すでに参加している場合はエラー
+        if (participants.contains(userId)) {
+          throw Exception('すでにこの実験に参加しています');
+        }
+        
+        // ユーザードキュメントの存在確認
+        final userDocRef = _firestore.collection('users').doc(userId);
+        final userDoc = await transaction.get(userDocRef);
+        
+        if (!userDoc.exists) {
+          debugPrint('User document does not exist: $userId');
+          // ユーザードキュメントが存在しない場合は参加者のみ追加
+          transaction.update(experimentDoc.reference, {
+            'participants': FieldValue.arrayUnion([userId]),
+          });
+        } else {
+          debugPrint('User document exists, updating both experiment and user');
+          // 参加者を追加
+          transaction.update(experimentDoc.reference, {
+            'participants': FieldValue.arrayUnion([userId]),
+          });
+          
+          // ユーザーの参加実験数を更新
+          final userData = userDoc.data() as Map<String, dynamic>;
+          final currentCount = userData['participatedExperiments'] ?? 0;
+          debugPrint('Current participatedExperiments count: $currentCount');
+          
+          transaction.update(userDocRef, {
+            'participatedExperiments': FieldValue.increment(1),
+          });
+        }
       });
-    } catch (e) {
+      
+      debugPrint('Successfully joined experiment: $experimentId');
+    } catch (e, stackTrace) {
       debugPrint('Error joining experiment: $e');
-      throw Exception('実験への参加に失敗しました');
+      debugPrint('Stack trace: $stackTrace');
+      
+      if (e.toString().contains('すでに')) {
+        throw Exception('すでにこの実験に参加しています');
+      } else if (e.toString().contains('NOT_FOUND')) {
+        throw Exception('ユーザー情報が見つかりません。再度ログインしてください。');
+      } else if (e.toString().contains('permission')) {
+        throw Exception('権限がありません。ログインし直してください。');
+      }
+      
+      // エラーメッセージをそのまま伝える
+      throw e;
     }
   }
 
   /// 実験から離脱
   Future<void> leaveExperiment(String experimentId, String userId) async {
     try {
-      await _firestore.collection('experiments').doc(experimentId).update({
-        'participants': FieldValue.arrayRemove([userId]),
+      await _firestore.runTransaction((transaction) async {
+        final experimentDoc = await transaction.get(
+          _firestore.collection('experiments').doc(experimentId),
+        );
+        
+        if (!experimentDoc.exists) {
+          throw Exception('実験が見つかりません');
+        }
+        
+        // 参加者から削除
+        transaction.update(experimentDoc.reference, {
+          'participants': FieldValue.arrayRemove([userId]),
+        });
+        
+        // ユーザーの参加実験数を減らす
+        final userDoc = _firestore.collection('users').doc(userId);
+        transaction.update(userDoc, {
+          'participatedExperiments': FieldValue.increment(-1),
+        });
       });
     } catch (e) {
       debugPrint('Error leaving experiment: $e');
       throw Exception('実験からの離脱に失敗しました');
+    }
+  }
+  
+  /// ユーザーが特定の実験に参加しているかチェック
+  Future<bool> isUserParticipating(String experimentId, String userId) async {
+    try {
+      final doc = await _firestore.collection('experiments').doc(experimentId).get();
+      if (!doc.exists) return false;
+      
+      final participants = List<String>.from(doc.data()?['participants'] ?? []);
+      return participants.contains(userId);
+    } catch (e) {
+      debugPrint('Error checking participation: $e');
+      return false;
     }
   }
 

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../services/auth_service.dart';  // Firebase使用時はこちらを有効化
 // import '../services/demo_auth_service.dart';  // デモモード用
 import 'navigation_screen.dart';
+import 'email_verification_screen.dart';
 
 /// ログイン画面
 /// 早稲田大学メールアドレス（@waseda.jp）でのみログイン・新規登録が可能
@@ -22,6 +23,10 @@ class _LoginScreenState extends State<LoginScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _nameController = TextEditingController();
+  final _ageController = TextEditingController();
+  
+  // 性別選択
+  String? _selectedGender;
   
   // 状態管理用の変数
   bool _isLogin = true; // true: ログイン画面, false: 新規登録画面
@@ -34,6 +39,7 @@ class _LoginScreenState extends State<LoginScreen> {
     _emailController.dispose();
     _passwordController.dispose();
     _nameController.dispose();
+    _ageController.dispose();
     super.dispose();
   }
 
@@ -51,20 +57,38 @@ class _LoginScreenState extends State<LoginScreen> {
     setState(() => _isLoading = false);
 
     if (result == null && mounted) {
-      // ログイン成功：ナビゲーション画面へ遷移
-      Navigator.pushReplacement(
-        context,
-        PageRouteBuilder(
-          pageBuilder: (context, animation, secondaryAnimation) => const NavigationScreen(),
-          transitionDuration: const Duration(milliseconds: 300),
-          transitionsBuilder: (context, animation, secondaryAnimation, child) {
-            return FadeTransition(
-              opacity: animation,
-              child: child,
-            );
-          },
-        ),
-      );
+      // ログイン成功：メール認証状態をチェック
+      if (!_authService.isEmailVerified) {
+        // メール未認証の場合は認証画面へ
+        Navigator.pushReplacement(
+          context,
+          PageRouteBuilder(
+            pageBuilder: (context, animation, secondaryAnimation) => const EmailVerificationScreen(),
+            transitionDuration: const Duration(milliseconds: 300),
+            transitionsBuilder: (context, animation, secondaryAnimation, child) {
+              return FadeTransition(
+                opacity: animation,
+                child: child,
+              );
+            },
+          ),
+        );
+      } else {
+        // メール認証済みの場合はナビゲーション画面へ
+        Navigator.pushReplacement(
+          context,
+          PageRouteBuilder(
+            pageBuilder: (context, animation, secondaryAnimation) => const NavigationScreen(),
+            transitionDuration: const Duration(milliseconds: 300),
+            transitionsBuilder: (context, animation, secondaryAnimation, child) {
+              return FadeTransition(
+                opacity: animation,
+                child: child,
+              );
+            },
+          ),
+        );
+      }
     } else if (result != null && mounted) {
       // エラー表示
       ScaffoldMessenger.of(context).showSnackBar(
@@ -86,15 +110,34 @@ class _LoginScreenState extends State<LoginScreen> {
       email: _emailController.text.trim(),
       password: _passwordController.text,
       name: _nameController.text.trim(),
+      gender: _selectedGender,
+      age: int.tryParse(_ageController.text),
     );
 
     setState(() => _isLoading = false);
 
     if (result == null && mounted) {
-      // 登録成功：ナビゲーション画面へ遷移
+      // 登録成功：メール認証画面へ遷移
       Navigator.pushReplacement(
         context,
-        MaterialPageRoute(builder: (context) => const NavigationScreen()),
+        PageRouteBuilder(
+          pageBuilder: (context, animation, secondaryAnimation) => const EmailVerificationScreen(),
+          transitionDuration: const Duration(milliseconds: 300),
+          transitionsBuilder: (context, animation, secondaryAnimation, child) {
+            return FadeTransition(
+              opacity: animation,
+              child: child,
+            );
+          },
+        ),
+      );
+      
+      // 成功メッセージを表示
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('アカウントを作成しました。メールを確認してください。'),
+          backgroundColor: Colors.green,
+        ),
       );
     } else if (result != null && mounted) {
       // エラー表示
@@ -272,6 +315,58 @@ class _LoginScreenState extends State<LoginScreen> {
                           validator: (value) {
                             if (value == null || value.trim().isEmpty) {
                               return '名前を入力してください';
+                            }
+                            return null;
+                          },
+                        ),
+                        const SizedBox(height: 16),
+                        
+                        // 性別選択
+                        DropdownButtonFormField<String>(
+                          value: _selectedGender,
+                          decoration: const InputDecoration(
+                            labelText: '性別',
+                            prefixIcon: Icon(Icons.wc),
+                            border: OutlineInputBorder(),
+                          ),
+                          items: const [
+                            DropdownMenuItem(value: '男性', child: Text('男性')),
+                            DropdownMenuItem(value: '女性', child: Text('女性')),
+                            DropdownMenuItem(value: 'その他', child: Text('その他')),
+                            DropdownMenuItem(value: '回答しない', child: Text('回答しない')),
+                          ],
+                          onChanged: _isLoading ? null : (value) {
+                            setState(() {
+                              _selectedGender = value;
+                            });
+                          },
+                          validator: (value) {
+                            if (value == null || value.isEmpty) {
+                              return '性別を選択してください';
+                            }
+                            return null;
+                          },
+                        ),
+                        const SizedBox(height: 16),
+                        
+                        // 年齢フィールド
+                        TextFormField(
+                          controller: _ageController,
+                          enabled: !_isLoading,
+                          keyboardType: TextInputType.number,
+                          decoration: const InputDecoration(
+                            labelText: '年齢',
+                            hintText: '20',
+                            prefixIcon: Icon(Icons.cake),
+                            border: OutlineInputBorder(),
+                          ),
+                          validator: (value) {
+                            if (value == null || value.trim().isEmpty) {
+                              return '年齢を入力してください';
+                            }
+                            final age = int.tryParse(value);
+                            if (age == null || age < 18 || age > 100) {
+                              return '18歳以上100歳以下で入力してください';
                             }
                             return null;
                           },

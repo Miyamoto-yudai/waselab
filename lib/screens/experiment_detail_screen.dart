@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:intl/intl.dart';
 import '../models/experiment.dart';
 import '../models/experiment_slot.dart';
 import '../models/experiment_reservation.dart';
 import '../services/reservation_service.dart';
+import '../services/experiment_service.dart';
 import '../widgets/experiment_calendar_view.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../services/message_service.dart';
@@ -31,7 +33,32 @@ class _ExperimentDetailScreenState extends State<ExperimentDetailScreen> {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final MessageService _messageService = MessageService();
   final AuthService _authService = AuthService();
+  final ExperimentService _experimentService = ExperimentService();
   bool _showCalendar = false;
+  bool _isLoading = false;
+  bool _isParticipating = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _checkParticipation();
+  }
+
+  /// ユーザーが既に参加しているかチェック
+  Future<void> _checkParticipation() async {
+    final user = _auth.currentUser;
+    if (user != null) {
+      final participating = await _experimentService.isUserParticipating(
+        widget.experiment.id,
+        user.uid,
+      );
+      if (mounted) {
+        setState(() {
+          _isParticipating = participating;
+        });
+      }
+    }
+  }
 
   /// 実験種別のアイコンを取得
   IconData _getTypeIcon(ExperimentType type) {
@@ -205,13 +232,101 @@ class _ExperimentDetailScreenState extends State<ExperimentDetailScreen> {
 
   /// 直接応募（固定日時の場合）
   Future<void> _handleDirectApplication() async {
-    // デモ版では実装しない
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('応募機能は開発中です'),
-        backgroundColor: Colors.orange,
-      ),
-    );
+    try {
+      final user = _auth.currentUser;
+      if (user == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('ログインが必要です'),
+            backgroundColor: Colors.orange,
+          ),
+        );
+        return;
+      }
+
+      // 確認ダイアログを表示
+      final confirmed = await showDialog<bool>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('実験への参加確認'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('「${widget.experiment.title}」に参加申請しますか？'),
+              const SizedBox(height: 16),
+              if (widget.experiment.experimentDate != null) ...[
+                const Text('実験日時:', style: TextStyle(fontWeight: FontWeight.bold)),
+                Text(DateFormat('yyyy年MM月dd日 HH:mm').format(widget.experiment.experimentDate!)),
+                const SizedBox(height: 8),
+              ],
+              if (widget.experiment.reward != null && widget.experiment.reward! > 0) ...[
+                const Text('謝礼:', style: TextStyle(fontWeight: FontWeight.bold)),
+                Text('${widget.experiment.reward}円'),
+              ],
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('キャンセル'),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text('参加する'),
+            ),
+          ],
+        ),
+      );
+
+      if (confirmed != true) return;
+
+      // 参加申請処理
+      setState(() => _isLoading = true);
+      
+      final experimentService = ExperimentService();
+      await experimentService.joinExperiment(widget.experiment.id, user.uid);
+      
+      setState(() {
+        _isLoading = false;
+        _isParticipating = true;
+      });
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('実験への参加申請が完了しました'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    } catch (e) {
+      debugPrint('参加申請エラー: $e');
+      setState(() => _isLoading = false);
+      
+      if (mounted) {
+        String errorMessage = '参加申請に失敗しました';
+        
+        if (e.toString().contains('すでに')) {
+          errorMessage = 'すでにこの実験に参加しています';
+        } else if (e.toString().contains('権限')) {
+          errorMessage = '権限がありません。ログインし直してください';
+        } else if (e.toString().contains('見つかりません')) {
+          errorMessage = e.toString().replaceAll('Exception: ', '');
+        } else {
+          // 詳細なエラーメッセージを表示
+          errorMessage = e.toString().replaceAll('Exception: ', '');
+        }
+        
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(errorMessage),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 5),
+          ),
+        );
+      }
+    }
   }
 
   /// 質問するボタンの処理
@@ -703,44 +818,58 @@ class _ExperimentDetailScreenState extends State<ExperimentDetailScreen> {
             const SizedBox(height: 24),
 
             // 応募ボタン
-            SizedBox(
-              width: double.infinity,
-              height: 48,
-              child: ElevatedButton.icon(
-                onPressed: widget.experiment.allowFlexibleSchedule && !_showCalendar
-                  ? () {
-                      setState(() {
-                        _showCalendar = true;
-                      });
-                      // カレンダーセクションまでスクロール
-                      Future.delayed(const Duration(milliseconds: 300), () {
-                        Scrollable.ensureVisible(
-                          context,
-                          duration: const Duration(milliseconds: 500),
-                          curve: Curves.easeInOut,
-                        );
-                      });
-                    }
-                  : !widget.experiment.allowFlexibleSchedule
-                    ? () => _handleDirectApplication()
-                    : null,
-                icon: Icon(
-                  widget.experiment.allowFlexibleSchedule
-                    ? Icons.calendar_today
-                    : Icons.send,
-                ),
-                label: Text(
-                  widget.experiment.allowFlexibleSchedule
-                    ? '日時を選択して予約'
-                    : 'この実験に応募する',
-                ),
-                style: ElevatedButton.styleFrom(
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
+            if (!widget.isMyExperiment) // 自分の実験でない場合のみ表示
+              SizedBox(
+                width: double.infinity,
+                height: 48,
+                child: ElevatedButton.icon(
+                  onPressed: _isParticipating || _isLoading
+                    ? null // 既に参加している場合は無効化
+                    : widget.experiment.allowFlexibleSchedule && !_showCalendar
+                      ? () {
+                          setState(() {
+                            _showCalendar = true;
+                          });
+                          // カレンダーセクションまでスクロール
+                          Future.delayed(const Duration(milliseconds: 300), () {
+                            Scrollable.ensureVisible(
+                              context,
+                              duration: const Duration(milliseconds: 500),
+                              curve: Curves.easeInOut,
+                            );
+                          });
+                        }
+                      : !widget.experiment.allowFlexibleSchedule
+                        ? () => _handleDirectApplication()
+                        : null,
+                  icon: _isLoading
+                    ? const SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : Icon(
+                        _isParticipating
+                          ? Icons.check_circle
+                          : widget.experiment.allowFlexibleSchedule
+                            ? Icons.calendar_today
+                            : Icons.send,
+                      ),
+                  label: Text(
+                    _isParticipating
+                      ? '参加申請済み'
+                      : widget.experiment.allowFlexibleSchedule
+                        ? '日時を選択して予約'
+                        : 'この実験に参加する',
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: _isParticipating ? Colors.grey : null,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
                   ),
                 ),
               ),
-            ),
             const SizedBox(height: 16),
           ],
         ),

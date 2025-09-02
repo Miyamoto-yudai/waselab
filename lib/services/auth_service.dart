@@ -37,6 +37,8 @@ class AuthService {
     required String email,
     required String password,
     required String name,
+    String? gender,
+    int? age,
   }) async {
     try {
       // 早稲田大学のメールアドレスかチェック
@@ -54,6 +56,9 @@ class AuthService {
           uid: userCredential.user!.uid,
           email: email,
           name: name,
+          emailVerified: false, // 初期状態は未認証
+          gender: gender,
+          age: age,
         );
 
         await _firestore.collection('users')
@@ -62,6 +67,9 @@ class AuthService {
 
         // 表示名を設定
         await userCredential.user!.updateDisplayName(name);
+        
+        // メール認証を送信
+        await sendEmailVerification();
       }
 
       return null; // 成功
@@ -224,4 +232,59 @@ class AuthService {
     
     return AppUser.fromFirestore(doc);
   }
+
+  /// メール認証を送信
+  Future<String?> sendEmailVerification() async {
+    try {
+      final user = currentUser;
+      if (user == null) {
+        return 'ユーザーが見つかりません';
+      }
+      
+      if (user.emailVerified) {
+        return 'メールアドレスは既に認証済みです';
+      }
+      
+      await user.sendEmailVerification();
+      return null; // 成功
+    } on FirebaseAuthException catch (e) {
+      switch (e.code) {
+        case 'too-many-requests':
+          return 'リクエストが多すぎます。しばらく待ってから再試行してください';
+        default:
+          return 'エラーが発生しました: ${e.message}';
+      }
+    } catch (e) {
+      return 'エラーが発生しました: $e';
+    }
+  }
+
+  /// メール認証状態をチェック
+  Future<bool> checkEmailVerification() async {
+    try {
+      final user = currentUser;
+      if (user == null) return false;
+      
+      // 最新の認証状態を取得
+      await user.reload();
+      final refreshedUser = _auth.currentUser;
+      
+      if (refreshedUser != null && refreshedUser.emailVerified) {
+        // Firestoreのユーザー情報を更新
+        await _firestore.collection('users').doc(refreshedUser.uid).update({
+          'emailVerified': true,
+          'emailVerifiedAt': FieldValue.serverTimestamp(),
+        });
+        return true;
+      }
+      
+      return false;
+    } catch (e) {
+      print('メール認証状態のチェックエラー: $e');
+      return false;
+    }
+  }
+
+  /// メール認証状態を取得
+  bool get isEmailVerified => currentUser?.emailVerified ?? false;
 }

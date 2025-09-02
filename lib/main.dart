@@ -4,6 +4,7 @@ import 'firebase_options.dart';
 import 'services/auth_service.dart';
 import 'screens/login_screen.dart';
 import 'screens/navigation_screen.dart';
+import 'screens/email_verification_screen.dart';
 import 'shared/app_wrapper.dart';
 
 /// アプリのエントリーポイント
@@ -176,8 +177,14 @@ class _AuthWrapperState extends State<AuthWrapper> {
         
         // 認証状態に応じて画面を表示
         if (snapshot.hasData && snapshot.data != null) {
-          // ログイン済み：ナビゲーション画面を表示
-          return const NavigationScreen();
+          // ログイン済み
+          if (!authService.isEmailVerified) {
+            // メール未認証の場合は認証画面を表示
+            return const EmailVerificationScreen();
+          } else {
+            // メール認証済みの場合はナビゲーション画面を表示
+            return const NavigationScreen();
+          }
         } else {
           // 未ログイン：ログイン画面を表示
           return const LoginScreen();

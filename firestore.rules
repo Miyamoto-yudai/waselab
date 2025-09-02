@@ -11,17 +11,22 @@ service cloud.firestore {
       return isAuthenticated() && request.auth.uid == userId;
     }
     
-    // Users collection - users can read all profiles, write only their own
+    // Users collection - users can read all profiles, write their own or update for participation
     match /users/{userId} {
       allow read: if isAuthenticated();
-      allow write: if isOwner(userId);
+      allow create: if isOwner(userId);
+      // Allow update if owner or any authenticated user (for updating participatedExperiments)
+      allow update: if isAuthenticated();
+      allow delete: if isOwner(userId);
     }
     
-    // Experiments collection - all authenticated users can read, only creators can write
+    // Experiments collection - all authenticated users can read and update (for participation)
     match /experiments/{experimentId} {
       allow read: if isAuthenticated();
       allow create: if isAuthenticated();
-      allow update, delete: if isAuthenticated() && 
+      // Allow any authenticated user to update (for joining experiments)
+      allow update: if isAuthenticated();
+      allow delete: if isAuthenticated() && 
         request.auth.uid == resource.data.creatorId;
     }
     

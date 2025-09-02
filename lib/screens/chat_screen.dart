@@ -267,13 +267,51 @@ class _ChatScreenState extends State<ChatScreen> {
                 final messages = snapshot.data ?? [];
 
                 if (messages.isEmpty) {
-                  return const Center(
-                    child: Text(
-                      'メッセージを開始しましょう',
-                      style: TextStyle(
-                        color: Colors.grey,
-                        fontSize: 16,
-                      ),
+                  return Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.chat_bubble_outline,
+                          size: 64,
+                          color: Colors.grey[400],
+                        ),
+                        const SizedBox(height: 16),
+                        const Text(
+                          'メッセージを開始しましょう',
+                          style: TextStyle(
+                            color: Colors.grey,
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                          decoration: BoxDecoration(
+                            color: Colors.blue.withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                Icons.lightbulb_outline,
+                                size: 16,
+                                color: Colors.blue[700],
+                              ),
+                              const SizedBox(width: 4),
+                              Text(
+                                '下のテンプレートボタンから始められます',
+                                style: TextStyle(
+                                  color: Colors.blue[700],
+                                  fontSize: 14,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
                     ),
                   );
                 }

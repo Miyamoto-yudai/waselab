@@ -19,6 +19,10 @@ class AppUser {
   final int totalEarnings;         // 今までに稼いだ総額（円）
   final int monthlyEarnings;       // 今月稼いだ額（円）
   final DateTime? lastEarningsUpdate; // 収益最終更新日
+  final bool emailVerified;        // メール認証済みかどうか
+  final DateTime? emailVerifiedAt; // メール認証完了日時
+  final String? gender;             // 性別
+  final int? age;                   // 年齢
 
   AppUser({
     required this.uid,
@@ -37,6 +41,10 @@ class AppUser {
     this.totalEarnings = 0,
     this.monthlyEarnings = 0,
     this.lastEarningsUpdate,
+    this.emailVerified = false,
+    this.emailVerifiedAt,
+    this.gender,
+    this.age,
   });
 
   /// Firestoreのドキュメントからユーザーを作成
@@ -60,6 +68,10 @@ class AppUser {
       totalEarnings: data['totalEarnings'] ?? 0,
       monthlyEarnings: data['monthlyEarnings'] ?? 0,
       lastEarningsUpdate: (data['lastEarningsUpdate'] as Timestamp?)?.toDate(),
+      emailVerified: data['emailVerified'] ?? false,
+      emailVerifiedAt: (data['emailVerifiedAt'] as Timestamp?)?.toDate(),
+      gender: data['gender'],
+      age: data['age'],
     );
   }
 
@@ -84,6 +96,12 @@ class AppUser {
       'lastEarningsUpdate': lastEarningsUpdate != null 
         ? Timestamp.fromDate(lastEarningsUpdate!) 
         : null,
+      'emailVerified': emailVerified,
+      'emailVerifiedAt': emailVerifiedAt != null
+        ? Timestamp.fromDate(emailVerifiedAt!)
+        : null,
+      'gender': gender,
+      'age': age,
     };
   }
 
@@ -100,6 +118,9 @@ class AppUser {
     required String email,
     required String name,
     String? photoUrl,
+    bool emailVerified = false,
+    String? gender,
+    int? age,
   }) {
     final isWaseda = isWasedaEmail(email);
     
@@ -111,6 +132,9 @@ class AppUser {
       canCreateExperiment: isWaseda, // 早稲田ユーザーのみ実験作成可能
       createdAt: DateTime.now(),
       photoUrl: photoUrl,
+      emailVerified: emailVerified,
+      gender: gender,
+      age: age,
     );
   }
 }

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'home_screen.dart';
 import 'my_page_screen.dart';
 import 'messages_screen.dart';
+import 'settings_screen.dart';
 import '../services/message_service.dart';
 import '../services/auth_service.dart';
 
@@ -19,15 +20,16 @@ class _NavigationScreenState extends State<NavigationScreen> {
   int _unreadCount = 0;
   int _activityNotifications = 0; // 活動に関する通知数
 
-  final List<Widget> _screens = [
-    const HomeScreen(),
-    const MessagesScreen(),
-    const MyPageScreen(),
-  ];
+  late final List<Widget> _screens;
 
   @override
   void initState() {
     super.initState();
+    _screens = [
+      const HomeScreen(),
+      const MessagesScreen(),
+      MyPageScreen(key: UniqueKey()), // UniqueKeyで再構築を強制
+    ];
     _loadUnreadCount();
     _loadActivityNotifications();
   }
@@ -54,6 +56,20 @@ class _NavigationScreenState extends State<NavigationScreen> {
     }
   }
 
+  void _openSettings() async {
+    final result = await Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => const SettingsScreen()),
+    );
+    
+    // 設定画面から「お問い合わせ」を開く指示があった場合
+    if (result == 'open_support' && mounted) {
+      setState(() {
+        _selectedIndex = 1; // メッセージ画面に切り替え
+      });
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final screenWidth = MediaQuery.of(context).size.width;
@@ -61,6 +77,15 @@ class _NavigationScreenState extends State<NavigationScreen> {
 
     if (isSmallScreen) {
       return Scaffold(
+        appBar: _selectedIndex == 0 ? AppBar(
+          title: const Text('わせラボ'),
+          actions: [
+            IconButton(
+              icon: const Icon(Icons.settings),
+              onPressed: _openSettings,
+            ),
+          ],
+        ) : null,
         body: IndexedStack(
           index: _selectedIndex,
           children: _screens,
@@ -71,8 +96,9 @@ class _NavigationScreenState extends State<NavigationScreen> {
             setState(() {
               _selectedIndex = index;
               if (index == 2) {
-                // マイページに遷移したら通知をクリア
+                // マイページに遷移したら通知をクリアし、画面を再構築
                 _activityNotifications = 0;
+                _screens[2] = MyPageScreen(key: UniqueKey());
               }
             });
             if (index == 1) {
