@@ -201,6 +201,9 @@ class AuthService {
         return '早稲田大学のメールアドレスのみ利用可能です';
       }
 
+      // アプリケーションの言語設定を日本語に設定
+      await _auth.setLanguageCode('ja');
+      
       await _auth.sendPasswordResetEmail(email: email);
       return null; // 成功
     } on FirebaseAuthException catch (e) {
@@ -247,16 +250,13 @@ class AuthService {
         return 'メールアドレスは既に認証済みです';
       }
       
-      // カスタムActionCodeSettingsを設定
-      final actionCodeSettings = ActionCodeSettings(
-        url: 'https://experiment-cooperation-app.firebaseapp.com',
-        handleCodeInApp: true,
-        androidPackageName: 'com.example.experiment_cooperation_app',
-        androidInstallApp: true,
-        androidMinimumVersion: '1',
-      );
+      // アプリケーションの言語設定を日本語に設定
+      await _auth.setLanguageCode('ja');
       
-      await user.sendEmailVerification(actionCodeSettings);
+      // デフォルトの設定でメール認証を送信
+      // Firebase Consoleで設定したテンプレートが使用される
+      await user.sendEmailVerification();
+      
       return null; // 成功
     } on FirebaseAuthException catch (e) {
       switch (e.code) {
