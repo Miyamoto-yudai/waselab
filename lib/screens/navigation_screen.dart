@@ -105,15 +105,6 @@ class _NavigationScreenState extends State<NavigationScreen> {
 
     if (isSmallScreen) {
       return Scaffold(
-        appBar: _selectedIndex == 0 ? AppBar(
-          title: const Text('わせラボ'),
-          actions: [
-            IconButton(
-              icon: const Icon(Icons.settings),
-              onPressed: _openSettings,
-            ),
-          ],
-        ) : null,
         body: IndexedStack(
           index: _selectedIndex,
           children: _screens,

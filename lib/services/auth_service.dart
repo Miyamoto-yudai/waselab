@@ -247,7 +247,16 @@ class AuthService {
         return 'メールアドレスは既に認証済みです';
       }
       
-      await user.sendEmailVerification();
+      // カスタムActionCodeSettingsを設定
+      final actionCodeSettings = ActionCodeSettings(
+        url: 'https://experiment-cooperation-app.firebaseapp.com',
+        handleCodeInApp: true,
+        androidPackageName: 'com.example.experiment_cooperation_app',
+        androidInstallApp: true,
+        androidMinimumVersion: '1',
+      );
+      
+      await user.sendEmailVerification(actionCodeSettings);
       return null; // 成功
     } on FirebaseAuthException catch (e) {
       switch (e.code) {

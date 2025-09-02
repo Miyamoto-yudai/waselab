@@ -9,6 +9,7 @@ import 'create_experiment_screen.dart';
 import 'login_screen.dart';
 import 'my_page_screen.dart';
 import 'messages_screen.dart';
+import 'settings_screen.dart';
 
 /// ホーム画面（実験一覧画面）
 /// Firestoreから実験データを取得して一覧表示する
@@ -216,6 +217,16 @@ class _HomeScreenState extends State<HomeScreen> {
     });
   }
 
+  /// 設定画面へ遷移
+  void _navigateToSettings() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => const SettingsScreen(),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
@@ -242,6 +253,7 @@ class _HomeScreenState extends State<HomeScreen> {
       unreadMessages: _unreadMessages,
       onNavigateToMyPage: _navigateToMyPage,
       onNavigateToMessages: _navigateToMessages,
+      onNavigateToSettings: _navigateToSettings,
     );
   }
 }

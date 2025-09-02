@@ -16,6 +16,7 @@ class HomeScreenBase extends StatefulWidget {
   final int unreadMessages;
   final VoidCallback? onNavigateToMyPage;
   final VoidCallback? onNavigateToMessages;
+  final VoidCallback? onNavigateToSettings;
   
   const HomeScreenBase({
     super.key,
@@ -31,6 +32,7 @@ class HomeScreenBase extends StatefulWidget {
     this.unreadMessages = 0,
     this.onNavigateToMyPage,
     this.onNavigateToMessages,
+    this.onNavigateToSettings,
   });
 
   @override
@@ -434,11 +436,12 @@ class _HomeScreenBaseState extends State<HomeScreenBase> {
                     ),
                   ),
                 ],
-                IconButton(
-                  icon: const Icon(Icons.logout, size: 24),
-                  onPressed: widget.onLogout,
-                  padding: const EdgeInsets.all(12),
-                ),
+                if (widget.onNavigateToSettings != null)
+                  IconButton(
+                    icon: const Icon(Icons.settings, size: 24),
+                    onPressed: widget.onNavigateToSettings,
+                    padding: const EdgeInsets.all(12),
+                  ),
               ],
             ),
           ),
