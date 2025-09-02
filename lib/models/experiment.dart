@@ -15,10 +15,18 @@ enum ExperimentType {
 enum ExperimentStatus {
   recruiting('募集中'),
   ongoing('進行中'),
+  waitingEvaluation('評価待ち'),
   completed('完了');
 
   final String label;
   const ExperimentStatus(this.label);
+
+  static ExperimentStatus fromString(String value) {
+    return ExperimentStatus.values.firstWhere(
+      (e) => e.name == value,
+      orElse: () => ExperimentStatus.recruiting,
+    );
+  }
 }
 
 /// 実験データモデル
@@ -48,6 +56,10 @@ class Experiment {
   final DateTime? fixedExperimentDate; // 固定日時の場合の実施日
   final Map<String, int>? fixedExperimentTime; // 固定日時の場合の実施時刻
   final int reservationDeadlineDays; // 予約締切日数（デフォルト1日前）
+  final ExperimentStatus status; // 実験のステータス
+  final DateTime? completedAt; // 完了日時
+  final Map<String, Map<String, dynamic>>? evaluations; // 評価状態 {userId: {evaluated: bool, evaluationType: string}}
+  final DateTime? actualStartDate; // 実際の実験開始日
   
   // 旧フィールドとの互換性のため
   DateTime? get experimentDate => recruitmentStartDate;
@@ -79,6 +91,10 @@ class Experiment {
     this.fixedExperimentDate,
     this.fixedExperimentTime,
     this.reservationDeadlineDays = 1,
+    this.status = ExperimentStatus.recruiting,
+    this.completedAt,
+    this.evaluations,
+    this.actualStartDate,
   });
 
   /// FirestoreのドキュメントからExperimentを作成
@@ -120,6 +136,14 @@ class Experiment {
           ? Map<String, int>.from(data['fixedExperimentTime'] as Map)
           : null,
       reservationDeadlineDays: data['reservationDeadlineDays'] ?? 1,
+      status: data['status'] != null 
+        ? ExperimentStatus.fromString(data['status'])
+        : ExperimentStatus.recruiting,
+      completedAt: (data['completedAt'] as Timestamp?)?.toDate(),
+      evaluations: data['evaluations'] != null
+        ? Map<String, Map<String, dynamic>>.from(data['evaluations'] as Map)
+        : null,
+      actualStartDate: (data['actualStartDate'] as Timestamp?)?.toDate(),
     );
   }
 
@@ -160,6 +184,44 @@ class Experiment {
         : null,
       'fixedExperimentTime': fixedExperimentTime,
       'reservationDeadlineDays': reservationDeadlineDays,
+      'status': status.name,
+      'completedAt': completedAt != null
+        ? Timestamp.fromDate(completedAt!)
+        : null,
+      'evaluations': evaluations,
+      'actualStartDate': actualStartDate != null
+        ? Timestamp.fromDate(actualStartDate!)
+        : null,
     };
+  }
+
+  /// 実験が評価可能かどうかをチェック
+  bool canEvaluate(String userId) {
+    // ステータスが評価待ちまたは完了済みで、参加者である場合
+    if (status != ExperimentStatus.waitingEvaluation && 
+        status != ExperimentStatus.completed) {
+      return false;
+    }
+    
+    // 実験者または参加者である場合
+    return creatorId == userId || participants.contains(userId);
+  }
+
+  /// ユーザーが既に評価済みかどうかをチェック
+  bool hasEvaluated(String userId) {
+    if (evaluations == null) return false;
+    final userEval = evaluations![userId];
+    return userEval != null && userEval['evaluated'] == true;
+  }
+
+  /// 実験が自動完了の対象かどうかをチェック（1週間経過）
+  bool shouldAutoComplete() {
+    if (status != ExperimentStatus.waitingEvaluation) return false;
+    
+    final endDate = experimentPeriodEnd ?? actualStartDate;
+    if (endDate == null) return false;
+    
+    final oneWeekLater = endDate.add(const Duration(days: 7));
+    return DateTime.now().isAfter(oneWeekLater);
   }
 }

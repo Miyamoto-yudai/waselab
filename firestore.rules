@@ -70,6 +70,25 @@ service cloud.firestore {
       allow delete: if false; // Messages should not be deleted
     }
     
+    // Evaluations collection - 実験評価
+    match /evaluations/{evaluationId} {
+      // 評価の読み取り - 認証済みユーザーのみ
+      allow read: if isAuthenticated();
+      
+      // 評価の作成 - 実験の参加者または作成者のみ
+      allow create: if isAuthenticated() && 
+        request.auth.uid == request.resource.data.evaluatorId &&
+        // 自分自身を評価できない
+        request.resource.data.evaluatorId != request.resource.data.evaluatedUserId &&
+        // 必須フィールドの存在チェック
+        request.resource.data.experimentId != null &&
+        request.resource.data.type != null &&
+        request.resource.data.evaluatorRole != null;
+      
+      // 評価の更新・削除は不可（一度評価したら変更不可）
+      allow update, delete: if false;
+    }
+    
     // Allow reading and writing to any other collections for authenticated users (for future collections)
     match /{document=**} {
       allow read, write: if false; // Default deny for any other collections

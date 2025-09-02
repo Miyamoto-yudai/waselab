@@ -218,4 +218,89 @@ class ExperimentService {
             .map((doc) => Experiment.fromFirestore(doc))
             .toList());
   }
+
+  /// 実験を開始（進行中状態に変更）
+  Future<void> startExperiment(String experimentId) async {
+    try {
+      await _firestore.collection('experiments').doc(experimentId).update({
+        'status': ExperimentStatus.ongoing.name,
+        'actualStartDate': Timestamp.fromDate(DateTime.now()),
+      });
+      
+      debugPrint('Started experiment: $experimentId');
+    } catch (e) {
+      debugPrint('Error starting experiment: $e');
+      throw Exception('実験の開始に失敗しました');
+    }
+  }
+
+  /// 実験を評価待ち状態に変更
+  Future<void> finishExperiment(String experimentId) async {
+    try {
+      await _firestore.collection('experiments').doc(experimentId).update({
+        'status': ExperimentStatus.waitingEvaluation.name,
+        'actualStartDate': Timestamp.fromDate(DateTime.now()),
+      });
+      debugPrint('Finished experiment and started evaluation: $experimentId');
+    } catch (e) {
+      debugPrint('Error finishing experiment: $e');
+      throw Exception('実験の終了処理に失敗しました');
+    }
+  }
+
+  /// 実験の現在のステータスを取得
+  Future<ExperimentStatus?> getExperimentStatus(String experimentId) async {
+    try {
+      final doc = await _firestore.collection('experiments').doc(experimentId).get();
+      if (!doc.exists) return null;
+      
+      final data = doc.data() as Map<String, dynamic>;
+      return data['status'] != null 
+        ? ExperimentStatus.fromString(data['status'])
+        : ExperimentStatus.recruiting;
+    } catch (e) {
+      debugPrint('Error getting experiment status: $e');
+      return null;
+    }
+  }
+
+  /// ユーザーが評価待ちの実験を取得
+  Future<List<Experiment>> getPendingEvaluations(String userId) async {
+    try {
+      // ユーザーが実験者として関わった実験
+      final createdQuery = await _firestore
+          .collection('experiments')
+          .where('creatorId', isEqualTo: userId)
+          .where('status', isEqualTo: ExperimentStatus.waitingEvaluation.name)
+          .get();
+      
+      // ユーザーが参加者として関わった実験
+      final participatedQuery = await _firestore
+          .collection('experiments')
+          .where('participants', arrayContains: userId)
+          .where('status', isEqualTo: ExperimentStatus.waitingEvaluation.name)
+          .get();
+      
+      final experiments = <Experiment>[];
+      
+      // 重複を除いて実験リストを作成
+      final experimentIds = <String>{};
+      
+      for (final doc in [...createdQuery.docs, ...participatedQuery.docs]) {
+        if (!experimentIds.contains(doc.id)) {
+          experimentIds.add(doc.id);
+          final experiment = Experiment.fromFirestore(doc);
+          // まだ評価していない実験のみを追加
+          if (!experiment.hasEvaluated(userId)) {
+            experiments.add(experiment);
+          }
+        }
+      }
+      
+      return experiments;
+    } catch (e) {
+      debugPrint('Error getting pending evaluations: $e');
+      return [];
+    }
+  }
 }

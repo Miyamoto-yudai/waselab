@@ -6,6 +6,7 @@ import '../models/app_user.dart';
 import '../models/experiment.dart';
 import 'login_screen.dart';
 import 'experiment_detail_screen.dart';
+import 'experiment_evaluation_screen.dart';
 import 'package:intl/intl.dart';
 
 class MyPageScreen extends StatefulWidget {
@@ -25,6 +26,7 @@ class _MyPageScreenState extends State<MyPageScreen> with SingleTickerProviderSt
   late TabController _tabController;
   List<Experiment> _participatedExperiments = [];
   List<Experiment> _createdExperiments = [];
+  List<Experiment> _pendingEvaluations = [];
 
   final TextEditingController _bioController = TextEditingController();
   final TextEditingController _departmentController = TextEditingController();
@@ -58,6 +60,7 @@ class _MyPageScreenState extends State<MyPageScreen> with SingleTickerProviderSt
         // 実験履歴を取得
         final participated = await _experimentService.getUserParticipatedExperiments(user.uid);
         final created = await _experimentService.getUserCreatedExperiments(user.uid);
+        final pendingEvals = await _experimentService.getPendingEvaluations(user.uid);
         
         if (mounted) {
           setState(() {
@@ -67,6 +70,7 @@ class _MyPageScreenState extends State<MyPageScreen> with SingleTickerProviderSt
             _gradeController.text = user.grade ?? '';
             _participatedExperiments = participated;
             _createdExperiments = created;
+            _pendingEvaluations = pendingEvals;
             _isLoading = false;
           });
         }
@@ -715,16 +719,33 @@ class _MyPageScreenState extends State<MyPageScreen> with SingleTickerProviderSt
           child: InkWell(
             borderRadius: BorderRadius.circular(12),
             onTap: () {
-              // 実験詳細画面に遷移
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => ExperimentDetailScreen(
-                    experiment: experiment,
-                    isMyExperiment: isMyExperiment,
+              // 評価待ちの場合は評価画面へ、そうでなければ詳細画面へ
+              if (experiment.status == ExperimentStatus.waitingEvaluation &&
+                  !experiment.hasEvaluated(_currentUser?.uid ?? '')) {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => ExperimentEvaluationScreen(
+                      experiment: experiment,
+                    ),
                   ),
-                ),
-              );
+                ).then((result) {
+                  // 評価完了後にデータを再読み込み
+                  if (result == true) {
+                    _loadUserData();
+                  }
+                });
+              } else {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => ExperimentDetailScreen(
+                      experiment: experiment,
+                      isMyExperiment: isMyExperiment,
+                    ),
+                  ),
+                );
+              }
             },
             child: Padding(
               padding: const EdgeInsets.all(12),
@@ -751,22 +772,8 @@ class _MyPageScreenState extends State<MyPageScreen> with SingleTickerProviderSt
                                 style: const TextStyle(fontWeight: FontWeight.bold),
                               ),
                             ),
-                            if (isMyExperiment)
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                                decoration: BoxDecoration(
-                                  color: const Color(0xFF8E1728).withValues(alpha: 0.1),
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                                child: const Text(
-                                  '募集中',
-                                  style: TextStyle(
-                                    fontSize: 11,
-                                    color: Color(0xFF8E1728),
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                              ),
+                            // ステータスバッジを表示
+                            _buildStatusBadge(experiment, isMyExperiment),
                           ],
                         ),
                         const SizedBox(height: 4),
@@ -848,6 +855,105 @@ class _MyPageScreenState extends State<MyPageScreen> with SingleTickerProviderSt
         );
       },
     );
+  }
+
+  Widget _buildStatusBadge(Experiment experiment, bool isMyExperiment) {
+    // 評価待ちの場合
+    if (experiment.status == ExperimentStatus.waitingEvaluation) {
+      final hasEvaluated = experiment.hasEvaluated(_currentUser?.uid ?? '');
+      if (!hasEvaluated) {
+        return Container(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+          decoration: BoxDecoration(
+            color: Colors.orange,
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: const Text(
+            '評価待ち',
+            style: TextStyle(
+              fontSize: 11,
+              color: Colors.white,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        );
+      } else {
+        return Container(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+          decoration: BoxDecoration(
+            color: Colors.green.withValues(alpha: 0.1),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: const Text(
+            '評価済み',
+            style: TextStyle(
+              fontSize: 11,
+              color: Colors.green,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        );
+      }
+    }
+    
+    // 完了済みの場合
+    if (experiment.status == ExperimentStatus.completed) {
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+        decoration: BoxDecoration(
+          color: Colors.grey.withValues(alpha: 0.1),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: const Text(
+          '完了',
+          style: TextStyle(
+            fontSize: 11,
+            color: Colors.grey,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+      );
+    }
+    
+    // 進行中の場合
+    if (experiment.status == ExperimentStatus.ongoing) {
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+        decoration: BoxDecoration(
+          color: Colors.blue.withValues(alpha: 0.1),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: const Text(
+          '進行中',
+          style: TextStyle(
+            fontSize: 11,
+            color: Colors.blue,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+      );
+    }
+    
+    // 募集中の場合（デフォルト）
+    if (isMyExperiment) {
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+        decoration: BoxDecoration(
+          color: const Color(0xFF8E1728).withValues(alpha: 0.1),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: const Text(
+          '募集中',
+          style: TextStyle(
+            fontSize: 11,
+            color: Color(0xFF8E1728),
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+      );
+    }
+    
+    return const SizedBox.shrink();
   }
 
   Color _getTypeColor(ExperimentType type) {
