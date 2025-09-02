@@ -5,6 +5,8 @@ import 'messages_screen.dart';
 import 'settings_screen.dart';
 import '../services/message_service.dart';
 import '../services/auth_service.dart';
+import '../services/experiment_service.dart';
+import '../services/user_service.dart';
 
 class NavigationScreen extends StatefulWidget {
   const NavigationScreen({super.key});
@@ -17,8 +19,10 @@ class _NavigationScreenState extends State<NavigationScreen> {
   int _selectedIndex = 0;
   final MessageService _messageService = MessageService();
   final AuthService _authService = AuthService();
+  final ExperimentService _experimentService = ExperimentService();
+  final UserService _userService = UserService();
   int _unreadCount = 0;
-  int _activityNotifications = 0; // 活動に関する通知数
+  int _pendingEvaluations = 0; // 未評価の実験数
 
   late final List<Widget> _screens;
 
@@ -31,7 +35,7 @@ class _NavigationScreenState extends State<NavigationScreen> {
       MyPageScreen(key: UniqueKey()), // UniqueKeyで再構築を強制
     ];
     _loadUnreadCount();
-    _loadActivityNotifications();
+    _loadPendingEvaluations();
   }
 
   Future<void> _loadUnreadCount() async {
@@ -46,13 +50,37 @@ class _NavigationScreenState extends State<NavigationScreen> {
     }
   }
 
-  Future<void> _loadActivityNotifications() async {
-    // TODO: 実際の通知数を取得するロジックを実装
-    // 例: 新しい参加申込み、実験日程の変更など
-    if (mounted) {
-      setState(() {
-        _activityNotifications = 2; // デモ用の固定値
-      });
+  Future<void> _loadPendingEvaluations() async {
+    try {
+      final user = await _authService.getCurrentAppUser();
+      if (user == null) return;
+
+      // 参加した実験を取得
+      final participatedExperiments = await _experimentService.getUserParticipatedExperiments(user.uid);
+      
+      // 作成した実験を取得
+      final createdExperiments = await _experimentService.getUserCreatedExperiments(user.uid);
+      
+      // 未評価の実験数をカウント
+      int count = 0;
+      for (final exp in participatedExperiments) {
+        if (!exp.hasEvaluated(user.uid)) {
+          count++;
+        }
+      }
+      for (final exp in createdExperiments) {
+        if (!exp.hasEvaluated(user.uid)) {
+          count++;
+        }
+      }
+      
+      if (mounted) {
+        setState(() {
+          _pendingEvaluations = count;
+        });
+      }
+    } catch (e) {
+      debugPrint('Error loading pending evaluations: $e');
     }
   }
 
@@ -96,9 +124,9 @@ class _NavigationScreenState extends State<NavigationScreen> {
             setState(() {
               _selectedIndex = index;
               if (index == 2) {
-                // マイページに遷移したら通知をクリアし、画面を再構築
-                _activityNotifications = 0;
+                // マイページに遷移したら画面を再構築して最新状態を表示
                 _screens[2] = MyPageScreen(key: UniqueKey());
+                _loadPendingEvaluations(); // 評価状態を更新
               }
             });
             if (index == 1) {
@@ -128,13 +156,15 @@ class _NavigationScreenState extends State<NavigationScreen> {
             ),
             NavigationDestination(
               icon: Badge(
-                label: Text('$_activityNotifications'),
-                isLabelVisible: _activityNotifications > 0,
+                label: Text('$_pendingEvaluations'),
+                backgroundColor: Colors.orange,
+                isLabelVisible: _pendingEvaluations > 0,
                 child: const Icon(Icons.person_outline),
               ),
               selectedIcon: Badge(
-                label: Text('$_activityNotifications'),
-                isLabelVisible: _activityNotifications > 0,
+                label: Text('$_pendingEvaluations'),
+                backgroundColor: Colors.orange,
+                isLabelVisible: _pendingEvaluations > 0,
                 child: const Icon(Icons.person, color: Color(0xFF8E1728)),
               ),
               label: 'マイページ',
@@ -152,8 +182,9 @@ class _NavigationScreenState extends State<NavigationScreen> {
                 setState(() {
                   _selectedIndex = index;
                   if (index == 2) {
-                    // マイページに遷移したら通知をクリア
-                    _activityNotifications = 0;
+                    // マイページに遷移したら画面を再構築
+                    _screens[2] = MyPageScreen(key: UniqueKey());
+                    _loadPendingEvaluations(); // 評価状態を更新
                   }
                 });
                 if (index == 1) {
@@ -184,13 +215,15 @@ class _NavigationScreenState extends State<NavigationScreen> {
                 ),
                 NavigationRailDestination(
                   icon: Badge(
-                    label: Text('$_activityNotifications'),
-                    isLabelVisible: _activityNotifications > 0,
+                    label: Text('$_pendingEvaluations'),
+                    backgroundColor: Colors.orange,
+                    isLabelVisible: _pendingEvaluations > 0,
                     child: const Icon(Icons.person_outline),
                   ),
                   selectedIcon: Badge(
-                    label: Text('$_activityNotifications'),
-                    isLabelVisible: _activityNotifications > 0,
+                    label: Text('$_pendingEvaluations'),
+                    backgroundColor: Colors.orange,
+                    isLabelVisible: _pendingEvaluations > 0,
                     child: const Icon(Icons.person, color: Color(0xFF8E1728)),
                   ),
                   label: const Text('マイページ'),

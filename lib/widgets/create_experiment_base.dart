@@ -36,6 +36,7 @@ class _CreateExperimentBaseState extends State<CreateExperimentBase> {
   final _maxParticipantsController = TextEditingController();
   final _labNameController = TextEditingController();
   final _reservationDeadlineController = TextEditingController(text: '1'); // 予約締切日数（デフォルト1日前）
+  final _surveyUrlController = TextEditingController(); // アンケートURL
   bool _isLabExperiment = true; // true: 研究室, false: 個人
   
   // 選択項目
@@ -69,6 +70,7 @@ class _CreateExperimentBaseState extends State<CreateExperimentBase> {
     _labNameController.dispose();
     _requirementController.dispose();
     _reservationDeadlineController.dispose();
+    _surveyUrlController.dispose();
     _pageController.dispose();
     super.dispose();
   }
@@ -243,6 +245,7 @@ class _CreateExperimentBaseState extends State<CreateExperimentBase> {
         ? {'hour': _fixedExperimentTime!.hour, 'minute': _fixedExperimentTime!.minute}
         : null,
       'reservationDeadlineDays': int.tryParse(_reservationDeadlineController.text) ?? 1,
+      'surveyUrl': _selectedType == ExperimentType.survey ? _surveyUrlController.text.trim() : null,
     };
     
     try {
@@ -307,6 +310,7 @@ class _CreateExperimentBaseState extends State<CreateExperimentBase> {
         if (_durationController.text.trim().isEmpty) {
           return false;
         }
+        // アンケートタイプの場合、URLは任意なので削除
         return true;
       case 2: // 日程設定
         if (_recruitmentStartDate == null || _recruitmentEndDate == null) {
@@ -819,6 +823,53 @@ class _CreateExperimentBaseState extends State<CreateExperimentBase> {
               return null;
             },
           ),
+          
+          // アンケートURLフィールド（アンケートタイプの場合のみ表示）
+          if (_selectedType == ExperimentType.survey) ...[
+            const SizedBox(height: 16),
+            TextFormField(
+              controller: _surveyUrlController,
+              decoration: const InputDecoration(
+                labelText: 'アンケートURL（任意）',
+                hintText: 'https://forms.google.com/...',
+                helperText: 'URLを設定しない場合は、参加者と個別チャットで詳細を共有してください',
+                border: OutlineInputBorder(),
+                prefixIcon: Icon(Icons.link),
+              ),
+              keyboardType: TextInputType.url,
+              onChanged: (_) => setState(() {}),
+              validator: (value) {
+                if (value != null && value.trim().isNotEmpty) {
+                  // URLが入力されている場合のみバリデーション
+                  if (!value.startsWith('http://') && !value.startsWith('https://')) {
+                    return '有効なURLを入力してください';
+                  }
+                }
+                return null;
+              },
+            ),
+            const SizedBox(height: 8),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.blue.shade50,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.blue.shade200),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.info_outline, size: 16, color: Colors.blue.shade700),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'URLを設定しない場合、参加者には個別チャットでアンケートの詳細をお送りください',
+                      style: TextStyle(fontSize: 12, color: Colors.blue.shade700),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
         ],
       ),
     );

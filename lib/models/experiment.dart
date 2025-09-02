@@ -60,6 +60,7 @@ class Experiment {
   final DateTime? completedAt; // 完了日時
   final Map<String, Map<String, dynamic>>? evaluations; // 評価状態 {userId: {evaluated: bool, evaluationType: string}}
   final DateTime? actualStartDate; // 実際の実験開始日
+  final String? surveyUrl; // アンケートURL（アンケートタイプの実験用）
   
   // 旧フィールドとの互換性のため
   DateTime? get experimentDate => recruitmentStartDate;
@@ -95,6 +96,7 @@ class Experiment {
     this.completedAt,
     this.evaluations,
     this.actualStartDate,
+    this.surveyUrl,
   });
 
   /// FirestoreのドキュメントからExperimentを作成
@@ -144,6 +146,7 @@ class Experiment {
         ? Map<String, Map<String, dynamic>>.from(data['evaluations'] as Map)
         : null,
       actualStartDate: (data['actualStartDate'] as Timestamp?)?.toDate(),
+      surveyUrl: data['surveyUrl'],
     );
   }
 
@@ -192,6 +195,7 @@ class Experiment {
       'actualStartDate': actualStartDate != null
         ? Timestamp.fromDate(actualStartDate!)
         : null,
+      'surveyUrl': surveyUrl,
     };
   }
 

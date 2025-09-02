@@ -286,18 +286,16 @@ class ExperimentService {
   /// ユーザーが評価待ちの実験を取得
   Future<List<Experiment>> getPendingEvaluations(String userId) async {
     try {
-      // ユーザーが実験者として関わった実験
+      // ユーザーが実験者として関わった実験（全てのステータス）
       final createdQuery = await _firestore
           .collection('experiments')
           .where('creatorId', isEqualTo: userId)
-          .where('status', isEqualTo: ExperimentStatus.waitingEvaluation.name)
           .get();
       
-      // ユーザーが参加者として関わった実験
+      // ユーザーが参加者として関わった実験（全てのステータス）
       final participatedQuery = await _firestore
           .collection('experiments')
           .where('participants', arrayContains: userId)
-          .where('status', isEqualTo: ExperimentStatus.waitingEvaluation.name)
           .get();
       
       final experiments = <Experiment>[];

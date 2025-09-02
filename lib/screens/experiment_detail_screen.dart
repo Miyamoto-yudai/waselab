@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../models/experiment.dart';
 import '../models/experiment_slot.dart';
 import '../models/experiment_reservation.dart';
@@ -172,6 +174,201 @@ class _ExperimentDetailScreenState extends State<ExperimentDetailScreen> {
     }
   }
 
+  /// URLなしアンケート参加完了ダイアログ
+  Future<void> _showNoUrlDialog() async {
+    await showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        title: const Row(
+          children: [
+            Icon(Icons.check_circle, color: Colors.green),
+            SizedBox(width: 8),
+            Text('参加完了'),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('アンケートへの参加申請が完了しました。'),
+            const SizedBox(height: 16),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.blue.shade50,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.blue.shade300),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.chat, size: 20, color: Colors.blue.shade700),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          '実験者からの連絡をお待ちください',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            color: Colors.blue.shade700,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          '個別チャットでアンケートの詳細が送られます',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.blue.shade700,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Colors.amber.shade50,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.amber.shade200),
+              ),
+              child: const Row(
+                children: [
+                  Icon(Icons.info_outline, size: 16, color: Colors.amber),
+                  SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      '質問がある場合は「質問する」ボタンから実験者に連絡できます',
+                      style: TextStyle(fontSize: 12, color: Colors.amber),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('閉じる'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// アンケートURL表示ダイアログ
+  Future<void> _showSurveyUrlDialog() async {
+    await showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        title: const Row(
+          children: [
+            Icon(Icons.check_circle, color: Colors.green),
+            SizedBox(width: 8),
+            Text('参加完了'),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('アンケートへの参加が完了しました。\n以下のURLからアンケートに回答してください。'),
+            const SizedBox(height: 16),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.grey.shade100,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.grey.shade300),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'アンケートURL:',
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    widget.experiment.surveyUrl ?? '',
+                    style: const TextStyle(fontSize: 14, color: Colors.blue),
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          onPressed: () {
+                            Clipboard.setData(ClipboardData(text: widget.experiment.surveyUrl ?? ''));
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('URLをコピーしました'),
+                                duration: Duration(seconds: 1),
+                              ),
+                            );
+                          },
+                          icon: const Icon(Icons.copy, size: 16),
+                          label: const Text('コピー'),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: ElevatedButton.icon(
+                          onPressed: () async {
+                            final url = Uri.parse(widget.experiment.surveyUrl ?? '');
+                            if (await canLaunchUrl(url)) {
+                              await launchUrl(url, mode: LaunchMode.externalApplication);
+                            }
+                          },
+                          icon: const Icon(Icons.open_in_new, size: 16),
+                          label: const Text('開く'),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Colors.amber.shade50,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.amber.shade200),
+              ),
+              child: const Row(
+                children: [
+                  Icon(Icons.info_outline, size: 16, color: Colors.amber),
+                  SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      '回答後、実験者からの連絡をお待ちください',
+                      style: TextStyle(fontSize: 12, color: Colors.amber),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('閉じる'),
+          ),
+        ],
+      ),
+    );
+  }
+
   /// 予約を実行
   Future<void> _makeReservation(ExperimentSlot slot) async {
     try {
@@ -244,7 +441,93 @@ class _ExperimentDetailScreenState extends State<ExperimentDetailScreen> {
         return;
       }
 
-      // 確認ダイアログを表示
+      // アンケートタイプの場合は特別な処理
+      if (widget.experiment.type == ExperimentType.survey) {
+        // アンケート参加確認ダイアログ
+        final confirmed = await showDialog<bool>(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: const Text('アンケートへの参加'),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('「${widget.experiment.title}」のアンケートに参加しますか？'),
+                const SizedBox(height: 16),
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.orange.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Colors.orange.withValues(alpha: 0.3)),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.info_outline, color: Colors.orange, size: 20),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          widget.experiment.surveyUrl != null 
+                            ? '参加後、アンケートURLが表示されます'
+                            : '参加後、実験者から個別チャットでアンケートの詳細が送られます',
+                          style: const TextStyle(fontSize: 12, color: Colors.orange),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                if (widget.experiment.reward != null && widget.experiment.reward! > 0) ...[
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      const Icon(Icons.monetization_on, color: Colors.amber, size: 16),
+                      const SizedBox(width: 8),
+                      Text('謝礼: ${widget.experiment.reward}円', 
+                        style: const TextStyle(fontWeight: FontWeight.bold)),
+                    ],
+                  ),
+                ],
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context, false),
+                child: const Text('キャンセル'),
+              ),
+              ElevatedButton(
+                onPressed: () => Navigator.pop(context, true),
+                child: const Text('参加する'),
+              ),
+            ],
+          ),
+        );
+
+        if (confirmed != true) return;
+
+        // 参加処理
+        setState(() => _isLoading = true);
+        
+        final experimentService = ExperimentService();
+        await experimentService.joinExperiment(widget.experiment.id, user.uid);
+        
+        setState(() {
+          _isLoading = false;
+          _isParticipating = true;
+        });
+
+        // アンケートURLがある場合のみダイアログを表示
+        if (mounted) {
+          if (widget.experiment.surveyUrl != null) {
+            await _showSurveyUrlDialog();
+          } else {
+            // URLがない場合はチャットでの連絡を案内
+            await _showNoUrlDialog();
+          }
+        }
+        return;
+      }
+
+      // 通常の実験の場合の確認ダイアログ
       final confirmed = await showDialog<bool>(
         context: context,
         builder: (context) => AlertDialog(
@@ -851,16 +1134,20 @@ class _ExperimentDetailScreenState extends State<ExperimentDetailScreen> {
                     : Icon(
                         _isParticipating
                           ? Icons.check_circle
-                          : widget.experiment.allowFlexibleSchedule
-                            ? Icons.calendar_today
-                            : Icons.send,
+                          : widget.experiment.type == ExperimentType.survey
+                            ? Icons.assignment
+                            : widget.experiment.allowFlexibleSchedule
+                              ? Icons.calendar_today
+                              : Icons.send,
                       ),
                   label: Text(
                     _isParticipating
                       ? '参加予定'
-                      : widget.experiment.allowFlexibleSchedule
-                        ? '日時を選択して予約'
-                        : '参加申請する',
+                      : widget.experiment.type == ExperimentType.survey
+                        ? '今すぐ参加'
+                        : widget.experiment.allowFlexibleSchedule
+                          ? '日時を選択して予約'
+                          : '参加申請する',
                   ),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: _isParticipating ? Colors.grey : null,

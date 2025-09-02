@@ -122,6 +122,63 @@ class _ExperimentEvaluationScreenState extends State<ExperimentEvaluationScreen>
     
     if (_currentUser == null || _otherUser == null) return;
     
+    // 確認ダイアログを表示
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Row(
+          children: [
+            Icon(Icons.warning, color: Colors.orange),
+            SizedBox(width: 8),
+            Text('評価の確認'),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              '実験は完了しましたか？',
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.orange.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.orange.withValues(alpha: 0.3)),
+              ),
+              child: const Text(
+                '実験が完全に終了してから評価を行ってください。\n一度送信した評価は変更できません。',
+                style: TextStyle(fontSize: 13),
+              ),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              '選択した評価: ${_selectedEvaluation == EvaluationType.good ? "良い 👍" : "悪い 👎"}',
+              style: const TextStyle(fontWeight: FontWeight.bold),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('戻る'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF8E1728),
+            ),
+            child: const Text('実験完了済み・評価を送信'),
+          ),
+        ],
+      ),
+    );
+    
+    if (confirmed != true) return;
+    
     setState(() {
       _isSubmitting = true;
     });
@@ -222,6 +279,44 @@ class _ExperimentEvaluationScreenState extends State<ExperimentEvaluationScreen>
                     ),
                   ),
                 ),
+                const SizedBox(height: 16),
+                
+                // 実験後評価の注意事項
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.red.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Colors.red.withValues(alpha: 0.3)),
+                  ),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Icon(Icons.warning, color: Colors.red, size: 20),
+                      const SizedBox(width: 8),
+                      const Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              '重要：実験終了後に評価してください',
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                color: Colors.red,
+                                fontSize: 14,
+                              ),
+                            ),
+                            SizedBox(height: 4),
+                            Text(
+                              'この評価は実験が完全に終了してから行ってください。\n実験前や実験中に評価を行わないようご注意ください。',
+                              style: TextStyle(fontSize: 12, color: Colors.red),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
                 const SizedBox(height: 24),
                 
                 // 相手の情報
@@ -253,11 +348,25 @@ class _ExperimentEvaluationScreenState extends State<ExperimentEvaluationScreen>
                 ],
                 
                 // 評価選択
+                Row(
+                  children: [
+                    const Icon(Icons.star, color: Colors.amber, size: 20),
+                    const SizedBox(width: 8),
+                    const Text(
+                      '実験後の評価を選択してください',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
                 Text(
-                  '評価を選択してください',
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
+                  '実験が完了していることを確認してから評価してください',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Colors.grey[600],
                   ),
                 ),
                 const SizedBox(height: 12),
