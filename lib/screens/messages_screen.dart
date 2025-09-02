@@ -3,6 +3,7 @@ import '../services/message_service.dart';
 import '../services/auth_service.dart';
 import '../models/conversation.dart';
 import 'chat_screen.dart';
+import 'support_chat_screen.dart';
 
 class MessagesScreen extends StatefulWidget {
   const MessagesScreen({super.key});
@@ -63,6 +64,18 @@ class _MessagesScreenState extends State<MessagesScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('メッセージ'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.support_agent),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const SupportChatScreen()),
+              );
+            },
+            tooltip: 'サポート',
+          ),
+        ],
       ),
       body: StreamBuilder<List<Conversation>>(
         stream: _messageService.getUserConversations(_currentUserId!),
@@ -126,6 +139,21 @@ class _MessagesScreenState extends State<MessagesScreen> {
                     style: TextStyle(
                       fontSize: 14,
                       color: Colors.grey[500],
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  ElevatedButton.icon(
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (context) => const SupportChatScreen()),
+                      );
+                    },
+                    icon: const Icon(Icons.support_agent),
+                    label: const Text('サポートに問い合わせる'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF8E1728),
+                      foregroundColor: Colors.white,
                     ),
                   ),
                 ],

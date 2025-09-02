@@ -11,6 +11,16 @@ enum ExperimentType {
   const ExperimentType(this.label);
 }
 
+/// 実験ステータス
+enum ExperimentStatus {
+  recruiting('募集中'),
+  ongoing('進行中'),
+  completed('完了');
+
+  final String label;
+  const ExperimentStatus(this.label);
+}
+
 /// 実験データモデル
 class Experiment {
   final String id;

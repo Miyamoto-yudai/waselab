@@ -1,6 +1,7 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:google_sign_in/google_sign_in.dart';
+import 'package:flutter/foundation.dart';
 import '../models/app_user.dart';
 
 /// 認証サービスクラス
@@ -287,4 +288,15 @@ class AuthService {
 
   /// メール認証状態を取得
   bool get isEmailVerified => currentUser?.emailVerified ?? false;
+
+  /// ユーザードキュメントを取得
+  Future<DocumentSnapshot<Map<String, dynamic>>?> getUserDocument(String userId) async {
+    try {
+      final doc = await _firestore.collection('users').doc(userId).get();
+      return doc;
+    } catch (e) {
+      debugPrint('Error getting user document: $e');
+      return null;
+    }
+  }
 }

@@ -477,23 +477,45 @@ class _LoginScreenState extends State<LoginScreen> {
                         ],
                       ),
                       const SizedBox(height: 16),
-                      SizedBox(
+                      // Google Sign-Inボタン（ガイドライン準拠）
+                      Container(
                         width: double.infinity,
-                        height: 48,
-                        child: OutlinedButton.icon(
-                          onPressed: _isLoading ? null : _handleGoogleSignIn,
-                          icon: Image.network(
-                            'https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg',
-                            height: 24,
-                            errorBuilder: (context, error, stackTrace) {
-                              // ネットワークエラー時の代替アイコン
-                              return const Icon(Icons.g_mobiledata, size: 24);
-                            },
-                          ),
-                          label: Text(_isLogin ? 'Googleでログイン' : 'Googleで新規登録'),
-                          style: OutlinedButton.styleFrom(
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(8),
+                        height: 40,
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(4),
+                          border: Border.all(color: const Color(0xFFDADADA)),
+                          color: Colors.white,
+                        ),
+                        child: Material(
+                          color: Colors.transparent,
+                          child: InkWell(
+                            onTap: _isLoading ? null : _handleGoogleSignIn,
+                            borderRadius: BorderRadius.circular(4),
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 8),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  // Google Gロゴ（公式アセット）
+                                  Image.asset(
+                                    'assets/images/google_logo.png',
+                                    height: 18,
+                                    width: 18,
+                                  ),
+                                  const SizedBox(width: 24),
+                                  // テキスト（Roboto Medium フォント）
+                                  Text(
+                                    _isLogin ? 'Googleでログイン' : 'Googleで登録',
+                                    style: const TextStyle(
+                                      color: Color(0xFF3C4043),
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w500,
+                                      fontFamily: 'Roboto',
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ),
                           ),
                         ),

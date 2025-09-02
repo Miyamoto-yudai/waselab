@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../services/auth_service.dart';
 import 'login_screen.dart';
+import 'support_chat_screen.dart';
 
 /// 設定画面
 class SettingsScreen extends StatefulWidget {
@@ -50,8 +51,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
   
   /// お問い合わせを開く
   void _openSupport() {
-    // メッセージ画面のお問い合わせチャットに遷移
-    Navigator.pop(context, 'open_support');
+    // サポートチャット画面に遷移
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => const SupportChatScreen()),
+    );
   }
   
   /// 利用規約を開く

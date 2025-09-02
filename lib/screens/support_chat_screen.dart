@@ -2,60 +2,54 @@ import 'package:flutter/material.dart';
 import '../services/message_service.dart';
 import '../services/auth_service.dart';
 import '../models/message.dart';
-import '../models/app_user.dart';
-import '../widgets/user_detail_dialog.dart';
 
-class ChatScreen extends StatefulWidget {
-  final String conversationId;
-  final String otherUserId;
-  final String otherUserName;
-  final String? experimentTitle;
-
-  const ChatScreen({
-    super.key,
-    required this.conversationId,
-    required this.otherUserId,
-    required this.otherUserName,
-    this.experimentTitle,
-  });
+class SupportChatScreen extends StatefulWidget {
+  const SupportChatScreen({super.key});
 
   @override
-  State<ChatScreen> createState() => _ChatScreenState();
+  State<SupportChatScreen> createState() => _SupportChatScreenState();
 }
 
-class _ChatScreenState extends State<ChatScreen> {
+class _SupportChatScreenState extends State<SupportChatScreen> {
   final MessageService _messageService = MessageService();
   final AuthService _authService = AuthService();
   final TextEditingController _messageController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
+  
+  static const String supportUserId = 'support_team';
+  static const String supportUserName = 'わせラボサポート';
+  
   String? _currentUserId;
   String? _currentUserName;
-  AppUser? _currentAppUser;
+  String? _conversationId;
   bool _isSending = false;
   bool _showTemplates = false;
 
   @override
   void initState() {
     super.initState();
-    _getCurrentUser();
-    _markMessagesAsRead();
+    _initializeChat();
   }
 
-  Future<void> _getCurrentUser() async {
+  Future<void> _initializeChat() async {
     final user = _authService.currentUser;
     if (user != null) {
       final appUser = await _authService.getCurrentAppUser();
       setState(() {
         _currentUserId = user.uid;
         _currentUserName = appUser?.name ?? 'Unknown';
-        _currentAppUser = appUser;
+        // サポートとの会話IDを生成（ユーザーIDとサポートIDを組み合わせて一意のIDを作成）
+        final ids = [_currentUserId!, supportUserId];
+        ids.sort();
+        _conversationId = ids.join('_');
       });
+      _markMessagesAsRead();
     }
   }
 
   void _markMessagesAsRead() {
-    if (_currentUserId != null) {
-      _messageService.markMessagesAsRead(widget.conversationId, _currentUserId!);
+    if (_conversationId != null && _currentUserId != null) {
+      _messageService.markMessagesAsRead(_conversationId!, _currentUserId!);
     }
   }
 
@@ -70,10 +64,10 @@ class _ChatScreenState extends State<ChatScreen> {
     try {
       await _messageService.sendMessage(
         senderId: _currentUserId!,
-        receiverId: widget.otherUserId,
+        receiverId: supportUserId,
         content: _messageController.text.trim(),
         senderName: _currentUserName!,
-        receiverName: widget.otherUserName,
+        receiverName: supportUserName,
       );
       _messageController.clear();
       _scrollToBottom();
@@ -113,106 +107,60 @@ class _ChatScreenState extends State<ChatScreen> {
     return '$hour:$minute';
   }
 
-  void _selectTemplate(String templateType) {
-    final templates = _getQuickTemplates();
-    final selected = templates.firstWhere((t) => t['type'] == templateType);
-    if (selected != null) {
-      _messageController.text = selected['template'] as String;
-      setState(() {
-        _showTemplates = false;
-      });
-    }
+  void _selectTemplate(String template) {
+    _messageController.text = template;
+    setState(() {
+      _showTemplates = false;
+    });
   }
 
-  List<Map<String, dynamic>> _getQuickTemplates() {
-    final experiment = widget.experimentTitle ?? '[実験名]';
-    final userInfo = _currentAppUser?.name ?? '[お名前]';
-    String affiliation = '';
-    
-    if (_currentAppUser != null && _currentAppUser!.isWasedaUser) {
-      affiliation = '早稲田大学';
-      if (_currentAppUser!.department != null) {
-        affiliation += _currentAppUser!.department!;
-      }
-      if (_currentAppUser!.grade != null) {
-        affiliation += _currentAppUser!.grade!;
-      }
-      affiliation += 'の';
-    }
-    
+  List<Map<String, dynamic>> _getSupportTemplates() {
     return [
       {
-        'type': 'intro',
-        'label': '自己紹介',
-        'icon': Icons.person_outline,
-        'template': 'お世話になっております。\n'
-            '$affiliation$userInfoと申します。\n\n'
-            '「$experiment」の実験を拝見し、大変興味を持ちました。\n'
-            'ぜひ参加させていただきたく、ご連絡差し上げました。\n\n'
-            '実験の詳細について、いくつかお伺いしたいことがございます。\n'
-            'お忙しいところ恐れ入りますが、ご教示いただけますと幸いです。\n\n'
-            'どうぞよろしくお願いいたします。',
-      },
-      {
-        'type': 'question',
-        'label': '質問',
+        'label': 'アプリの使い方',
         'icon': Icons.help_outline,
-        'template': 'お世話になっております。$userInfoです。\n\n'
-            '「$experiment」の実験について、以下の点をお伺いできますでしょうか。\n\n'
-            '1. \n'
-            '2. \n\n'
-            'お手数をおかけしますが、ご回答いただけますと幸いです。\n'
-            'よろしくお願いいたします。',
+        'template': 'アプリの使い方について質問があります。\n\n[具体的な質問内容をここに記入してください]',
       },
       {
-        'type': 'schedule',
-        'label': '日程調整',
-        'icon': Icons.calendar_today,
-        'template': 'お世話になっております。$userInfoです。\n\n'
-            '「$experiment」の実験に参加させていただきたく存じます。\n\n'
-            '私の参加可能な日時は以下の通りです：\n'
-            '・\n'
-            '・\n\n'
-            '上記の中でご都合のよろしい日時はございますでしょうか。\n'
-            'ご検討のほど、よろしくお願いいたします。',
+        'label': 'バグ報告',
+        'icon': Icons.bug_report,
+        'template': 'アプリで不具合を見つけました。\n\n'
+            '発生した問題:\n\n'
+            '発生した時の操作:\n\n'
+            '使用端末: ',
       },
       {
-        'type': 'requirements',
-        'label': '参加条件',
-        'icon': Icons.checklist,
-        'template': 'お世話になっております。$userInfoです。\n\n'
-            '「$experiment」の実験への参加を検討しております。\n'
-            '参加条件について確認させていただけますでしょうか。\n\n'
-            'ご確認のほど、よろしくお願いいたします。',
+        'label': '機能要望',
+        'icon': Icons.lightbulb_outline,
+        'template': '以下の機能があると便利だと思います。\n\n'
+            '[提案する機能について記入してください]',
       },
       {
-        'type': 'access',
-        'label': 'アクセス',
-        'icon': Icons.location_on,
-        'template': 'お世話になっております。$userInfoです。\n\n'
-            '「$experiment」の実験会場へのアクセスについて、\n'
-            '詳細を教えていただけますでしょうか。\n\n'
-            'よろしくお願いいたします。',
+        'label': 'アカウントの問題',
+        'icon': Icons.account_circle,
+        'template': 'アカウントに関する問題があります。\n\n'
+            '[具体的な問題を記入してください]',
       },
       {
-        'type': 'thanks',
-        'label': 'お礼',
-        'icon': Icons.favorite,
-        'template': 'お世話になっております。$userInfoです。\n\n'
-            '先日は「$experiment」の実験でお世話になり、\n'
-            '誠にありがとうございました。\n\n'
-            '貴重な経験をさせていただき、大変勉強になりました。\n'
-            '今後ともどうぞよろしくお願いいたします。',
+        'label': '実験に関する質問',
+        'icon': Icons.science,
+        'template': '実験について質問があります。\n\n'
+            '[質問内容を記入してください]',
+      },
+      {
+        'label': 'その他',
+        'icon': Icons.more_horiz,
+        'template': 'お問い合わせ内容:\n\n',
       },
     ];
   }
 
   @override
   Widget build(BuildContext context) {
-    if (_currentUserId == null) {
+    if (_currentUserId == null || _conversationId == null) {
       return Scaffold(
         appBar: AppBar(
-          title: Text(widget.otherUserName),
+          title: const Text('サポート'),
         ),
         body: const Center(
           child: CircularProgressIndicator(),
@@ -222,28 +170,75 @@ class _ChatScreenState extends State<ChatScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(widget.otherUserName),
+        title: Row(
+          children: [
+            Container(
+              width: 8,
+              height: 8,
+              decoration: const BoxDecoration(
+                color: Colors.green,
+                shape: BoxShape.circle,
+              ),
+            ),
+            const SizedBox(width: 8),
+            const Text('サポート'),
+          ],
+        ),
         actions: [
           IconButton(
             icon: const Icon(Icons.info_outline),
             onPressed: () {
               showDialog(
                 context: context,
-                builder: (context) => UserDetailDialog(
-                  userId: widget.otherUserId,
-                  userName: widget.otherUserName,
+                builder: (context) => AlertDialog(
+                  title: const Text('サポートについて'),
+                  content: const Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('わせラボサポートチームが対応いたします。'),
+                      SizedBox(height: 8),
+                      Text('対応時間: 平日 9:00-18:00'),
+                      SizedBox(height: 8),
+                      Text('通常24時間以内に返信いたします。'),
+                    ],
+                  ),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(context),
+                      child: const Text('閉じる'),
+                    ),
+                  ],
                 ),
               );
             },
-            tooltip: 'ユーザー詳細',
           ),
         ],
       ),
       body: Column(
         children: [
+          Container(
+            color: Colors.blue.withValues(alpha: 0.1),
+            padding: const EdgeInsets.all(12),
+            child: Row(
+              children: [
+                Icon(Icons.info, color: Colors.blue[700], size: 20),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'サポートチームがお手伝いします。お気軽にお問い合わせください。',
+                    style: TextStyle(
+                      color: Colors.blue[700],
+                      fontSize: 13,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
           Expanded(
             child: StreamBuilder<List<Message>>(
-              stream: _messageService.getConversationMessages(widget.conversationId),
+              stream: _messageService.getConversationMessages(_conversationId!),
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
                   return const Center(
@@ -267,13 +262,13 @@ class _ChatScreenState extends State<ChatScreen> {
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         Icon(
-                          Icons.chat_bubble_outline,
+                          Icons.support_agent,
                           size: 64,
                           color: Colors.grey[400],
                         ),
                         const SizedBox(height: 16),
                         const Text(
-                          'メッセージを開始しましょう',
+                          'お困りのことはありませんか？',
                           style: TextStyle(
                             color: Colors.grey,
                             fontSize: 18,
@@ -284,7 +279,7 @@ class _ChatScreenState extends State<ChatScreen> {
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                           decoration: BoxDecoration(
-                            color: Colors.blue.withValues(alpha: 0.1),
+                            color: const Color(0xFF8E1728).withValues(alpha: 0.1),
                             borderRadius: BorderRadius.circular(20),
                           ),
                           child: Row(
@@ -293,13 +288,13 @@ class _ChatScreenState extends State<ChatScreen> {
                               Icon(
                                 Icons.lightbulb_outline,
                                 size: 16,
-                                color: Colors.blue[700],
+                                color: Colors.red[700],
                               ),
                               const SizedBox(width: 4),
                               Text(
-                                '下のテンプレートボタンから始められます',
+                                '下のテンプレートから選択できます',
                                 style: TextStyle(
-                                  color: Colors.blue[700],
+                                  color: Colors.red[700],
                                   fontSize: 14,
                                 ),
                               ),
@@ -322,6 +317,7 @@ class _ChatScreenState extends State<ChatScreen> {
                   itemBuilder: (context, index) {
                     final message = messages[index];
                     final isMe = message.senderId == _currentUserId;
+                    final isSupport = message.senderId == supportUserId;
 
                     return Align(
                       alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
@@ -334,6 +330,29 @@ class _ChatScreenState extends State<ChatScreen> {
                           crossAxisAlignment:
                               isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
                           children: [
+                            if (isSupport)
+                              Padding(
+                                padding: const EdgeInsets.only(left: 4, bottom: 4),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    const Icon(
+                                      Icons.support_agent,
+                                      size: 16,
+                                      color: Colors.grey,
+                                    ),
+                                    const SizedBox(width: 4),
+                                    Text(
+                                      'サポート',
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        color: Colors.grey[600],
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
                             Container(
                               padding: const EdgeInsets.symmetric(
                                 horizontal: 16,
@@ -342,13 +361,21 @@ class _ChatScreenState extends State<ChatScreen> {
                               decoration: BoxDecoration(
                                 color: isMe
                                     ? const Color(0xFF8E1728)
-                                    : Colors.grey[200],
+                                    : isSupport
+                                        ? Colors.blue[50]
+                                        : Colors.grey[200],
                                 borderRadius: BorderRadius.only(
                                   topLeft: const Radius.circular(16),
                                   topRight: const Radius.circular(16),
                                   bottomLeft: Radius.circular(isMe ? 16 : 4),
                                   bottomRight: Radius.circular(isMe ? 4 : 16),
                                 ),
+                                border: isSupport
+                                    ? Border.all(
+                                        color: Colors.blue.withValues(alpha: 0.3),
+                                        width: 1,
+                                      )
+                                    : null,
                               ),
                               child: Text(
                                 message.content,
@@ -383,32 +410,49 @@ class _ChatScreenState extends State<ChatScreen> {
             children: [
               AnimatedContainer(
                 duration: const Duration(milliseconds: 200),
-                height: _showTemplates ? 50 : 0,
+                height: _showTemplates ? 100 : 0,
                 child: _showTemplates
                     ? Container(
                         color: Colors.grey[50],
-                        padding: const EdgeInsets.symmetric(vertical: 8),
-                        child: ListView(
-                          scrollDirection: Axis.horizontal,
-                          padding: const EdgeInsets.symmetric(horizontal: 8),
-                          children: _getQuickTemplates()
-                              .map((template) => Padding(
-                                    padding: const EdgeInsets.symmetric(horizontal: 4),
-                                    child: ActionChip(
-                                      avatar: Icon(
-                                        template['icon'] as IconData,
-                                        size: 18,
-                                        color: const Color(0xFF8E1728),
-                                      ),
-                                      label: Text(
-                                        template['label'] as String,
-                                        style: const TextStyle(
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.w500,
+                        padding: const EdgeInsets.all(8),
+                        child: GridView.count(
+                          crossAxisCount: 3,
+                          childAspectRatio: 2.5,
+                          mainAxisSpacing: 8,
+                          crossAxisSpacing: 8,
+                          children: _getSupportTemplates()
+                              .map((template) => InkWell(
+                                    onTap: () => _selectTemplate(template['template'] as String),
+                                    child: Container(
+                                      decoration: BoxDecoration(
+                                        color: Colors.white,
+                                        borderRadius: BorderRadius.circular(8),
+                                        border: Border.all(
+                                          color: Colors.grey.withValues(alpha: 0.3),
                                         ),
                                       ),
-                                      backgroundColor: Colors.white,
-                                      onPressed: () => _selectTemplate(template['type'] as String),
+                                      padding: const EdgeInsets.all(8),
+                                      child: Column(
+                                        mainAxisAlignment: MainAxisAlignment.center,
+                                        children: [
+                                          Icon(
+                                            template['icon'] as IconData,
+                                            size: 20,
+                                            color: const Color(0xFF8E1728),
+                                          ),
+                                          const SizedBox(height: 4),
+                                          Text(
+                                            template['label'] as String,
+                                            style: const TextStyle(
+                                              fontSize: 11,
+                                              fontWeight: FontWeight.w500,
+                                            ),
+                                            textAlign: TextAlign.center,
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                        ],
+                                      ),
                                     ),
                                   ))
                               .toList(),
@@ -433,7 +477,7 @@ class _ChatScreenState extends State<ChatScreen> {
                     children: [
                       IconButton(
                         icon: Icon(
-                          _showTemplates ? Icons.expand_more : Icons.expand_less,
+                          _showTemplates ? Icons.expand_more : Icons.apps,
                           color: Colors.grey[700],
                         ),
                         onPressed: () {
@@ -450,7 +494,7 @@ class _ChatScreenState extends State<ChatScreen> {
                           textInputAction: TextInputAction.send,
                           onSubmitted: (_) => _sendMessage(),
                           decoration: InputDecoration(
-                            hintText: 'メッセージを入力',
+                            hintText: 'お問い合わせ内容を入力',
                             hintStyle: const TextStyle(color: Colors.grey),
                             filled: true,
                             fillColor: Colors.grey[100],
