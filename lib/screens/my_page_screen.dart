@@ -1178,43 +1178,95 @@ class _MyPageScreenState extends State<MyPageScreen> with TickerProviderStateMix
               // アクションボタンエリア
               Column(
                 mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
                   // 未評価の場合は評価ボタン
                   if (!hasEvaluated && experiment.canEvaluate(_currentUser?.uid ?? '')) 
-                    IconButton(
-                      icon: const Icon(Icons.star_outline),
-                      color: Colors.orange,
-                      iconSize: 20,
-                      tooltip: '評価する',
-                      onPressed: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => ExperimentEvaluationScreen(
-                              experiment: experiment,
+                    Container(
+                      margin: const EdgeInsets.only(right: 4, bottom: 4),
+                      child: Material(
+                        color: Colors.orange,
+                        borderRadius: BorderRadius.circular(20),
+                        elevation: 2,
+                        child: InkWell(
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => ExperimentEvaluationScreen(
+                                  experiment: experiment,
+                                ),
+                              ),
+                            ).then((result) {
+                              if (result == true) {
+                                _loadUserData();
+                              }
+                            });
+                          },
+                          borderRadius: BorderRadius.circular(20),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: const [
+                                Icon(
+                                  Icons.star,
+                                  color: Colors.white,
+                                  size: 16,
+                                ),
+                                SizedBox(width: 4),
+                                Text(
+                                  '評価する',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
-                        ).then((result) {
-                          if (result == true) {
-                            _loadUserData();
-                          }
-                        });
-                      },
+                        ),
+                      ),
                     ),
                   // アンケートURL確認ボタン
                   if (experiment.type == ExperimentType.survey && 
                       isParticipant && 
                       !isMyExperiment)
-                    IconButton(
-                      icon: Icon(
-                        experiment.surveyUrl != null ? Icons.link : Icons.chat_bubble_outline,
+                    Container(
+                      margin: const EdgeInsets.only(right: 4),
+                      child: Material(
+                        color: Colors.purple.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(20),
+                        child: InkWell(
+                          onTap: () {
+                            _showSurveyUrlDialog(experiment);
+                          },
+                          borderRadius: BorderRadius.circular(20),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  experiment.surveyUrl != null ? Icons.link : Icons.chat_bubble_outline,
+                                  color: Colors.purple,
+                                  size: 14,
+                                ),
+                                const SizedBox(width: 4),
+                                Text(
+                                  experiment.surveyUrl != null ? 'URL' : '詳細',
+                                  style: const TextStyle(
+                                    color: Colors.purple,
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
                       ),
-                      color: Colors.purple,
-                      iconSize: 20,
-                      tooltip: experiment.surveyUrl != null ? 'URLを確認' : '詳細を確認',
-                      onPressed: () {
-                        _showSurveyUrlDialog(experiment);
-                      },
                     ),
                 ],
               ),
