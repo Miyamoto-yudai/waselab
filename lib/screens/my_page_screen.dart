@@ -220,7 +220,7 @@ class _MyPageScreenState extends State<MyPageScreen> with TickerProviderStateMix
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   const Text('参加履歴'),
-                  if (_participatedExperiments.isNotEmpty && _pendingEvaluations.length > 0) ...[
+                  if (_getParticipatedExperimentsUnevaluatedCount() > 0) ...[
                     const SizedBox(width: 4),
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
@@ -229,7 +229,7 @@ class _MyPageScreenState extends State<MyPageScreen> with TickerProviderStateMix
                         borderRadius: BorderRadius.circular(10),
                       ),
                       child: Text(
-                        '${_pendingEvaluations.length}',
+                        '${_getParticipatedExperimentsUnevaluatedCount()}',
                         style: const TextStyle(
                           color: Colors.white,
                           fontSize: 10,
@@ -498,7 +498,7 @@ class _MyPageScreenState extends State<MyPageScreen> with TickerProviderStateMix
                                 color: Colors.orange,
                                 onTap: () {
                                   // 参加履歴と募集履歴どちらかに優先的に遷移
-                                  if (_pendingEvaluations.isNotEmpty) {
+                                  if (_getParticipatedExperimentsUnevaluatedCount() > 0) {
                                     _tabController.animateTo(1);
                                   } else if (_getCreatedExperimentsUnevaluatedCount() > 0) {
                                     _tabController.animateTo(2);
@@ -1449,17 +1449,27 @@ class _MyPageScreenState extends State<MyPageScreen> with TickerProviderStateMix
   
   /// すべての実験の未評価参加者の合計数を取得
   int _getTotalUnevaluatedCount() {
-    // 募集履歴の未評価数を計算
-    int createdUnevaluated = _createdExperiments.fold<int>(
-      0,
-      (sum, exp) => sum + _getUnevaluatedParticipantCount(exp),
-    );
+    // 参加履歴の未評価数
+    int participatedUnevaluated = _getParticipatedExperimentsUnevaluatedCount();
     
-    // 参加履歴の未評価数（_pendingEvaluations の数）
-    int participatedUnevaluated = _pendingEvaluations.length;
+    // 募集履歴の未評価数
+    int createdUnevaluated = _getCreatedExperimentsUnevaluatedCount();
     
     // 合計を返す
     return createdUnevaluated + participatedUnevaluated;
+  }
+  
+  /// 参加履歴の未評価実験数を取得
+  int _getParticipatedExperimentsUnevaluatedCount() {
+    // 参加した実験のうち、評価可能で未評価のものをカウント
+    int count = 0;
+    for (final experiment in _participatedExperiments) {
+      if (experiment.canEvaluate(_currentUser?.uid ?? '') && 
+          !experiment.hasEvaluated(_currentUser?.uid ?? '')) {
+        count++;
+      }
+    }
+    return count;
   }
   
   /// 募集履歴の未評価参加者数を取得

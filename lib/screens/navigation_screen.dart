@@ -55,28 +55,37 @@ class _NavigationScreenState extends State<NavigationScreen> {
       final user = await _authService.getCurrentAppUser();
       if (user == null) return;
 
-      // 参加した実験を取得
+      // 参加した実験の評価待ち数を取得
       final participatedExperiments = await _experimentService.getUserParticipatedExperiments(user.uid);
-      
-      // 作成した実験を取得
-      final createdExperiments = await _experimentService.getUserCreatedExperiments(user.uid);
-      
-      // 未評価の実験数をカウント
-      int count = 0;
+      int participatedUnevaluated = 0;
       for (final exp in participatedExperiments) {
-        if (!exp.hasEvaluated(user.uid)) {
-          count++;
+        if (exp.canEvaluate(user.uid) && !exp.hasEvaluated(user.uid)) {
+          participatedUnevaluated++;
         }
       }
+      
+      // 作成した実験の未評価参加者数を取得
+      final createdExperiments = await _experimentService.getUserCreatedExperiments(user.uid);
+      int createdUnevaluated = 0;
       for (final exp in createdExperiments) {
-        if (!exp.hasEvaluated(user.uid)) {
-          count++;
+        // 参加者ごとの評価状態をチェック
+        for (final participantId in exp.participants) {
+          final participantEvals = exp.participantEvaluations ?? {};
+          final participantEval = participantEvals[participantId] ?? {};
+          final creatorEvaluated = participantEval['creatorEvaluated'] ?? false;
+          
+          if (!creatorEvaluated) {
+            createdUnevaluated++;
+          }
         }
       }
+      
+      // 合計（参加した実験の評価待ち + 作成した実験の未評価参加者数）
+      final totalCount = participatedUnevaluated + createdUnevaluated;
       
       if (mounted) {
         setState(() {
-          _pendingEvaluations = count;
+          _pendingEvaluations = totalCount;
         });
       }
     } catch (e) {
