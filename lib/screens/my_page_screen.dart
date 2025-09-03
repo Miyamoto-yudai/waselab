@@ -946,6 +946,60 @@ class _MyPageScreenState extends State<MyPageScreen> with TickerProviderStateMix
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
+        // 評価待ちがある場合のみ相互評価の重要性を示すバナーを表示
+        if (waitingEvaluationExperiments.isNotEmpty) ...[
+          Container(
+            padding: const EdgeInsets.all(12),
+            margin: const EdgeInsets.only(bottom: 16),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [
+                  Colors.amber.withValues(alpha: 0.2),
+                  Colors.orange.withValues(alpha: 0.2),
+                ],
+              ),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: Colors.amber.withValues(alpha: 0.5),
+                width: 1,
+              ),
+            ),
+            child: Row(
+              children: [
+                const Icon(
+                  Icons.warning_amber_rounded,
+                  color: Colors.amber,
+                  size: 24,
+                ),
+                const SizedBox(width: 12),
+                const Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        '相互評価のお願い',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.amber,
+                        ),
+                      ),
+                      SizedBox(height: 4),
+                      Text(
+                        '実験終了後は必ず相互評価を行ってください。相互評価により実験の完了が確認され、システムに正しく反映されます。',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.orange,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+        
         // 参加予定セクション
         if (scheduledExperiments.isNotEmpty) ...[
           _buildSectionHeader('参加予定', Icons.schedule, Colors.blue),
@@ -1594,11 +1648,66 @@ class _MyPageScreenState extends State<MyPageScreen> with TickerProviderStateMix
       );
     }
 
-    return ListView.builder(
+    // 未評価の参加者がいるかチェック
+    final hasUnevaluated = experiments.any((exp) => _getUnevaluatedParticipantCount(exp) > 0);
+
+    return ListView(
       padding: const EdgeInsets.all(16),
-      itemCount: experiments.length,
-      itemBuilder: (context, index) {
-        final experiment = experiments[index];
+      children: [
+        // 未評価がある場合のみ相互評価のお願いバナーを表示
+        if (hasUnevaluated) ...[
+          Container(
+            padding: const EdgeInsets.all(12),
+            margin: const EdgeInsets.only(bottom: 16),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [
+                  Colors.amber.withValues(alpha: 0.2),
+                  Colors.orange.withValues(alpha: 0.2),
+                ],
+              ),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: Colors.amber.withValues(alpha: 0.5),
+                width: 1,
+              ),
+            ),
+            child: Row(
+              children: [
+                const Icon(
+                  Icons.warning_amber_rounded,
+                  color: Colors.amber,
+                  size: 24,
+                ),
+                const SizedBox(width: 12),
+                const Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        '参加者への評価のお願い',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.amber,
+                        ),
+                      ),
+                      SizedBox(height: 4),
+                      Text(
+                        '実験終了後は必ず参加者の評価を行ってください。相互評価により実験の完了が確認されます。',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.orange,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+        ...experiments.map((experiment) {
         final isMyExperiment = experiment.creatorId == _currentUser?.uid;
         
         return Card(
@@ -1776,7 +1885,8 @@ class _MyPageScreenState extends State<MyPageScreen> with TickerProviderStateMix
             ),
           ),
         );
-      },
+        }).toList(),
+      ],
     );
   }
 

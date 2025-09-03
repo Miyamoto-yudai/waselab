@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:intl/date_symbol_data_local.dart';
 import 'firebase_options.dart';
 import 'services/auth_service.dart';
 import 'screens/login_screen.dart';
@@ -15,6 +16,9 @@ import 'shared/app_wrapper.dart';
 void main() async {
   // Flutter Engineの初期化を確実に行う
   WidgetsFlutterBinding.ensureInitialized();
+  
+  // 日本語ロケールを初期化
+  await initializeDateFormatting('ja_JP', null);
   
   // アプリを先に起動（ローディング画面を表示）
   runApp(const WaseLaboApp(

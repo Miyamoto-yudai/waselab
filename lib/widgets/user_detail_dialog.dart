@@ -253,10 +253,14 @@ class _UserDetailDialogState extends State<UserDetailDialog> {
       ),
       child: Container(
         width: 400,
+        constraints: BoxConstraints(
+          maxHeight: MediaQuery.of(context).size.height * 0.8, // 画面の80%まで
+        ),
         padding: const EdgeInsets.all(24),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
+            // ヘッダー部分（固定）
             Row(
               children: [
                 CircleAvatar(
@@ -308,16 +312,20 @@ class _UserDetailDialogState extends State<UserDetailDialog> {
                 ),
               ],
             ),
-            const SizedBox(height: 24),
+            const Divider(height: 24),
             
-            if (_isLoading)
-              const Padding(
-                padding: EdgeInsets.all(32),
-                child: CircularProgressIndicator(
-                  valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF8E1728)),
-                ),
-              )
-            else ...[
+            // コンテンツ部分（スクロール可能）
+            Expanded(
+              child: _isLoading
+                ? const Center(
+                    child: CircularProgressIndicator(
+                      valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF8E1728)),
+                    ),
+                  )
+                : SingleChildScrollView(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
               // ユーザー情報
               Container(
                 padding: const EdgeInsets.all(16),
@@ -525,7 +533,10 @@ class _UserDetailDialogState extends State<UserDetailDialog> {
                   const SizedBox(height: 12),
                 ],
               ],
-            ],
+                    ],
+                  ),
+                ),
+            ),
           ],
         ),
       ),

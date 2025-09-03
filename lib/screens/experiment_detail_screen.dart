@@ -599,6 +599,46 @@ class _ExperimentDetailScreenState extends State<ExperimentDetailScreen> {
             children: [
               Text('「${widget.experiment.title}」に参加申請しますか？'),
               const SizedBox(height: 16),
+              const SizedBox(height: 12),
+              // 相互評価必須の注意書きを追加
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.amber.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.amber.withValues(alpha: 0.5)),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.warning_amber_rounded, color: Colors.amber[700], size: 20),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            '重要なお願い',
+                            style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.amber[800],
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            '実験終了後は必ず相互評価を行ってください。相互評価により実験の完了が確認されます。',
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: Colors.amber[700],
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
               if (widget.experiment.experimentDate != null) ...[
                 const Text('実験日時:', style: TextStyle(fontWeight: FontWeight.bold)),
                 Text(DateFormat('yyyy年MM月dd日 HH:mm').format(widget.experiment.experimentDate!)),
@@ -639,8 +679,9 @@ class _ExperimentDetailScreenState extends State<ExperimentDetailScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('実験への参加申請が完了しました'),
+            content: Text('実験への参加申請が完了しました。実験終了後は必ず相互評価をお願いします'),
             backgroundColor: Colors.green,
+            duration: Duration(seconds: 4),
           ),
         );
       }

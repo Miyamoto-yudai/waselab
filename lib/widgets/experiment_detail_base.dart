@@ -128,6 +128,46 @@ class _ExperimentDetailBaseState extends State<ExperimentDetailBase> {
                   ],
                 ),
               ),
+              const SizedBox(height: 12),
+              // 相互評価必須の注意書きを追加
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.amber.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.amber.withValues(alpha: 0.5)),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.warning_amber_rounded, color: Colors.amber[700], size: 20),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            '重要なお願い',
+                            style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.amber[800],
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            '実験終了後は必ず相互評価を行ってください。',
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: Colors.amber[700],
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             ],
           ),
           actions: [
@@ -149,8 +189,9 @@ class _ExperimentDetailBaseState extends State<ExperimentDetailBase> {
       if (confirmed == true && mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('${date.month.toString().padLeft(2, '0')}/${date.day.toString().padLeft(2, '0')} $timeSlot で予約しました（デモ）'),
+            content: Text('${date.month.toString().padLeft(2, '0')}/${date.day.toString().padLeft(2, '0')} $timeSlot で予約しました。実験終了後は必ず相互評価をお願いします（デモ）'),
             backgroundColor: Colors.green,
+            duration: const Duration(seconds: 4),
           ),
         );
         

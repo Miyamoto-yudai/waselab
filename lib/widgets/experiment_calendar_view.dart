@@ -23,7 +23,7 @@ class ExperimentCalendarView extends StatefulWidget {
 class _ExperimentCalendarViewState extends State<ExperimentCalendarView> {
   final ReservationService _reservationService = ReservationService();
   CalendarFormat _calendarFormat = CalendarFormat.month;
-  DateTime _focusedDay = DateTime.now();
+  late DateTime _focusedDay;
   DateTime? _selectedDay;
   Map<DateTime, List<ExperimentSlot>> _slotsByDate = {};
   List<ExperimentSlot> _selectedDaySlots = [];
@@ -32,6 +32,10 @@ class _ExperimentCalendarViewState extends State<ExperimentCalendarView> {
   @override
   void initState() {
     super.initState();
+    // firstDayとfocusedDayを適切に初期化
+    final firstDay = widget.experiment.experimentPeriodStart ?? DateTime.now();
+    final now = DateTime.now();
+    _focusedDay = now.isBefore(firstDay) ? firstDay : now;
     _loadSlots();
   }
 
@@ -106,7 +110,9 @@ class _ExperimentCalendarViewState extends State<ExperimentCalendarView> {
             firstDay: widget.experiment.experimentPeriodStart ?? DateTime.now(),
             lastDay: widget.experiment.experimentPeriodEnd ?? 
                 DateTime.now().add(const Duration(days: 365)),
-            focusedDay: _focusedDay,
+            focusedDay: _focusedDay.isAfter(widget.experiment.experimentPeriodEnd ?? DateTime.now().add(const Duration(days: 365))) 
+                ? widget.experiment.experimentPeriodEnd ?? DateTime.now().add(const Duration(days: 365))
+                : _focusedDay,
             calendarFormat: _calendarFormat,
             selectedDayPredicate: (day) {
               return isSameDay(_selectedDay, day);
@@ -150,7 +156,9 @@ class _ExperimentCalendarViewState extends State<ExperimentCalendarView> {
               }
             },
             onPageChanged: (focusedDay) {
-              _focusedDay = focusedDay;
+              setState(() {
+                _focusedDay = focusedDay;
+              });
             },
             calendarBuilders: CalendarBuilders(
               markerBuilder: (context, day, events) {

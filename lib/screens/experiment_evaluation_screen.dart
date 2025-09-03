@@ -424,33 +424,37 @@ class _ExperimentEvaluationScreenState extends State<ExperimentEvaluationScreen>
                 ),
                 const SizedBox(height: 24),
                 
+                // 評価対象の表示
+                Text(
+                  _currentUser?.uid == widget.experiment.creatorId
+                    ? '参加者の評価'
+                    : '実験者の評価',
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                
                 // 相手の情報
-                if (_otherUser != null) ...[
-                  Text(
-                    _currentUser?.uid == widget.experiment.creatorId
-                      ? '参加者の評価'
-                      : '実験者の評価',
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  Card(
-                    child: ListTile(
-                      leading: CircleAvatar(
-                        backgroundColor: const Color(0xFF8E1728),
-                        child: Text(
-                          _otherUser!.name.isNotEmpty ? _otherUser!.name[0] : '?',
-                          style: const TextStyle(color: Colors.white),
-                        ),
+                Card(
+                  child: ListTile(
+                    leading: CircleAvatar(
+                      backgroundColor: const Color(0xFF8E1728),
+                      child: Text(
+                        _otherUser != null && _otherUser!.name.isNotEmpty 
+                          ? _otherUser!.name[0] 
+                          : '?',
+                        style: const TextStyle(color: Colors.white),
                       ),
-                      title: Text(_otherUser!.name),
-                      subtitle: Text(_otherUser!.email),
                     ),
+                    title: Text(_otherUser?.name ?? '読み込み中...'),
+                    subtitle: _otherUser != null 
+                      ? Text(_otherUser!.email.isNotEmpty ? _otherUser!.email : 'メールアドレス未設定')
+                      : null,
                   ),
-                  const SizedBox(height: 24),
-                ],
+                ),
+                const SizedBox(height: 24),
                 
                 // 評価選択
                 Row(
@@ -465,14 +469,6 @@ class _ExperimentEvaluationScreenState extends State<ExperimentEvaluationScreen>
                       ),
                     ),
                   ],
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  '実験が完了していることを確認してから評価してください',
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: Colors.grey[600],
-                  ),
                 ),
                 const SizedBox(height: 12),
                 
@@ -567,30 +563,6 @@ class _ExperimentEvaluationScreenState extends State<ExperimentEvaluationScreen>
                   ),
                 ],
                 
-                const SizedBox(height: 16),
-                
-                // 注意事項
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: Colors.blue.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: Colors.blue.withValues(alpha: 0.3)),
-                  ),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Icon(Icons.info_outline, color: Colors.blue, size: 20),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          '双方の評価が完了すると、実験が正式に完了となります。\n評価は実験の品質向上と信頼性確保のために使用されます。\n実験終了から1週間経過すると自動的に完了となります。',
-                          style: TextStyle(fontSize: 12, color: Colors.blue[700]),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
               ],
             ),
           ),
