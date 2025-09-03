@@ -352,9 +352,9 @@ class _HomeScreenBaseState extends State<HomeScreenBase> {
           // アプリバー部分（スクロールで隠れる）
           AnimatedContainer(
             duration: const Duration(milliseconds: 200),
-            height: _isHeaderVisible ? 60 : 0,
+            height: _isHeaderVisible ? 70 : 0,
             child: AppBar(
-              toolbarHeight: 60,
+              toolbarHeight: 70,
               titleSpacing: 0,
               centerTitle: false,
               leading: Container(
@@ -541,66 +541,70 @@ class _HomeScreenBaseState extends State<HomeScreenBase> {
                     Container(
                       color: Colors.white,
                       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
-                      child: SingleChildScrollView(
-                        scrollDirection: Axis.horizontal,
-                        child: Row(
-                          children: [
-                            // 日付範囲選択ボタン
-                            Container(
-                              margin: const EdgeInsets.only(right: 6),
-                              child: OutlinedButton.icon(
-                                onPressed: _selectDateRange,
-                                icon: Icon(
-                                  Icons.calendar_today,
-                                  size: 14,
-                                  color: (_startDateFilter != null || _endDateFilter != null)
-                                      ? const Color(0xFF8E1728)
-                                      : Colors.grey[600],
-                                ),
-                                label: Text(
-                                  (_startDateFilter != null && _endDateFilter != null)
-                                      ? '${_startDateFilter!.month}/${_startDateFilter!.day}〜${_endDateFilter!.month}/${_endDateFilter!.day}'
-                                      : '期間で絞り込む',
-                                  style: TextStyle(
-                                    fontSize: 11,
+                      child: Align(
+                        alignment: Alignment.centerLeft,
+                        child: SingleChildScrollView(
+                          scrollDirection: Axis.horizontal,
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.start,
+                            children: [
+                              // 日付範囲選択ボタン
+                              Container(
+                                margin: const EdgeInsets.only(right: 6),
+                                child: OutlinedButton.icon(
+                                  onPressed: _selectDateRange,
+                                  icon: Icon(
+                                    Icons.calendar_today,
+                                    size: 14,
                                     color: (_startDateFilter != null || _endDateFilter != null)
                                         ? const Color(0xFF8E1728)
-                                        : Colors.grey[700],
+                                        : Colors.grey[600],
                                   ),
-                                ),
-                                style: OutlinedButton.styleFrom(
-                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                                  minimumSize: const Size(0, 28),
-                                  side: BorderSide(
-                                    color: (_startDateFilter != null || _endDateFilter != null)
-                                        ? const Color(0xFF8E1728)
-                                        : Colors.grey.shade300,
+                                  label: Text(
+                                    (_startDateFilter != null && _endDateFilter != null)
+                                        ? '${_startDateFilter!.month}/${_startDateFilter!.day}〜${_endDateFilter!.month}/${_endDateFilter!.day}'
+                                        : '期間で絞り込む',
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      color: (_startDateFilter != null || _endDateFilter != null)
+                                          ? const Color(0xFF8E1728)
+                                          : Colors.grey[700],
+                                    ),
                                   ),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(14),
+                                  style: OutlinedButton.styleFrom(
+                                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                    minimumSize: const Size(0, 28),
+                                    side: BorderSide(
+                                      color: (_startDateFilter != null || _endDateFilter != null)
+                                          ? const Color(0xFF8E1728)
+                                          : Colors.grey.shade300,
+                                    ),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(14),
+                                    ),
                                   ),
                                 ),
                               ),
-                            ),
-                            // クイック選択ボタン（Chip風デザイン）
-                            _buildDateChip('今日', 'today'),
-                            _buildDateChip('明日', 'tomorrow'),
-                            _buildDateChip('2日後', 'in2days'),
-                            _buildDateChip('3日後', 'in3days'),
-                            _buildDateChip('今週', 'thisWeek'),
-                            // クリアボタン
-                            if (_startDateFilter != null || _endDateFilter != null)
-                              IconButton(
-                                onPressed: () => _setQuickDateRange('clear'),
-                                icon: const Icon(Icons.clear, size: 16),
-                                tooltip: 'クリア',
-                                padding: const EdgeInsets.all(4),
-                                constraints: const BoxConstraints(
-                                  minWidth: 28,
-                                  minHeight: 28,
+                              // クイック選択ボタン（Chip風デザイン）
+                              _buildDateChip('今日', 'today'),
+                              _buildDateChip('明日', 'tomorrow'),
+                              _buildDateChip('2日後', 'in2days'),
+                              _buildDateChip('3日後', 'in3days'),
+                              _buildDateChip('今週', 'thisWeek'),
+                              // クリアボタン
+                              if (_startDateFilter != null || _endDateFilter != null)
+                                IconButton(
+                                  onPressed: () => _setQuickDateRange('clear'),
+                                  icon: const Icon(Icons.clear, size: 16),
+                                  tooltip: 'クリア',
+                                  padding: const EdgeInsets.all(4),
+                                  constraints: const BoxConstraints(
+                                    minWidth: 28,
+                                    minHeight: 28,
+                                  ),
                                 ),
-                              ),
-                          ],
+                            ],
+                          ),
                         ),
                       ),
                     ),

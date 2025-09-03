@@ -55,16 +55,18 @@ class _NavigationScreenState extends State<NavigationScreen> {
       final user = await _authService.getCurrentAppUser();
       if (user == null) return;
 
-      // 参加した実験の評価待ち数を取得
+      // 参加した実験の評価待ち数を取得（実施前は除外）
       final participatedExperiments = await _experimentService.getUserParticipatedExperiments(user.uid);
       int participatedUnevaluated = 0;
       for (final exp in participatedExperiments) {
-        if (exp.canEvaluate(user.uid) && !exp.hasEvaluated(user.uid)) {
+        if (exp.canEvaluate(user.uid) && 
+            !exp.hasEvaluated(user.uid) &&
+            !exp.isScheduledFuture(user.uid)) {
           participatedUnevaluated++;
         }
       }
       
-      // 作成した実験の未評価参加者数を取得
+      // 作成した実験の未評価参加者数を取得（実施前は除外）
       final createdExperiments = await _experimentService.getUserCreatedExperiments(user.uid);
       int createdUnevaluated = 0;
       for (final exp in createdExperiments) {
@@ -74,7 +76,8 @@ class _NavigationScreenState extends State<NavigationScreen> {
           final participantEval = participantEvals[participantId] ?? {};
           final creatorEvaluated = participantEval['creatorEvaluated'] ?? false;
           
-          if (!creatorEvaluated) {
+          // 実験者による評価が済んでいない、かつ実験が実施前でない場合のみカウント
+          if (!creatorEvaluated && !exp.isScheduledFuture(participantId)) {
             createdUnevaluated++;
           }
         }

@@ -1257,8 +1257,41 @@ class _MyPageScreenState extends State<MyPageScreen> with TickerProviderStateMix
                 mainAxisAlignment: MainAxisAlignment.center,
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
-                  // 未評価の場合は評価ボタン
-                  if (!hasEvaluated && experiment.canEvaluate(_currentUser?.uid ?? '')) 
+                  // 実施前の場合は実施前タグ
+                  if (experiment.isScheduledFuture(_currentUser?.uid ?? ''))
+                    Container(
+                      margin: const EdgeInsets.only(right: 4, bottom: 4),
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: Colors.grey.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: Colors.grey.withValues(alpha: 0.3),
+                          width: 1,
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: const [
+                          Icon(
+                            Icons.schedule,
+                            size: 14,
+                            color: Colors.grey,
+                          ),
+                          SizedBox(width: 4),
+                          Text(
+                            '実施前',
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.grey,
+                            ),
+                          ),
+                        ],
+                      ),
+                    )
+                  // 未評価の場合は評価ボタン（実施前でない場合のみ）
+                  else if (!hasEvaluated && experiment.canEvaluate(_currentUser?.uid ?? '')) 
                     Container(
                       margin: const EdgeInsets.only(right: 4, bottom: 4),
                       child: Material(
@@ -1439,7 +1472,9 @@ class _MyPageScreenState extends State<MyPageScreen> with TickerProviderStateMix
     
     for (final participantId in experiment.participants) {
       final evalData = participantEvals[participantId] ?? {};
-      if (!(evalData['creatorEvaluated'] ?? false)) {
+      // 実験者による評価が済んでいない、かつ実験が実施前でない場合のみカウント
+      if (!(evalData['creatorEvaluated'] ?? false) && 
+          !experiment.isScheduledFuture(participantId)) {
         count++;
       }
     }
@@ -1461,11 +1496,12 @@ class _MyPageScreenState extends State<MyPageScreen> with TickerProviderStateMix
   
   /// 参加履歴の未評価実験数を取得
   int _getParticipatedExperimentsUnevaluatedCount() {
-    // 参加した実験のうち、評価可能で未評価のものをカウント
+    // 参加した実験のうち、評価可能で未評価のものをカウント（実施前は除外）
     int count = 0;
     for (final experiment in _participatedExperiments) {
       if (experiment.canEvaluate(_currentUser?.uid ?? '') && 
-          !experiment.hasEvaluated(_currentUser?.uid ?? '')) {
+          !experiment.hasEvaluated(_currentUser?.uid ?? '') &&
+          !experiment.isScheduledFuture(_currentUser?.uid ?? '')) {
         count++;
       }
     }
