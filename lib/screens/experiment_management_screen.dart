@@ -86,6 +86,24 @@ class _ExperimentManagementScreenState extends State<ExperimentManagementScreen>
   // 2. 進行中: 実験期間中
   // 3. 評価待ち/完了: 参加者ごとに個別管理
 
+  /// 未評価の参加者数を取得
+  int _getUnevaluatedParticipantCount() {
+    int count = 0;
+    final experimentData = _experiment.toFirestore();
+    final participantEvals = experimentData['participantEvaluations'] as Map<String, dynamic>? ?? {};
+    
+    for (final participantId in _experiment.participants) {
+      final userEval = participantEvals[participantId] as Map<String, dynamic>? ?? {};
+      final creatorToParticipant = userEval['creatorEvaluated'] ?? false;
+      
+      if (!creatorToParticipant) {
+        count++;
+      }
+    }
+    
+    return count;
+  }
+
   /// 募集を締め切る
   Future<void> _closeRecruitment() async {
     final confirm = await showDialog<bool>(
@@ -239,10 +257,35 @@ class _ExperimentManagementScreenState extends State<ExperimentManagementScreen>
           ),
           labelColor: Colors.white,
           unselectedLabelColor: Colors.white70,
-          tabs: const [
-            Tab(text: '概要'),
-            Tab(text: '参加者'),
-            Tab(text: '設定'),
+          tabs: [
+            const Tab(text: '概要'),
+            Tab(
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Text('参加者'),
+                  if (_getUnevaluatedParticipantCount() > 0) ...[
+                    const SizedBox(width: 4),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: Colors.orange,
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Text(
+                        '${_getUnevaluatedParticipantCount()}',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+            const Tab(text: '設定'),
           ],
         ),
       ),

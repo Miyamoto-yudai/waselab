@@ -219,7 +219,7 @@ class _MyPageScreenState extends State<MyPageScreen> with TickerProviderStateMix
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   const Text('参加履歴'),
-                  if (_pendingEvaluations.length > 0) ...[
+                  if (_participatedExperiments.isNotEmpty && _pendingEvaluations.length > 0) ...[
                     const SizedBox(width: 4),
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
@@ -240,7 +240,32 @@ class _MyPageScreenState extends State<MyPageScreen> with TickerProviderStateMix
                 ],
               ),
             ),
-            const Tab(text: '募集履歴'),
+            Tab(
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Text('募集履歴'),
+                  if (_getTotalUnevaluatedCount() > 0) ...[
+                    const SizedBox(width: 4),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+                      decoration: BoxDecoration(
+                        color: Colors.orange,
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Text(
+                        '${_getTotalUnevaluatedCount()}',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
           ],
         ),
         actions: [
@@ -1318,28 +1343,23 @@ class _MyPageScreenState extends State<MyPageScreen> with TickerProviderStateMix
 
     // 実験を分類
     final ongoingExperiments = <Experiment>[];
-    final unevaluatedExperiments = <Experiment>[];
     final completedExperiments = <Experiment>[];
     
     for (final experiment in _createdExperiments) {
       final unevaluatedCount = _getUnevaluatedParticipantCount(experiment);
       
+      // 進行中タブ：募集中、進行中、未評価ありの実験をすべて含む
       if (experiment.status == ExperimentStatus.recruiting || 
-          experiment.status == ExperimentStatus.ongoing) {
+          experiment.status == ExperimentStatus.ongoing ||
+          unevaluatedCount > 0) {
         ongoingExperiments.add(experiment);
-      } else if (unevaluatedCount > 0) {
-        unevaluatedExperiments.add(experiment);
       } else {
         completedExperiments.add(experiment);
       }
     }
-    
-    final unevaluatedTotal = unevaluatedExperiments.fold<int>(
-      0, (sum, exp) => sum + _getUnevaluatedParticipantCount(exp)
-    );
 
     return DefaultTabController(
-      length: 3,
+      length: 2,
       child: Column(
         children: [
           Container(
@@ -1351,32 +1371,6 @@ class _MyPageScreenState extends State<MyPageScreen> with TickerProviderStateMix
               unselectedLabelColor: Colors.grey[600],
               tabs: [
                 Tab(text: '進行中 (${ongoingExperiments.length})'),
-                Tab(
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text('未評価あり'),
-                      if (unevaluatedTotal > 0) ...[
-                        const SizedBox(width: 4),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
-                          decoration: BoxDecoration(
-                            color: Colors.orange,
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          child: Text(
-                            '$unevaluatedTotal',
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 10,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ],
-                  ),
-                ),
                 Tab(text: '完了済み (${completedExperiments.length})'),
               ],
             ),
@@ -1384,9 +1378,8 @@ class _MyPageScreenState extends State<MyPageScreen> with TickerProviderStateMix
           Expanded(
             child: TabBarView(
               children: [
-                _buildExperimentHistoryTab(ongoingExperiments, '進行中の実験がありません'),
-                _buildExperimentHistoryTab(unevaluatedExperiments, '未評価の実験がありません'),
-                _buildExperimentHistoryTab(completedExperiments, '完了した実験がありません'),
+                _buildExperimentHistoryTab(ongoingExperiments, '進行中の実験'),
+                _buildExperimentHistoryTab(completedExperiments, '完了した実験'),
               ],
             ),
           ),
@@ -1409,6 +1402,21 @@ class _MyPageScreenState extends State<MyPageScreen> with TickerProviderStateMix
     
     return count;
   }
+  
+  /// すべての実験の未評価参加者の合計数を取得
+  int _getTotalUnevaluatedCount() {
+    // 募集履歴の未評価数を計算
+    int createdUnevaluated = _createdExperiments.fold<int>(
+      0,
+      (sum, exp) => sum + _getUnevaluatedParticipantCount(exp),
+    );
+    
+    // 参加履歴の未評価数（_pendingEvaluations の数）
+    int participatedUnevaluated = _pendingEvaluations.length;
+    
+    // 合計を返す
+    return createdUnevaluated + participatedUnevaluated;
+  }
 
   Widget _buildExperimentHistoryTab(List<Experiment> experiments, String emptyMessage) {
     if (experiments.isEmpty) {
@@ -1423,7 +1431,7 @@ class _MyPageScreenState extends State<MyPageScreen> with TickerProviderStateMix
             ),
             const SizedBox(height: 16),
             Text(
-              '$emptyMessageがありません',
+              '${emptyMessage}がありません',
               style: TextStyle(
                 fontSize: 16,
                 color: Colors.grey[600],
