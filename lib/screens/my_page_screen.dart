@@ -1068,6 +1068,7 @@ class _MyPageScreenState extends State<MyPageScreen> with TickerProviderStateMix
   Widget _buildExperimentCard(Experiment experiment) {
     final isMyExperiment = experiment.creatorId == _currentUser?.uid;
     final isParticipant = experiment.participants.contains(_currentUser?.uid ?? '');
+    final hasEvaluated = experiment.hasEvaluated(_currentUser?.uid ?? '');
     
     return Card(
       elevation: 2,
@@ -1075,40 +1076,16 @@ class _MyPageScreenState extends State<MyPageScreen> with TickerProviderStateMix
       child: InkWell(
         borderRadius: BorderRadius.circular(12),
         onTap: () {
-          // 未評価の場合は評価画面へ（ステータスに関わらず）
-          if (!experiment.hasEvaluated(_currentUser?.uid ?? '')) {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => ExperimentEvaluationScreen(
-                  experiment: experiment,
-                ),
+          // カード全体のタップは常に詳細画面へ
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => ExperimentDetailScreen(
+                experiment: experiment,
+                isMyExperiment: isMyExperiment,
               ),
-            ).then((result) {
-              // 評価完了後にデータを再読み込み
-              if (result == true) {
-                _loadUserData();
-              }
-            });
-          }
-          // アンケートタイプで参加者の場合、URL/詳細を表示
-          else if (experiment.type == ExperimentType.survey && 
-              isParticipant &&
-              !isMyExperiment) {
-            _showSurveyUrlDialog(experiment);
-          }
-          // その他の場合は詳細画面へ
-          else {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => ExperimentDetailScreen(
-                  experiment: experiment,
-                  isMyExperiment: isMyExperiment,
-                ),
-              ),
-            );
-          }
+            ),
+          );
         },
         child: Padding(
           padding: const EdgeInsets.all(12),
@@ -1132,17 +1109,17 @@ class _MyPageScreenState extends State<MyPageScreen> with TickerProviderStateMix
                         Expanded(
                           child: Row(
                             children: [
-                              Expanded(
+                              Flexible(
                                 child: Text(
                                   experiment.title,
                                   style: const TextStyle(fontWeight: FontWeight.bold),
+                                  overflow: TextOverflow.ellipsis,
                                 ),
                               ),
-                              // アンケートアイコン（参加者でアンケートタイプ、評価済みの場合）
+                              // アンケートアイコン（参加者でアンケートタイプの場合）
                               if (experiment.type == ExperimentType.survey && 
                                   isParticipant && 
-                                  !isMyExperiment &&
-                                  experiment.hasEvaluated(_currentUser?.uid ?? '')) ...[
+                                  !isMyExperiment) ...[
                                 const SizedBox(width: 4),
                                 Container(
                                   padding: const EdgeInsets.all(4),
@@ -1160,33 +1137,6 @@ class _MyPageScreenState extends State<MyPageScreen> with TickerProviderStateMix
                             ],
                           ),
                         ),
-                        const SizedBox(width: 8),
-                        // 未評価バッジまたはステータスバッジを表示
-                        if (!experiment.hasEvaluated(_currentUser?.uid ?? ''))
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                            decoration: BoxDecoration(
-                              color: Colors.orange,
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: const Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Icon(Icons.star_outline, size: 14, color: Colors.white),
-                                SizedBox(width: 4),
-                                Text(
-                                  '評価待ち',
-                                  style: TextStyle(
-                                    fontSize: 11,
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          )
-                        else
-                          _buildStatusBadge(experiment, isMyExperiment),
                       ],
                     ),
                     const SizedBox(height: 4),
@@ -1220,45 +1170,53 @@ class _MyPageScreenState extends State<MyPageScreen> with TickerProviderStateMix
                             ),
                           ),
                         ],
-                        // アンケート詳細確認可能の表示（評価済みの場合のみ）
-                        if (experiment.type == ExperimentType.survey && 
-                            isParticipant && 
-                            !isMyExperiment &&
-                            experiment.hasEvaluated(_currentUser?.uid ?? '')) ...[
-                          const SizedBox(width: 12),
-                          Text(
-                            experiment.surveyUrl != null ? 'タップでURL確認' : 'タップで詳細確認',
-                            style: TextStyle(
-                              fontSize: 11,
-                              color: Colors.purple[600],
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ],
                       ],
                     ),
                   ],
                 ),
               ),
-              const SizedBox(width: 8),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: experiment.type == ExperimentType.online
-                      ? Colors.blue.withValues(alpha: 0.1)
-                      : experiment.type == ExperimentType.onsite
-                          ? Colors.orange.withValues(alpha: 0.1)
-                          : Colors.green.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Text(
-                  experiment.type.label,
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: _getTypeColor(experiment.type),
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
+              // アクションボタンエリア
+              Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  // 未評価の場合は評価ボタン
+                  if (!hasEvaluated && experiment.canEvaluate(_currentUser?.uid ?? '')) 
+                    IconButton(
+                      icon: const Icon(Icons.star_outline),
+                      color: Colors.orange,
+                      iconSize: 20,
+                      tooltip: '評価する',
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => ExperimentEvaluationScreen(
+                              experiment: experiment,
+                            ),
+                          ),
+                        ).then((result) {
+                          if (result == true) {
+                            _loadUserData();
+                          }
+                        });
+                      },
+                    ),
+                  // アンケートURL確認ボタン
+                  if (experiment.type == ExperimentType.survey && 
+                      isParticipant && 
+                      !isMyExperiment)
+                    IconButton(
+                      icon: Icon(
+                        experiment.surveyUrl != null ? Icons.link : Icons.chat_bubble_outline,
+                      ),
+                      color: Colors.purple,
+                      iconSize: 20,
+                      tooltip: experiment.surveyUrl != null ? 'URLを確認' : '詳細を確認',
+                      onPressed: () {
+                        _showSurveyUrlDialog(experiment);
+                      },
+                    ),
+                ],
               ),
               const SizedBox(width: 4),
               Icon(
