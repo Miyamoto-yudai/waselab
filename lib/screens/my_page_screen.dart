@@ -10,6 +10,7 @@ import 'login_screen.dart';
 import 'experiment_detail_screen.dart';
 import 'experiment_evaluation_screen.dart';
 import 'experiment_management_screen.dart';
+import 'evaluation_history_screen.dart';
 import 'package:intl/intl.dart';
 
 class MyPageScreen extends StatefulWidget {
@@ -530,97 +531,133 @@ class _MyPageScreenState extends State<MyPageScreen> with TickerProviderStateMix
                     Expanded(
                       child: Card(
                         elevation: 2,
-                        child: Padding(
-                          padding: const EdgeInsets.all(16),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
-                                children: [
-                                  Icon(
-                                    Icons.thumb_up,
-                                    color: Colors.green[700],
-                                    size: 20,
-                                  ),
-                                  const SizedBox(width: 8),
-                                  const Text(
-                                    '評価統計',
-                                    style: TextStyle(
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.bold,
+                        child: InkWell(
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => EvaluationHistoryScreen(
+                                  userId: _currentUser!.uid,
+                                  userName: _currentUser!.name,
+                                  isMyHistory: true,
+                                ),
+                              ),
+                            );
+                          },
+                          borderRadius: BorderRadius.circular(12),
+                          child: Padding(
+                            padding: const EdgeInsets.all(16),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Row(
+                                      children: [
+                                        Icon(
+                                          Icons.thumb_up,
+                                          color: Colors.green[700],
+                                          size: 20,
+                                        ),
+                                        const SizedBox(width: 8),
+                                        const Text(
+                                          '評価統計',
+                                          style: TextStyle(
+                                            fontSize: 16,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    Icon(
+                                      Icons.arrow_forward_ios,
+                                      size: 14,
+                                      color: Colors.grey[500],
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 12),
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceAround,
+                                  children: [
+                                    Column(
+                                      children: [
+                                        Icon(
+                                          Icons.thumb_up,
+                                          color: Colors.green[600],
+                                          size: 28,
+                                        ),
+                                        const SizedBox(height: 4),
+                                        Text(
+                                          '${_currentUser!.goodCount}',
+                                          style: TextStyle(
+                                            fontSize: 20,
+                                            fontWeight: FontWeight.bold,
+                                            color: Colors.green[700],
+                                          ),
+                                        ),
+                                        Text(
+                                          'Good',
+                                          style: TextStyle(
+                                            fontSize: 12,
+                                            color: Colors.grey[600],
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    Column(
+                                      children: [
+                                        Icon(
+                                          Icons.thumb_down,
+                                          color: Colors.red[600],
+                                          size: 28,
+                                        ),
+                                        const SizedBox(height: 4),
+                                        Text(
+                                          '${_currentUser!.badCount}',
+                                          style: TextStyle(
+                                            fontSize: 20,
+                                            fontWeight: FontWeight.bold,
+                                            color: Colors.red[700],
+                                          ),
+                                        ),
+                                        Text(
+                                          'Bad',
+                                          style: TextStyle(
+                                            fontSize: 12,
+                                            color: Colors.grey[600],
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 8),
+                                if (_currentUser!.goodCount + _currentUser!.badCount > 0)
+                                  Center(
+                                    child: Text(
+                                      '評価率: ${((_currentUser!.goodCount / (_currentUser!.goodCount + _currentUser!.badCount)) * 100).toStringAsFixed(1)}%',
+                                      style: TextStyle(
+                                        fontSize: 14,
+                                        color: Colors.grey[700],
+                                        fontWeight: FontWeight.w500,
+                                      ),
                                     ),
                                   ),
-                                ],
-                              ),
-                              const SizedBox(height: 12),
-                              Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceAround,
-                                children: [
-                                  Column(
-                                    children: [
-                                      Icon(
-                                        Icons.thumb_up,
-                                        color: Colors.green[600],
-                                        size: 28,
-                                      ),
-                                      const SizedBox(height: 4),
-                                      Text(
-                                        '${_currentUser!.goodCount}',
-                                        style: TextStyle(
-                                          fontSize: 20,
-                                          fontWeight: FontWeight.bold,
-                                          color: Colors.green[700],
-                                        ),
-                                      ),
-                                      Text(
-                                        'Good',
-                                        style: TextStyle(
-                                          fontSize: 12,
-                                          color: Colors.grey[600],
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                  Column(
-                                    children: [
-                                      Icon(
-                                        Icons.thumb_down,
-                                        color: Colors.red[600],
-                                        size: 28,
-                                      ),
-                                      const SizedBox(height: 4),
-                                      Text(
-                                        '${_currentUser!.badCount}',
-                                        style: TextStyle(
-                                          fontSize: 20,
-                                          fontWeight: FontWeight.bold,
-                                          color: Colors.red[700],
-                                        ),
-                                      ),
-                                      Text(
-                                        'Bad',
-                                        style: TextStyle(
-                                          fontSize: 12,
-                                          color: Colors.grey[600],
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: 8),
-                              if (_currentUser!.goodCount + _currentUser!.badCount > 0)
+                                const SizedBox(height: 8),
                                 Center(
                                   child: Text(
-                                    '評価率: ${((_currentUser!.goodCount / (_currentUser!.goodCount + _currentUser!.badCount)) * 100).toStringAsFixed(1)}%',
+                                    '詳細を見る',
                                     style: TextStyle(
-                                      fontSize: 14,
-                                      color: Colors.grey[700],
-                                      fontWeight: FontWeight.w500,
+                                      fontSize: 12,
+                                      color: const Color(0xFF8E1728),
+                                      fontWeight: FontWeight.w600,
                                     ),
                                   ),
                                 ),
-                            ],
+                              ],
+                            ),
                           ),
                         ),
                       ),

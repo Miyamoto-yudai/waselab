@@ -237,19 +237,23 @@ class EvaluationService {
   /// ユーザーの評価履歴を取得
   Future<List<ExperimentEvaluation>> getUserEvaluations(String userId) async {
     try {
-      // 評価者として
+      debugPrint('Getting evaluations for user: $userId');
+      
+      // 評価者として（orderByを削除してクライアント側でソート）
       final asEvaluator = await _firestore
           .collection('evaluations')
           .where('evaluatorId', isEqualTo: userId)
-          .orderBy('createdAt', descending: true)
           .get();
       
-      // 被評価者として
+      debugPrint('Found ${asEvaluator.docs.length} evaluations as evaluator');
+      
+      // 被評価者として（orderByを削除してクライアント側でソート）
       final asEvaluated = await _firestore
           .collection('evaluations')
           .where('evaluatedUserId', isEqualTo: userId)
-          .orderBy('createdAt', descending: true)
           .get();
+      
+      debugPrint('Found ${asEvaluated.docs.length} evaluations as evaluated');
       
       final evaluations = [
         ...asEvaluator.docs.map((doc) => ExperimentEvaluation.fromFirestore(doc)),
@@ -259,9 +263,12 @@ class EvaluationService {
       // 日付でソート
       evaluations.sort((a, b) => b.createdAt.compareTo(a.createdAt));
       
+      debugPrint('Total evaluations found: ${evaluations.length}');
+      
       return evaluations;
     } catch (e) {
       debugPrint('Error getting user evaluations: $e');
+      debugPrint('Stack trace: ${StackTrace.current}');
       return [];
     }
   }

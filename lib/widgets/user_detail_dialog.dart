@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import '../models/app_user.dart';
 import '../services/auth_service.dart';
 import '../services/experiment_service.dart';
+import '../screens/evaluation_history_screen.dart';
 
 class UserDetailDialog extends StatefulWidget {
   final String userId;
@@ -458,6 +459,30 @@ class _UserDetailDialogState extends State<UserDetailDialog> {
                         ),
                       ),
                     ],
+                    const SizedBox(height: 8),
+                    SizedBox(
+                      width: double.infinity,
+                      child: TextButton.icon(
+                        onPressed: () {
+                          Navigator.pop(context);
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => EvaluationHistoryScreen(
+                                userId: widget.userId,
+                                userName: widget.userName,
+                                isMyHistory: false,
+                              ),
+                            ),
+                          );
+                        },
+                        icon: const Icon(Icons.history, size: 16),
+                        label: const Text('評価履歴を見る'),
+                        style: TextButton.styleFrom(
+                          foregroundColor: const Color(0xFF8E1728),
+                        ),
+                      ),
+                    ),
                     ],
                   ),
                 ),
