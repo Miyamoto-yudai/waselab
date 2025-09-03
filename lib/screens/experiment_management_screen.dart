@@ -79,62 +79,11 @@ class _ExperimentManagementScreenState extends State<ExperimentManagementScreen>
     }
   }
 
-  /// 実験ステータスを更新
-  Future<void> _updateExperimentStatus(ExperimentStatus newStatus) async {
-    final confirm = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('ステータス変更'),
-        content: Text('実験のステータスを「${newStatus.label}」に変更しますか？'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('キャンセル'),
-          ),
-          ElevatedButton(
-            onPressed: () => Navigator.pop(context, true),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF8E1728),
-            ),
-            child: const Text('変更'),
-          ),
-        ],
-      ),
-    );
-
-    if (confirm == true) {
-      try {
-        await FirebaseFirestore.instance
-            .collection('experiments')
-            .doc(_experiment.id)
-            .update({
-          'status': newStatus.name,
-          if (newStatus == ExperimentStatus.completed) 
-            'completedAt': FieldValue.serverTimestamp(),
-        });
-
-        await _loadData();
-        
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('ステータスを「${newStatus.label}」に変更しました'),
-              backgroundColor: Colors.green,
-            ),
-          );
-        }
-      } catch (e) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('ステータス変更に失敗しました: $e'),
-              backgroundColor: Colors.red,
-            ),
-          );
-        }
-      }
-    }
-  }
+  // ステータス変更機能は削除（システムが自動管理するため）
+  // 実験の流れ:
+  // 1. 募集中: 募集期限内
+  // 2. 進行中: 実験期間中
+  // 3. 評価待ち/完了: 参加者ごとに個別管理
 
   /// 募集を締め切る
   Future<void> _closeRecruitment() async {
@@ -401,17 +350,17 @@ class _ExperimentManagementScreenState extends State<ExperimentManagementScreen>
             children: [
               Expanded(
                 child: _buildStatCard(
-                  '評価待ち',
-                  '${_getWaitingEvaluationCount()}',
-                  icon: Icons.rate_review,
-                  color: Colors.purple,
+                  '未評価',
+                  '${_getNotEvaluatedCount()}',
+                  icon: Icons.pending_actions,
+                  color: Colors.orange,
                 ),
               ),
               const SizedBox(width: 8),
               Expanded(
                 child: _buildStatCard(
-                  '完了',
-                  '${_getCompletedCount()}',
+                  '評価済み',
+                  '${_getEvaluatedCount()}',
                   icon: Icons.check_circle,
                   color: Colors.green,
                 ),
@@ -449,33 +398,26 @@ class _ExperimentManagementScreenState extends State<ExperimentManagementScreen>
                             backgroundColor: Colors.orange,
                           ),
                         ),
-                      if (_experiment.status == ExperimentStatus.recruiting)
-                        ElevatedButton.icon(
-                          onPressed: () => _updateExperimentStatus(ExperimentStatus.ongoing),
-                          icon: const Icon(Icons.play_arrow),
-                          label: const Text('実験開始'),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.blue,
-                          ),
+                      ElevatedButton.icon(
+                        onPressed: _sendBulkMessage,
+                        icon: const Icon(Icons.send),
+                        label: const Text('参加者にメッセージ'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF8E1728),
                         ),
-                      if (_experiment.status == ExperimentStatus.ongoing)
-                        ElevatedButton.icon(
-                          onPressed: () => _updateExperimentStatus(ExperimentStatus.waitingEvaluation),
-                          icon: const Icon(Icons.rate_review),
-                          label: const Text('評価待ちへ'),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.purple,
-                          ),
-                        ),
-                      if (_experiment.status == ExperimentStatus.waitingEvaluation)
-                        ElevatedButton.icon(
-                          onPressed: () => _updateExperimentStatus(ExperimentStatus.completed),
-                          icon: const Icon(Icons.check_circle),
-                          label: const Text('完了'),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.green,
-                          ),
-                        ),
+                      ),
+                      OutlinedButton.icon(
+                        onPressed: () {
+                          // TODO: 編集画面への遷移
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('編集機能は実装予定です'),
+                            ),
+                          );
+                        },
+                        icon: const Icon(Icons.edit),
+                        label: const Text('実験情報を編集'),
+                      ),
                       OutlinedButton.icon(
                         onPressed: () {
                           Navigator.push(
@@ -560,12 +502,46 @@ class _ExperimentManagementScreenState extends State<ExperimentManagementScreen>
       itemCount: _participants.length,
       itemBuilder: (context, index) {
         final participant = _participants[index];
-        final hasEvaluated = _experiment.evaluations?[participant.uid]?['evaluated'] ?? false;
+        
+        // participantEvaluationsから個別の評価状態を取得
+        final experimentData = _experiment.toFirestore();
+        final participantEvals = experimentData['participantEvaluations'] as Map<String, dynamic>? ?? {};
+        final userEval = participantEvals[participant.uid] as Map<String, dynamic>? ?? {};
+        
+        // 実験者から参加者への評価状態
+        final creatorToParticipant = userEval['creatorEvaluated'] ?? false;
+        // 参加者から実験者への評価状態
+        final participantToCreator = userEval['participantEvaluated'] ?? false;
+        // 相互評価完了フラグ
+        final mutuallyCompleted = userEval['mutuallyCompleted'] ?? false;
+        
+        // 評価ステータスを判定
+        String evaluationStatus;
+        Color statusColor;
+        IconData statusIcon;
+        
+        if (mutuallyCompleted) {
+          evaluationStatus = '相互評価完了';
+          statusColor = Colors.green;
+          statusIcon = Icons.check_circle;
+        } else if (creatorToParticipant && !participantToCreator) {
+          evaluationStatus = '相手の評価待ち';
+          statusColor = Colors.blue;
+          statusIcon = Icons.hourglass_empty;
+        } else if (!creatorToParticipant && participantToCreator) {
+          evaluationStatus = 'あなたの評価待ち';
+          statusColor = Colors.orange;
+          statusIcon = Icons.rate_review;
+        } else {
+          evaluationStatus = '実験実施待ち';
+          statusColor = Colors.grey;
+          statusIcon = Icons.schedule;
+        }
         
         return Card(
           elevation: 1,
           margin: const EdgeInsets.only(bottom: 8),
-          child: ListTile(
+          child: ExpansionTile(
             leading: CircleAvatar(
               backgroundColor: const Color(0xFF8E1728),
               backgroundImage: participant.photoUrl != null 
@@ -578,75 +554,152 @@ class _ExperimentManagementScreenState extends State<ExperimentManagementScreen>
                     )
                   : null,
             ),
-            title: Text(
-              participant.name,
-              style: const TextStyle(fontWeight: FontWeight.bold),
+            title: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    participant.name,
+                    style: const TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: statusColor.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: statusColor.withValues(alpha: 0.3)),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(statusIcon, size: 14, color: statusColor),
+                      const SizedBox(width: 4),
+                      Text(
+                        evaluationStatus,
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: statusColor,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
             ),
             subtitle: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(participant.email),
                 const SizedBox(height: 4),
-                Row(
+                Text(participant.email, style: TextStyle(fontSize: 13, color: Colors.grey[700])),
+                if (participant.department?.isNotEmpty ?? false)
+                  Text(
+                    '${participant.department} ${participant.grade ?? ""}',
+                    style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                  ),
+              ],
+            ),
+            children: [
+              Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
                   children: [
-                    if (participant.department?.isNotEmpty ?? false) ...[
-                      Icon(Icons.school, size: 14, color: Colors.grey[600]),
-                      const SizedBox(width: 4),
-                      Text(
-                        participant.department!,
-                        style: TextStyle(fontSize: 12, color: Colors.grey[600]),
-                      ),
-                      const SizedBox(width: 8),
-                    ],
-                    if (participant.grade?.isNotEmpty ?? false) ...[
-                      Icon(Icons.grade, size: 14, color: Colors.grey[600]),
-                      const SizedBox(width: 4),
-                      Text(
-                        participant.grade!,
-                        style: TextStyle(fontSize: 12, color: Colors.grey[600]),
-                      ),
-                    ],
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceAround,
+                      children: [
+                        Column(
+                          children: [
+                            Icon(
+                              creatorToParticipant ? Icons.check_circle : Icons.radio_button_unchecked,
+                              color: creatorToParticipant ? Colors.green : Colors.grey,
+                              size: 24,
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              'あなた→参加者',
+                              style: TextStyle(fontSize: 11, color: Colors.grey[600]),
+                            ),
+                            Text(
+                              creatorToParticipant ? '評価済' : '未評価',
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
+                                color: creatorToParticipant ? Colors.green : Colors.grey,
+                              ),
+                            ),
+                          ],
+                        ),
+                        Column(
+                          children: [
+                            Icon(
+                              participantToCreator ? Icons.check_circle : Icons.radio_button_unchecked,
+                              color: participantToCreator ? Colors.green : Colors.grey,
+                              size: 24,
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              '参加者→あなた',
+                              style: TextStyle(fontSize: 11, color: Colors.grey[600]),
+                            ),
+                            Text(
+                              participantToCreator ? '評価済' : '未評価',
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
+                                color: participantToCreator ? Colors.green : Colors.grey,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: OutlinedButton.icon(
+                            onPressed: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => ChatScreen(
+                                    otherUserId: participant.uid,
+                                    otherUserName: participant.name,
+                                    conversationId: '${_currentUser?.uid ?? ''}_${participant.uid}',
+                                  ),
+                                ),
+                              );
+                            },
+                            icon: const Icon(Icons.chat_bubble_outline, size: 16),
+                            label: const Text('メッセージ'),
+                          ),
+                        ),
+                        if (!creatorToParticipant) ...[
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: ElevatedButton.icon(
+                              onPressed: () {
+                                // TODO: 評価画面へ遷移
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text('評価機能は実装予定です'),
+                                  ),
+                                );
+                              },
+                              icon: const Icon(Icons.star, size: 16),
+                              label: const Text('評価する'),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.orange,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
                   ],
                 ),
-              ],
-            ),
-            trailing: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                if (hasEvaluated)
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: Colors.green.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: const Text(
-                      '評価済',
-                      style: TextStyle(
-                        fontSize: 11,
-                        color: Colors.green,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                const SizedBox(width: 8),
-                IconButton(
-                  icon: const Icon(Icons.chat_bubble_outline),
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => ChatScreen(
-                          otherUserId: participant.uid,
-                          otherUserName: participant.name,
-                          conversationId: '${_currentUser?.uid ?? ''}_${participant.uid}',
-                        ),
-                      ),
-                    );
-                  },
-                ),
-              ],
-            ),
+              ),
+            ],
           ),
         );
       },
@@ -937,18 +990,28 @@ class _ExperimentManagementScreenState extends State<ExperimentManagementScreen>
     }
   }
 
-  int _getWaitingEvaluationCount() {
-    if (_experiment.evaluations == null) return 0;
-    return _experiment.evaluations!.values
-        .where((eval) => !(eval['evaluated'] ?? false))
-        .length;
+  int _getNotEvaluatedCount() {
+    // 参加者のうち、まだ評価が完了していない人数
+    int count = 0;
+    for (final participantId in _experiment.participants) {
+      final evaluation = _experiment.evaluations?[participantId];
+      if (evaluation == null || !(evaluation['evaluated'] ?? false)) {
+        count++;
+      }
+    }
+    return count;
   }
 
-  int _getCompletedCount() {
-    if (_experiment.evaluations == null) return 0;
-    return _experiment.evaluations!.values
-        .where((eval) => eval['evaluated'] ?? false)
-        .length;
+  int _getEvaluatedCount() {
+    // 参加者のうち、評価が完了している人数
+    int count = 0;
+    for (final participantId in _experiment.participants) {
+      final evaluation = _experiment.evaluations?[participantId];
+      if (evaluation != null && (evaluation['evaluated'] ?? false)) {
+        count++;
+      }
+    }
+    return count;
   }
 
   @override

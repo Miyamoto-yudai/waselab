@@ -814,13 +814,20 @@ class _MyPageScreenState extends State<MyPageScreen> with TickerProviderStateMix
     for (final experiment in _participatedExperiments) {
       debugPrint('Experiment ${experiment.id}: status=${experiment.status.name}');
       
-      if (experiment.status == ExperimentStatus.completed ||
-          (_currentUser != null && 
-           _currentUser!.completedExperimentIds.contains(experiment.id))) {
+      // 個別の評価状態をチェック
+      final participantEvals = experiment.participantEvaluations ?? {};
+      final myEval = participantEvals[_currentUser?.uid] ?? {};
+      final mutuallyCompleted = myEval['mutuallyCompleted'] ?? false;
+      
+      if (mutuallyCompleted) {
+        // この参加者との相互評価が完了
         completedExperiments.add(experiment);
-      } else if (experiment.status == ExperimentStatus.waitingEvaluation) {
+      } else if (experiment.hasEvaluated(_currentUser?.uid ?? '') || 
+                 experiment.canEvaluate(_currentUser?.uid ?? '')) {
+        // 評価待ちまたは評価可能
         waitingEvaluationExperiments.add(experiment);
       } else {
+        // まだ実験を実施していない
         scheduledExperiments.add(experiment);
       }
     }

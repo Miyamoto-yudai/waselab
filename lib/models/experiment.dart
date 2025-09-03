@@ -59,6 +59,7 @@ class Experiment {
   final ExperimentStatus status; // 実験のステータス
   final DateTime? completedAt; // 完了日時
   final Map<String, Map<String, dynamic>>? evaluations; // 評価状態 {userId: {evaluated: bool, evaluationType: string}}
+  final Map<String, Map<String, dynamic>>? participantEvaluations; // 参加者ごとの個別評価状態
   final DateTime? actualStartDate; // 実際の実験開始日
   final String? surveyUrl; // アンケートURL（アンケートタイプの実験用）
   
@@ -95,6 +96,7 @@ class Experiment {
     this.status = ExperimentStatus.recruiting,
     this.completedAt,
     this.evaluations,
+    this.participantEvaluations,
     this.actualStartDate,
     this.surveyUrl,
   });
@@ -147,6 +149,13 @@ class Experiment {
         : null,
       actualStartDate: (data['actualStartDate'] as Timestamp?)?.toDate(),
       surveyUrl: data['surveyUrl'],
+      participantEvaluations: data['participantEvaluations'] != null
+        ? Map<String, Map<String, dynamic>>.from(
+            (data['participantEvaluations'] as Map).map(
+              (key, value) => MapEntry(key.toString(), Map<String, dynamic>.from(value as Map)),
+            ),
+          )
+        : null,
     );
   }
 
@@ -192,6 +201,7 @@ class Experiment {
         ? Timestamp.fromDate(completedAt!)
         : null,
       'evaluations': evaluations,
+      'participantEvaluations': participantEvaluations,
       'actualStartDate': actualStartDate != null
         ? Timestamp.fromDate(actualStartDate!)
         : null,
