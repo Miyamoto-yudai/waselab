@@ -153,25 +153,29 @@ class AuthService {
       // ユーザー情報をFirestoreに保存/更新
       if (userCredential.user != null) {
         final user = userCredential.user!;
-        final docRef = _firestore.collection('users').doc(user.uid);
-        final doc = await docRef.get();
         
-        if (!doc.exists) {
-          // 新規ユーザーの場合
-          final appUser = AppUser.create(
-            uid: user.uid,
-            email: user.email ?? '',
-            name: user.displayName ?? '名無し',
-            photoUrl: user.photoURL,
-          );
+        // Firestoreトランザクションを使用して安全にドキュメントを作成/更新
+        await _firestore.runTransaction((transaction) async {
+          final docRef = _firestore.collection('users').doc(user.uid);
+          final doc = await transaction.get(docRef);
           
-          await docRef.set(appUser.toFirestore());
-        } else {
-          // 既存ユーザーの場合、最終ログイン日時を更新
-          await docRef.update({
-            'lastLoginAt': FieldValue.serverTimestamp(),
-          });
-        }
+          if (!doc.exists) {
+            // 新規ユーザーの場合
+            final appUser = AppUser.create(
+              uid: user.uid,
+              email: user.email ?? '',
+              name: user.displayName ?? '名無し',
+              photoUrl: user.photoURL,
+            );
+            
+            transaction.set(docRef, appUser.toFirestore());
+          } else {
+            // 既存ユーザーの場合、最終ログイン日時を更新
+            transaction.update(docRef, {
+              'lastLoginAt': FieldValue.serverTimestamp(),
+            });
+          }
+        });
       }
 
       return null; // 成功
@@ -291,7 +295,7 @@ class AuthService {
       
       return false;
     } catch (e) {
-      print('メール認証状態のチェックエラー: $e');
+      debugPrint('メール認証状態のチェックエラー: $e');
       return false;
     }
   }

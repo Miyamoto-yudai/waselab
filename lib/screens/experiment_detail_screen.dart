@@ -1135,8 +1135,9 @@ class _ExperimentDetailScreenState extends State<ExperimentDetailScreen> {
                 width: double.infinity,
                 height: 48,
                 child: ElevatedButton.icon(
-                  onPressed: _isParticipating || _isLoading
-                    ? null // 既に参加している場合は無効化
+                  onPressed: _isParticipating || _isLoading || 
+                    (_auth.currentUser != null && widget.experiment.creatorId == _auth.currentUser!.uid)
+                    ? null // 既に参加している、読み込み中、または自分の実験の場合は無効化
                     : widget.experiment.allowFlexibleSchedule && !_showCalendar
                       ? () {
                           setState(() {
@@ -1163,23 +1164,29 @@ class _ExperimentDetailScreenState extends State<ExperimentDetailScreen> {
                     : Icon(
                         _isParticipating
                           ? Icons.check_circle
-                          : widget.experiment.type == ExperimentType.survey
-                            ? Icons.assignment
-                            : widget.experiment.allowFlexibleSchedule
-                              ? Icons.calendar_today
-                              : Icons.send,
+                          : (_auth.currentUser != null && widget.experiment.creatorId == _auth.currentUser!.uid)
+                            ? Icons.block
+                            : widget.experiment.type == ExperimentType.survey
+                              ? Icons.assignment
+                              : widget.experiment.allowFlexibleSchedule
+                                ? Icons.calendar_today
+                                : Icons.send,
                       ),
                   label: Text(
                     _isParticipating
                       ? '参加予定'
-                      : widget.experiment.type == ExperimentType.survey
-                        ? '今すぐ参加'
-                        : widget.experiment.allowFlexibleSchedule
-                          ? '日時を選択して予約'
-                          : '参加申請する',
+                      : (_auth.currentUser != null && widget.experiment.creatorId == _auth.currentUser!.uid)
+                        ? '自分の実験には参加できません'
+                        : widget.experiment.type == ExperimentType.survey
+                          ? '今すぐ参加'
+                          : widget.experiment.allowFlexibleSchedule
+                            ? '日時を選択して予約'
+                            : '参加申請する',
                   ),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: _isParticipating ? Colors.grey : null,
+                    backgroundColor: _isParticipating || 
+                      (_auth.currentUser != null && widget.experiment.creatorId == _auth.currentUser!.uid)
+                        ? Colors.grey : null,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(8),
                     ),

@@ -43,9 +43,12 @@ class _AuthWrapperState extends State<AuthWrapper> {
 
   Future<void> _initializeFirebase() async {
     try {
-      await Firebase.initializeApp(
-        options: DefaultFirebaseOptions.currentPlatform,
-      );
+      // Firebaseが既に初期化されているか確認
+      if (Firebase.apps.isEmpty) {
+        await Firebase.initializeApp(
+          options: DefaultFirebaseOptions.currentPlatform,
+        );
+      }
       setState(() {
         _isInitialized = true;
       });
@@ -178,7 +181,8 @@ class _AuthWrapperState extends State<AuthWrapper> {
         // 認証状態に応じて画面を表示
         if (snapshot.hasData && snapshot.data != null) {
           // ログイン済み
-          if (!authService.isEmailVerified) {
+          final user = snapshot.data!;
+          if (!user.emailVerified) {
             // メール未認証の場合は認証画面を表示
             return const EmailVerificationScreen();
           } else {
