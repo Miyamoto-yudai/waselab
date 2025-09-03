@@ -100,8 +100,15 @@ class ExperimentService {
         
         final data = experimentDoc.data()!;
         final participants = List<String>.from(data['participants'] ?? []);
+        final creatorId = data['creatorId'] as String?;
         
         debugPrint('Current participants: $participants');
+        debugPrint('Creator ID: $creatorId, User ID: $userId');
+        
+        // 自分が作成した実験には参加できない
+        if (creatorId == userId) {
+          throw Exception('自分が募集した実験には参加できません');
+        }
         
         // すでに参加している場合はエラー
         if (participants.contains(userId)) {

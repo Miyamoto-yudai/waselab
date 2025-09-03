@@ -12,6 +12,7 @@ import '../widgets/experiment_calendar_view.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../services/message_service.dart';
 import '../services/auth_service.dart';
+import '../services/user_service.dart';
 import 'chat_screen.dart';
 
 /// 実験詳細画面
@@ -36,14 +37,27 @@ class _ExperimentDetailScreenState extends State<ExperimentDetailScreen> {
   final MessageService _messageService = MessageService();
   final AuthService _authService = AuthService();
   final ExperimentService _experimentService = ExperimentService();
+  final UserService _userService = UserService();
   bool _showCalendar = false;
   bool _isLoading = false;
   bool _isParticipating = false;
+  String? _experimenterName;
 
   @override
   void initState() {
     super.initState();
     _checkParticipation();
+    _loadExperimenterName();
+  }
+
+  /// 実験者の名前を取得
+  Future<void> _loadExperimenterName() async {
+    final user = await _userService.getUser(widget.experiment.creatorId);
+    if (user != null && mounted) {
+      setState(() {
+        _experimenterName = user.name;
+      });
+    }
   }
 
   /// ユーザーが既に参加しているかチェック
@@ -590,7 +604,9 @@ class _ExperimentDetailScreenState extends State<ExperimentDetailScreen> {
       if (mounted) {
         String errorMessage = '参加申請に失敗しました';
         
-        if (e.toString().contains('すでに')) {
+        if (e.toString().contains('自分が募集した')) {
+          errorMessage = '自分が募集した実験には参加できません';
+        } else if (e.toString().contains('すでに')) {
           errorMessage = 'すでにこの実験に参加しています';
         } else if (e.toString().contains('権限')) {
           errorMessage = '権限がありません。ログインし直してください';
@@ -853,6 +869,15 @@ class _ExperimentDetailScreenState extends State<ExperimentDetailScreen> {
                       ),
                     ),
                     const SizedBox(height: 12),
+                    if (_experimenterName != null)
+                      _buildInfoRow(
+                        Icons.person,
+                        '実験者',
+                        _experimenterName!,
+                        const Color(0xFF8E1728),
+                      ),
+                    if (_experimenterName != null)
+                      const SizedBox(height: 8),
                     _buildInfoRow(
                       Icons.monetization_on,
                       '報酬',

@@ -30,6 +30,7 @@ class _MyPageScreenState extends State<MyPageScreen> with TickerProviderStateMix
   List<Experiment> _createdExperiments = [];
   List<Experiment> _pendingEvaluations = [];
 
+  final TextEditingController _nameController = TextEditingController();
   final TextEditingController _bioController = TextEditingController();
   final TextEditingController _departmentController = TextEditingController();
   final TextEditingController _gradeController = TextEditingController();
@@ -74,6 +75,7 @@ class _MyPageScreenState extends State<MyPageScreen> with TickerProviderStateMix
           if (mounted) {
             setState(() {
               _currentUser = user;
+              _nameController.text = user?.name ?? '';
               _bioController.text = user?.bio ?? '';
               _departmentController.text = user?.department ?? '';
               _gradeController.text = user?.grade ?? '';
@@ -117,6 +119,7 @@ class _MyPageScreenState extends State<MyPageScreen> with TickerProviderStateMix
     try {
       await _userService.updateUserProfile(
         userId: _currentUser!.uid,
+        name: _nameController.text.trim(),
         bio: _bioController.text.trim(),
         department: _departmentController.text.trim(),
         grade: _gradeController.text.trim(),
@@ -281,13 +284,91 @@ class _MyPageScreenState extends State<MyPageScreen> with TickerProviderStateMix
                               : null,
                         ),
                         const SizedBox(height: 16),
-                        Text(
-                          _currentUser!.name,
-                          style: const TextStyle(
-                            fontSize: 24,
-                            fontWeight: FontWeight.bold,
+                        if (_isEditing)
+                          Column(
+                            children: [
+                              SizedBox(
+                                width: 200,
+                                child: TextField(
+                                  controller: _nameController,
+                                  textAlign: TextAlign.center,
+                                  style: const TextStyle(
+                                    fontSize: 24,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                  decoration: InputDecoration(
+                                    hintText: '名前を入力',
+                                    border: UnderlineInputBorder(
+                                      borderSide: BorderSide(
+                                        color: Colors.grey.shade400,
+                                      ),
+                                    ),
+                                    focusedBorder: const UnderlineInputBorder(
+                                      borderSide: BorderSide(
+                                        color: Color(0xFF8E1728),
+                                        width: 2,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  TextButton.icon(
+                                    onPressed: () {
+                                      setState(() {
+                                        _isEditing = false;
+                                        _nameController.text = _currentUser?.name ?? '';
+                                        _bioController.text = _currentUser?.bio ?? '';
+                                        _departmentController.text = _currentUser?.department ?? '';
+                                        _gradeController.text = _currentUser?.grade ?? '';
+                                      });
+                                    },
+                                    icon: const Icon(Icons.close, size: 16),
+                                    label: const Text('キャンセル'),
+                                    style: TextButton.styleFrom(
+                                      foregroundColor: Colors.grey,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  ElevatedButton.icon(
+                                    onPressed: _saveProfile,
+                                    icon: const Icon(Icons.check, size: 16),
+                                    label: const Text('保存'),
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: const Color(0xFF8E1728),
+                                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          )
+                        else
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Text(
+                                _currentUser!.name,
+                                style: const TextStyle(
+                                  fontSize: 24,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              IconButton(
+                                icon: const Icon(Icons.edit, size: 18),
+                                color: const Color(0xFF8E1728),
+                                tooltip: '名前を編集',
+                                onPressed: () {
+                                  setState(() {
+                                    _isEditing = true;
+                                  });
+                                },
+                              ),
+                            ],
                           ),
-                        ),
                         const SizedBox(height: 8),
                         Text(
                           _currentUser!.email,
@@ -628,6 +709,7 @@ class _MyPageScreenState extends State<MyPageScreen> with TickerProviderStateMix
                                     onPressed: () {
                                       setState(() {
                                         _isEditing = false;
+                                        _nameController.text = _currentUser?.name ?? '';
                                         _bioController.text = _currentUser?.bio ?? '';
                                         _departmentController.text = _currentUser?.department ?? '';
                                         _gradeController.text = _currentUser?.grade ?? '';
@@ -1549,6 +1631,7 @@ class _MyPageScreenState extends State<MyPageScreen> with TickerProviderStateMix
   @override
   void dispose() {
     _tabController.dispose();
+    _nameController.dispose();
     _bioController.dispose();
     _departmentController.dispose();
     _gradeController.dispose();
