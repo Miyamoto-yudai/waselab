@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:table_calendar/table_calendar.dart';
 import 'package:intl/intl.dart';
 import '../models/experiment.dart';
@@ -49,29 +50,54 @@ class _ExperimentCalendarViewState extends State<ExperimentCalendarView> {
       final endDate = widget.experiment.experimentPeriodEnd ?? 
           DateTime.now().add(const Duration(days: 30));
       
+      debugPrint('Loading slots for experiment: ${widget.experiment.id}');
+      debugPrint('Period: $startDate to $endDate');
+      
       // 期間内の全スロットを取得
       DateTime currentDate = startDate;
       final Map<DateTime, List<ExperimentSlot>> tempSlots = {};
       
       while (!currentDate.isAfter(endDate)) {
-        final slots = await _reservationService.getSlotsByDate(
-          widget.experiment.id, 
-          currentDate,
-        );
-        
-        if (slots.isNotEmpty) {
-          final dateKey = DateTime(currentDate.year, currentDate.month, currentDate.day);
-          tempSlots[dateKey] = slots;
+        try {
+          final slots = await _reservationService.getSlotsByDate(
+            widget.experiment.id, 
+            currentDate,
+          );
+          
+          if (slots.isNotEmpty) {
+            final dateKey = DateTime(currentDate.year, currentDate.month, currentDate.day);
+            tempSlots[dateKey] = slots;
+            debugPrint('Found ${slots.length} slots for $dateKey');
+          }
+        } catch (e) {
+          debugPrint('Error loading slots for $currentDate: $e');
+          // 個別の日付でエラーが発生しても続行
         }
         
         currentDate = currentDate.add(const Duration(days: 1));
       }
       
+      debugPrint('Total dates with slots: ${tempSlots.length}');
+      
       setState(() {
         _slotsByDate = tempSlots;
         _isLoading = false;
       });
-    } catch (e) {
+      
+      // スロットが見つからない場合の警告
+      if (tempSlots.isEmpty) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('この実験には予約可能な日時がまだ設定されていません'),
+              backgroundColor: Colors.orange,
+            ),
+          );
+        }
+      }
+    } catch (e, stackTrace) {
+      debugPrint('Error in _loadSlots: $e');
+      debugPrint('StackTrace: $stackTrace');
       setState(() => _isLoading = false);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

@@ -89,6 +89,38 @@ service cloud.firestore {
       allow update, delete: if false;
     }
     
+    // Experiment slots collection - 実験の予約枠
+    match /experiment_slots/{slotId} {
+      // 認証済みユーザーは読み取り可能
+      allow read: if isAuthenticated();
+      
+      // 実験作成者のみ作成・更新・削除可能
+      // （実際には実験作成時に自動生成されるため、通常はサービス経由で作成）
+      allow create: if isAuthenticated();
+      allow update: if isAuthenticated();
+      allow delete: if isAuthenticated();
+    }
+    
+    // Experiment reservations collection - 実験予約
+    match /experiment_reservations/{reservationId} {
+      // 認証済みユーザーは読み取り可能
+      allow read: if isAuthenticated();
+      
+      // 認証済みユーザーは予約を作成可能
+      allow create: if isAuthenticated() &&
+        request.auth.uid == request.resource.data.userId;
+      
+      // 予約者本人または実験作成者が更新可能
+      allow update: if isAuthenticated() &&
+        (request.auth.uid == resource.data.userId ||
+         request.auth.uid == resource.data.experimentCreatorId);
+      
+      // 予約者本人または実験作成者が削除可能
+      allow delete: if isAuthenticated() &&
+        (request.auth.uid == resource.data.userId ||
+         request.auth.uid == resource.data.experimentCreatorId);
+    }
+    
     // Allow reading and writing to any other collections for authenticated users (for future collections)
     match /{document=**} {
       allow read, write: if false; // Default deny for any other collections

@@ -6,13 +6,13 @@ import '../models/app_user.dart';
 import '../widgets/user_detail_dialog.dart';
 
 class ChatScreen extends StatefulWidget {
-  final String conversationId;
+  final String? conversationId;
   final String otherUserId;
   final String otherUserName;
 
   const ChatScreen({
     super.key,
-    required this.conversationId,
+    this.conversationId,
     required this.otherUserId,
     required this.otherUserName,
   });
@@ -29,14 +29,18 @@ class _ChatScreenState extends State<ChatScreen> {
   String? _currentUserId;
   String? _currentUserName;
   AppUser? _currentAppUser;
+  String? _actualConversationId;
   bool _isSending = false;
   bool _showTemplates = false;
 
   @override
   void initState() {
     super.initState();
+    _actualConversationId = widget.conversationId;
     _getCurrentUser();
-    _markMessagesAsRead();
+    if (widget.conversationId != null && widget.conversationId!.isNotEmpty) {
+      _markMessagesAsRead();
+    }
   }
 
   Future<void> _getCurrentUser() async {
@@ -52,8 +56,8 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   void _markMessagesAsRead() {
-    if (_currentUserId != null) {
-      _messageService.markMessagesAsRead(widget.conversationId, _currentUserId!);
+    if (_currentUserId != null && _actualConversationId != null && _actualConversationId!.isNotEmpty) {
+      _messageService.markMessagesAsRead(_actualConversationId!, _currentUserId!);
     }
   }
 
@@ -66,13 +70,20 @@ class _ChatScreenState extends State<ChatScreen> {
     });
 
     try {
-      await _messageService.sendMessage(
+      final conversationId = await _messageService.sendMessage(
         senderId: _currentUserId!,
         receiverId: widget.otherUserId,
         content: _messageController.text.trim(),
         senderName: _currentUserName!,
         receiverName: widget.otherUserName,
       );
+      
+      if (_actualConversationId == null || _actualConversationId!.isEmpty) {
+        setState(() {
+          _actualConversationId = conversationId;
+        });
+      }
+      
       _messageController.clear();
       _scrollToBottom();
     } catch (e) {
@@ -113,8 +124,11 @@ class _ChatScreenState extends State<ChatScreen> {
 
   void _selectTemplate(String templateType) {
     final templates = _getQuickTemplates();
-    final selected = templates.firstWhere((t) => t['type'] == templateType);
-    if (selected != null) {
+    final selected = templates.firstWhere(
+      (t) => t['type'] == templateType,
+      orElse: () => <String, dynamic>{},
+    );
+    if (selected.isNotEmpty) {
       _messageController.text = selected['template'] as String;
       setState(() {
         _showTemplates = false;
@@ -240,7 +254,9 @@ class _ChatScreenState extends State<ChatScreen> {
         children: [
           Expanded(
             child: StreamBuilder<List<Message>>(
-              stream: _messageService.getConversationMessages(widget.conversationId),
+              stream: _actualConversationId != null && _actualConversationId!.isNotEmpty
+                  ? _messageService.getConversationMessages(_actualConversationId!)
+                  : Stream.value([]),
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
                   return const Center(

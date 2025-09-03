@@ -4,6 +4,7 @@ import '../services/auth_service.dart';
 import '../models/conversation.dart';
 import 'chat_screen.dart';
 import 'support_chat_screen.dart';
+import 'user_selection_screen.dart';
 
 class MessagesScreen extends StatefulWidget {
   const MessagesScreen({super.key});
@@ -262,17 +263,10 @@ class _MessagesScreenState extends State<MessagesScreen> {
   }
 
   void _showNewMessageDialog() {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('新しいメッセージ'),
-        content: const Text('この機能は準備中です。\n実験詳細画面からメッセージを送信してください。'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('OK'),
-          ),
-        ],
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => const UserSelectionScreen(),
       ),
     );
   }

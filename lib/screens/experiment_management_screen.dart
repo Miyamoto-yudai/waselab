@@ -740,7 +740,6 @@ class _ExperimentManagementScreenState extends State<ExperimentManagementScreen>
                                   builder: (context) => ChatScreen(
                                     otherUserId: participant.uid,
                                     otherUserName: participant.name,
-                                    conversationId: '${_currentUser?.uid ?? ''}_${participant.uid}',
                                   ),
                                 ),
                               );

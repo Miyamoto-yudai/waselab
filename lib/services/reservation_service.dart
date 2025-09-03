@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/foundation.dart';
 import '../models/experiment_slot.dart';
 import '../models/experiment_reservation.dart';
 
@@ -29,18 +30,32 @@ class ReservationService {
 
   /// 特定の日付の予約枠を取得
   Future<List<ExperimentSlot>> getSlotsByDate(String experimentId, DateTime date) async {
-    final startOfDay = DateTime(date.year, date.month, date.day);
-    final endOfDay = startOfDay.add(const Duration(days: 1));
+    try {
+      final startOfDay = DateTime(date.year, date.month, date.day);
+      final endOfDay = startOfDay.add(const Duration(days: 1));
 
-    final snapshot = await _firestore
-        .collection('experiment_slots')
-        .where('experimentId', isEqualTo: experimentId)
-        .where('startTime', isGreaterThanOrEqualTo: Timestamp.fromDate(startOfDay))
-        .where('startTime', isLessThan: Timestamp.fromDate(endOfDay))
-        .orderBy('startTime')
-        .get();
+      // まず実験IDでフィルタリング
+      final snapshot = await _firestore
+          .collection('experiment_slots')
+          .where('experimentId', isEqualTo: experimentId)
+          .get();
 
-    return snapshot.docs.map((doc) => ExperimentSlot.fromFirestore(doc)).toList();
+      // クライアント側で日付フィルタリング
+      final slots = snapshot.docs
+          .map((doc) => ExperimentSlot.fromFirestore(doc))
+          .where((slot) => 
+              slot.startTime.isAfter(startOfDay.subtract(const Duration(seconds: 1))) &&
+              slot.startTime.isBefore(endOfDay))
+          .toList();
+      
+      // 開始時刻でソート
+      slots.sort((a, b) => a.startTime.compareTo(b.startTime));
+      
+      return slots;
+    } catch (e) {
+      debugPrint('Error in getSlotsByDate: $e');
+      return [];
+    }
   }
 
   /// 予約枠を作成
