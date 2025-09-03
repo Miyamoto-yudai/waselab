@@ -245,7 +245,7 @@ class _MyPageScreenState extends State<MyPageScreen> with TickerProviderStateMix
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   const Text('募集履歴'),
-                  if (_getTotalUnevaluatedCount() > 0) ...[
+                  if (_getCreatedExperimentsUnevaluatedCount() > 0) ...[
                     const SizedBox(width: 4),
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
@@ -254,7 +254,7 @@ class _MyPageScreenState extends State<MyPageScreen> with TickerProviderStateMix
                         borderRadius: BorderRadius.circular(10),
                       ),
                       child: Text(
-                        '${_getTotalUnevaluatedCount()}',
+                        '${_getCreatedExperimentsUnevaluatedCount()}',
                         style: const TextStyle(
                           color: Colors.white,
                           fontSize: 10,
@@ -491,15 +491,17 @@ class _MyPageScreenState extends State<MyPageScreen> with TickerProviderStateMix
                           children: [
                             Expanded(
                               child: _buildActivityCard(
-                                icon: Icons.campaign,
-                                title: '募集中',
-                                count: _createdExperiments.where((e) => 
-                                  e.recruitmentEndDate != null && 
-                                  e.recruitmentEndDate!.isAfter(DateTime.now())
-                                ).length,
-                                color: const Color(0xFF8E1728),
+                                icon: Icons.hourglass_empty,
+                                title: '評価待ち',
+                                count: _getTotalUnevaluatedCount(),
+                                color: Colors.orange,
                                 onTap: () {
-                                  _tabController.animateTo(2);
+                                  // 参加履歴と募集履歴どちらかに優先的に遷移
+                                  if (_pendingEvaluations.isNotEmpty) {
+                                    _tabController.animateTo(1);
+                                  } else if (_getCreatedExperimentsUnevaluatedCount() > 0) {
+                                    _tabController.animateTo(2);
+                                  }
                                 },
                               ),
                             ),
@@ -1416,6 +1418,14 @@ class _MyPageScreenState extends State<MyPageScreen> with TickerProviderStateMix
     
     // 合計を返す
     return createdUnevaluated + participatedUnevaluated;
+  }
+  
+  /// 募集履歴の未評価参加者数を取得
+  int _getCreatedExperimentsUnevaluatedCount() {
+    return _createdExperiments.fold<int>(
+      0,
+      (sum, exp) => sum + _getUnevaluatedParticipantCount(exp),
+    );
   }
 
   Widget _buildExperimentHistoryTab(List<Experiment> experiments, String emptyMessage) {
