@@ -471,6 +471,35 @@ class _ExperimentManagementScreenState extends State<ExperimentManagementScreen>
               ),
             ),
           ),
+          const SizedBox(height: 24),
+          
+          // 実験詳細を表示ボタン
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton.icon(
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => ExperimentDetailScreen(
+                      experiment: _experiment,
+                      isMyExperiment: true,
+                    ),
+                  ),
+                );
+              },
+              icon: const Icon(Icons.visibility),
+              label: const Text('実験詳細を表示'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF8E1728),
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                textStyle: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          ),
         ],
       ),
     );
