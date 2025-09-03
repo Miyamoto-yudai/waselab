@@ -42,12 +42,15 @@ class _ExperimentDetailScreenState extends State<ExperimentDetailScreen> {
   bool _isLoading = false;
   bool _isParticipating = false;
   String? _experimenterName;
+  ExperimentReservation? _currentUserReservation;
+  ExperimentSlot? _reservedSlot;
 
   @override
   void initState() {
     super.initState();
     _checkParticipation();
     _loadExperimenterName();
+    _loadUserReservation();
   }
 
   /// 実験者の名前を取得
@@ -73,6 +76,50 @@ class _ExperimentDetailScreenState extends State<ExperimentDetailScreen> {
           _isParticipating = participating;
         });
       }
+    }
+  }
+
+  /// ユーザーの予約情報を取得
+  Future<void> _loadUserReservation() async {
+    try {
+      final user = _auth.currentUser;
+      if (user != null) {
+        final reservationsStream = _reservationService.getUserReservations(user.uid);
+        final reservations = await reservationsStream.first;
+        
+        // この実験に対する予約を検索
+        final reservation = reservations.firstWhere(
+          (r) => r.experimentId == widget.experiment.id && r.status == ReservationStatus.confirmed,
+          orElse: () => ExperimentReservation(
+            id: '',
+            userId: '',
+            experimentId: '',
+            slotId: '',
+            reservedAt: DateTime.now(),
+            status: ReservationStatus.cancelled,
+          ),
+        );
+        
+        if (reservation.id.isNotEmpty && mounted) {
+          // スロット情報を取得
+          try {
+            final slotDoc = await _reservationService.getSlotById(reservation.slotId);
+            setState(() {
+              _currentUserReservation = reservation;
+              _reservedSlot = slotDoc;
+            });
+          } catch (e) {
+            // スロット情報が取得できない場合は予約情報のみ保持
+            debugPrint('スロット情報の取得エラー（無視）: $e');
+            setState(() {
+              _currentUserReservation = reservation;
+            });
+          }
+        }
+      }
+    } catch (e) {
+      // 予約情報が取得できなくても実験詳細は表示する
+      debugPrint('予約情報の取得エラー（無視）: $e');
     }
   }
 
@@ -1126,10 +1173,76 @@ class _ExperimentDetailScreenState extends State<ExperimentDetailScreen> {
               ),
             ],
 
+            // 予約状態の表示
+            if (_currentUserReservation != null && !widget.isMyExperiment) ...[
+              const SizedBox(height: 16),
+              Card(
+                color: Colors.blue.withValues(alpha: 0.1),
+                child: Padding(
+                  padding: const EdgeInsets.all(12),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Icon(
+                            Icons.event_available,
+                            color: Colors.blue[700],
+                            size: 20,
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            '予約済み',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              color: Colors.blue[700],
+                            ),
+                          ),
+                        ],
+                      ),
+                      if (_reservedSlot != null) ...[
+                        const SizedBox(height: 8),
+                        Text(
+                          '予約日時: ${_formatDateTime(_reservedSlot!.startTime)}',
+                          style: const TextStyle(fontSize: 14),
+                        ),
+                      ],
+                      if (_currentUserReservation!.canCancel(widget.experiment, slot: _reservedSlot)) ...[
+                        const SizedBox(height: 12),
+                        SizedBox(
+                          width: double.infinity,
+                          child: OutlinedButton.icon(
+                            onPressed: _isLoading ? null : _handleCancelReservation,
+                            icon: _isLoading 
+                              ? const SizedBox(
+                                  width: 16,
+                                  height: 16,
+                                  child: CircularProgressIndicator(strokeWidth: 2),
+                                )
+                              : const Icon(Icons.cancel, color: Colors.red),
+                            label: const Text(
+                              '予約をキャンセル',
+                              style: TextStyle(color: Colors.red),
+                            ),
+                            style: OutlinedButton.styleFrom(
+                              side: const BorderSide(color: Colors.red),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+              ),
+            ],
+
             const SizedBox(height: 24),
 
-            // 応募ボタン
-            if (!widget.isMyExperiment) // 自分の実験でない場合のみ表示
+            // 応募ボタン（予約がない場合のみ表示）
+            if (!widget.isMyExperiment && _currentUserReservation == null) // 自分の実験でなく、予約がない場合のみ表示
               SizedBox(
                 width: double.infinity,
                 height: 48,
@@ -1214,6 +1327,93 @@ class _ExperimentDetailScreenState extends State<ExperimentDetailScreen> {
     
     // それ以外の場合（フォールバック）
     return _formatDateTime(widget.experiment.recruitmentStartDate);
+  }
+
+  /// 予約キャンセル処理
+  Future<void> _handleCancelReservation() async {
+    final TextEditingController reasonController = TextEditingController();
+    
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('予約のキャンセル'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'この実験の予約をキャンセルしますか？',
+              style: TextStyle(fontSize: 16),
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: reasonController,
+              maxLines: 3,
+              decoration: InputDecoration(
+                labelText: 'キャンセル理由（任意）',
+                hintText: '急用のため、体調不良など...',
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                contentPadding: const EdgeInsets.all(12),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('戻る'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+            ),
+            child: const Text('キャンセルする'),
+          ),
+        ],
+      ),
+    );
+    
+    if (confirmed == true && mounted) {
+      setState(() => _isLoading = true);
+      
+      try {
+        await _reservationService.cancelReservation(
+          _currentUserReservation!.id, 
+          reasonController.text.isNotEmpty ? reasonController.text : null,
+        );
+        
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('予約をキャンセルしました'),
+              backgroundColor: Colors.green,
+            ),
+          );
+          
+          // 予約情報を再読み込み
+          await _loadUserReservation();
+          await _checkParticipation();
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('キャンセルに失敗しました: $e'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      } finally {
+        if (mounted) {
+          setState(() => _isLoading = false);
+        }
+      }
+    }
+    
+    reasonController.dispose();
   }
 
   /// 情報行のウィジェット

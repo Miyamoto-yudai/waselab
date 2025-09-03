@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 import '../models/experiment.dart';
+import 'user_service.dart';
 
 class ExperimentService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -343,6 +344,40 @@ class ExperimentService {
     } catch (e) {
       debugPrint('Error getting pending evaluations: $e');
       return [];
+    }
+  }
+
+  /// 実験参加をキャンセル
+  Future<void> cancelParticipation(String experimentId, String userId) async {
+    try {
+      final experimentDoc = await _firestore.collection('experiments').doc(experimentId).get();
+      
+      if (!experimentDoc.exists) {
+        throw Exception('実験が見つかりません');
+      }
+      
+      final experiment = Experiment.fromFirestore(experimentDoc);
+      
+      // participantsリストから削除
+      final updatedParticipants = List<String>.from(experiment.participants);
+      if (!updatedParticipants.contains(userId)) {
+        throw Exception('この実験に参加していません');
+      }
+      
+      updatedParticipants.remove(userId);
+      
+      // Firestoreを更新
+      await _firestore.collection('experiments').doc(experimentId).update({
+        'participants': updatedParticipants,
+      });
+      
+      // ユーザーのscheduledExperimentsを減らす
+      final userService = UserService();
+      await userService.decrementScheduledExperiments(userId);
+      
+    } catch (e) {
+      debugPrint('Error canceling participation: $e');
+      throw e;
     }
   }
 }

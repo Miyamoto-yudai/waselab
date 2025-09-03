@@ -1,4 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'experiment.dart';
+import 'experiment_slot.dart';
 
 /// 予約状態
 enum ReservationStatus {
@@ -86,5 +88,85 @@ class ExperimentReservation {
       cancelReason: cancelReason ?? this.cancelReason,
       note: note ?? this.note,
     );
+  }
+
+  /// キャンセル可能かどうかを判定
+  /// @param experiment 実験情報
+  /// @param slot 予約枠情報（オプション）
+  bool canCancel(Experiment experiment, {ExperimentSlot? slot}) {
+    // 既にキャンセル済みまたは完了済みの場合はキャンセル不可
+    if (status == ReservationStatus.cancelled || status == ReservationStatus.completed) {
+      return false;
+    }
+
+    // 実験がアンケート型の場合は常にキャンセル可能
+    if (experiment.type == ExperimentType.survey) {
+      return true;
+    }
+
+    // 固定日時の実験の場合
+    if (experiment.fixedExperimentDate != null) {
+      final now = DateTime.now();
+      final experimentDate = experiment.fixedExperimentDate!;
+      
+      // 時刻情報がある場合
+      if (experiment.fixedExperimentTime != null) {
+        final hour = experiment.fixedExperimentTime!['hour'] ?? 0;
+        final minute = experiment.fixedExperimentTime!['minute'] ?? 0;
+        final scheduledDateTime = DateTime(
+          experimentDate.year,
+          experimentDate.month,
+          experimentDate.day,
+          hour,
+          minute,
+        );
+        
+        // 実施日時の予約締切日数前までキャンセル可能
+        final deadline = scheduledDateTime.subtract(Duration(days: experiment.reservationDeadlineDays));
+        return now.isBefore(deadline);
+      }
+      
+      // 日付のみの場合は当日の0:00を基準にする
+      final startOfDay = DateTime(
+        experimentDate.year,
+        experimentDate.month,
+        experimentDate.day,
+      );
+      final deadline = startOfDay.subtract(Duration(days: experiment.reservationDeadlineDays));
+      return now.isBefore(deadline);
+    }
+
+    // 柔軟な日程調整が可能な実験の場合
+    if (experiment.allowFlexibleSchedule) {
+      // 参加者の個別スケジュール情報がある場合
+      if (experiment.participantEvaluations != null && 
+          experiment.participantEvaluations!.containsKey(userId)) {
+        final participantInfo = experiment.participantEvaluations![userId];
+        if (participantInfo != null && participantInfo['scheduledDate'] != null) {
+          final scheduledDate = (participantInfo['scheduledDate'] as Timestamp).toDate();
+          final deadline = scheduledDate.subtract(Duration(days: experiment.reservationDeadlineDays));
+          return DateTime.now().isBefore(deadline);
+        }
+      }
+      // スケジュール未確定の場合は常にキャンセル可能
+      return true;
+    }
+
+    // スロット予約の場合
+    if (slot != null) {
+      final now = DateTime.now();
+      final deadline = slot.startTime.subtract(Duration(days: experiment.reservationDeadlineDays));
+      return now.isBefore(deadline);
+    }
+
+    // その他の場合（通常の実験期間がある場合）
+    if (experiment.experimentPeriodStart != null) {
+      final now = DateTime.now();
+      final deadline = experiment.experimentPeriodStart!.subtract(Duration(days: experiment.reservationDeadlineDays));
+      return now.isBefore(deadline);
+    }
+
+    // デフォルトはキャンセル可能
+    return true;
   }
 }

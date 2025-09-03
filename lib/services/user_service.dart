@@ -186,4 +186,11 @@ class UserService {
       'lastEarningsUpdate': Timestamp.fromDate(DateTime.now()),
     });
   }
+  
+  /// scheduledExperimentsを減らす
+  Future<void> decrementScheduledExperiments(String userId) async {
+    await _firestore.collection('users').doc(userId).update({
+      'scheduledExperiments': FieldValue.increment(-1),
+    });
+  }
 }

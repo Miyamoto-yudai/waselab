@@ -1,11 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../services/auth_service.dart';
 import '../services/user_service.dart';
 import '../services/experiment_service.dart';
+import '../services/reservation_service.dart';
 import '../models/app_user.dart';
 import '../models/experiment.dart';
+import '../models/experiment_reservation.dart';
+import '../models/experiment_slot.dart';
 import 'login_screen.dart';
 import 'experiment_detail_screen.dart';
 import 'experiment_evaluation_screen.dart';
@@ -24,6 +28,7 @@ class _MyPageScreenState extends State<MyPageScreen> with TickerProviderStateMix
   final AuthService _authService = AuthService();
   final UserService _userService = UserService();
   final ExperimentService _experimentService = ExperimentService();
+  final ReservationService _reservationService = ReservationService();
   AppUser? _currentUser;
   bool _isLoading = true;
   bool _isEditing = false;
@@ -31,6 +36,7 @@ class _MyPageScreenState extends State<MyPageScreen> with TickerProviderStateMix
   List<Experiment> _participatedExperiments = [];
   List<Experiment> _createdExperiments = [];
   List<Experiment> _pendingEvaluations = [];
+  List<ExperimentReservation> _userReservations = [];
 
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _bioController = TextEditingController();
@@ -74,6 +80,16 @@ class _MyPageScreenState extends State<MyPageScreen> with TickerProviderStateMix
           final created = await _experimentService.getUserCreatedExperiments(user.uid);
           final pendingEvals = await _experimentService.getPendingEvaluations(user.uid);
           
+          // 予約情報を取得（エラーハンドリングを追加）
+          List<ExperimentReservation> reservations = [];
+          try {
+            final reservationsStream = _reservationService.getUserReservations(user.uid);
+            reservations = await reservationsStream.first;
+          } catch (reservationError) {
+            debugPrint('予約情報の取得エラー（無視）: $reservationError');
+            // 予約情報が取得できなくても他の情報は表示する
+          }
+          
           if (mounted) {
             setState(() {
               _currentUser = user;
@@ -84,6 +100,7 @@ class _MyPageScreenState extends State<MyPageScreen> with TickerProviderStateMix
               _participatedExperiments = participated;
               _createdExperiments = created;
               _pendingEvaluations = pendingEvals;
+              _userReservations = reservations;
               _isLoading = false;
             });
           }
@@ -1378,6 +1395,43 @@ class _MyPageScreenState extends State<MyPageScreen> with TickerProviderStateMix
                         ),
                       ),
                     ),
+                  // キャンセルボタン（予約がある実験で、キャンセル可能な場合）
+                  if (isParticipant && !isMyExperiment && _canCancelReservation(experiment))
+                    Container(
+                      margin: const EdgeInsets.only(right: 4, top: 4),
+                      child: Material(
+                        color: Colors.red.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(20),
+                        child: InkWell(
+                          onTap: () {
+                            _showCancelConfirmDialog(experiment);
+                          },
+                          borderRadius: BorderRadius.circular(20),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: const [
+                                Icon(
+                                  Icons.cancel,
+                                  color: Colors.red,
+                                  size: 14,
+                                ),
+                                SizedBox(width: 4),
+                                Text(
+                                  'キャンセル',
+                                  style: TextStyle(
+                                    color: Colors.red,
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
                 ],
               ),
               const SizedBox(width: 4),
@@ -1943,6 +1997,207 @@ class _MyPageScreenState extends State<MyPageScreen> with TickerProviderStateMix
           ),
       ],
     );
+  }
+
+  /// 実験参加がキャンセル可能かどうかを判定
+  bool _canCancelParticipation(Experiment experiment) {
+    // 既に評価済みの場合はキャンセル不可
+    if (experiment.hasEvaluated(_currentUser?.uid ?? '')) {
+      return false;
+    }
+    
+    // 実験が完了している場合はキャンセル不可
+    if (experiment.status == ExperimentStatus.completed) {
+      return false;
+    }
+    
+    // アンケート型は常にキャンセル可能
+    if (experiment.type == ExperimentType.survey) {
+      return true;
+    }
+    
+    // 固定日時の実験の場合
+    if (experiment.fixedExperimentDate != null) {
+      final now = DateTime.now();
+      final experimentDate = experiment.fixedExperimentDate!;
+      
+      // 時刻情報がある場合
+      if (experiment.fixedExperimentTime != null) {
+        final hour = experiment.fixedExperimentTime!['hour'] ?? 0;
+        final minute = experiment.fixedExperimentTime!['minute'] ?? 0;
+        final scheduledDateTime = DateTime(
+          experimentDate.year,
+          experimentDate.month,
+          experimentDate.day,
+          hour,
+          minute,
+        );
+        
+        // 実施日時の予約締切日数前までキャンセル可能
+        final deadline = scheduledDateTime.subtract(Duration(days: experiment.reservationDeadlineDays));
+        return now.isBefore(deadline);
+      }
+      
+      // 日付のみの場合は当日の0:00を基準にする
+      final startOfDay = DateTime(
+        experimentDate.year,
+        experimentDate.month,
+        experimentDate.day,
+      );
+      final deadline = startOfDay.subtract(Duration(days: experiment.reservationDeadlineDays));
+      return now.isBefore(deadline);
+    }
+    
+    // 柔軟な日程調整が可能な実験の場合
+    if (experiment.allowFlexibleSchedule) {
+      // 参加者の個別スケジュール情報がある場合
+      if (experiment.participantEvaluations != null && 
+          experiment.participantEvaluations!.containsKey(_currentUser?.uid)) {
+        final participantInfo = experiment.participantEvaluations![_currentUser?.uid];
+        if (participantInfo != null && participantInfo['scheduledDate'] != null) {
+          final scheduledDate = (participantInfo['scheduledDate'] as Timestamp).toDate();
+          final deadline = scheduledDate.subtract(Duration(days: experiment.reservationDeadlineDays));
+          return DateTime.now().isBefore(deadline);
+        }
+      }
+      // スケジュール未確定の場合は常にキャンセル可能
+      return true;
+    }
+    
+    // その他の場合（通常の実験期間がある場合）
+    if (experiment.experimentPeriodStart != null) {
+      final now = DateTime.now();
+      final deadline = experiment.experimentPeriodStart!.subtract(Duration(days: experiment.reservationDeadlineDays));
+      return now.isBefore(deadline);
+    }
+    
+    // 実施前なら予約システムを使わない参加もキャンセル可能
+    return experiment.isScheduledFuture(_currentUser?.uid ?? '');
+  }
+  
+  /// 予約がキャンセル可能かどうかを判定（予約システム使用時）
+  bool _canCancelReservation(Experiment experiment) {
+    // 実験に対する予約を検索
+    final reservation = _userReservations.firstWhere(
+      (r) => r.experimentId == experiment.id && r.status == ReservationStatus.confirmed,
+      orElse: () => ExperimentReservation(
+        id: '',
+        userId: '',
+        experimentId: '',
+        slotId: '',
+        reservedAt: DateTime.now(),
+        status: ReservationStatus.cancelled,
+      ),
+    );
+    
+    if (reservation.id.isEmpty) {
+      // 予約システムを使っていない場合は、通常の参加キャンセル判定を使用
+      return _canCancelParticipation(experiment);
+    }
+    
+    // TODO: スロット情報を取得してより正確な判定を行う
+    return reservation.canCancel(experiment);
+  }
+
+  /// キャンセル確認ダイアログを表示
+  Future<void> _showCancelConfirmDialog(Experiment experiment) async {
+    final TextEditingController reasonController = TextEditingController();
+    
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('予約のキャンセル'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'この実験の予約をキャンセルしますか？',
+              style: TextStyle(fontSize: 16),
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: reasonController,
+              maxLines: 3,
+              decoration: InputDecoration(
+                labelText: 'キャンセル理由（任意）',
+                hintText: '急用のため、体調不良など...',
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                contentPadding: const EdgeInsets.all(12),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('戻る'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+            ),
+            child: const Text('キャンセルする'),
+          ),
+        ],
+      ),
+    );
+    
+    if (confirmed == true && mounted) {
+      await _cancelReservation(experiment, reasonController.text);
+    }
+    
+    reasonController.dispose();
+  }
+
+  /// 予約をキャンセル
+  Future<void> _cancelReservation(Experiment experiment, String reason) async {
+    try {
+      // 実験に対する予約を検索
+      final reservation = _userReservations.firstWhere(
+        (r) => r.experimentId == experiment.id && r.status == ReservationStatus.confirmed,
+        orElse: () => ExperimentReservation(
+          id: '',
+          userId: '',
+          experimentId: '',
+          slotId: '',
+          reservedAt: DateTime.now(),
+          status: ReservationStatus.cancelled,
+        ),
+      );
+      
+      if (reservation.id.isNotEmpty) {
+        // 予約システムを使った予約のキャンセル
+        await _reservationService.cancelReservation(reservation.id, reason.isNotEmpty ? reason : null);
+      } else {
+        // 通常の実験参加のキャンセル（participantsリストから削除）
+        await _experimentService.cancelParticipation(experiment.id, _currentUser!.uid);
+      }
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('参加をキャンセルしました'),
+            backgroundColor: Colors.green,
+          ),
+        );
+        
+        // データを再読み込み
+        _loadUserData();
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('キャンセルに失敗しました: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
   }
 
   @override

@@ -18,6 +18,15 @@ class ReservationService {
             .toList());
   }
 
+  /// IDから予約枠を取得
+  Future<ExperimentSlot> getSlotById(String slotId) async {
+    final doc = await _firestore.collection('experiment_slots').doc(slotId).get();
+    if (!doc.exists) {
+      throw Exception('予約枠が見つかりません');
+    }
+    return ExperimentSlot.fromFirestore(doc);
+  }
+
   /// 特定の日付の予約枠を取得
   Future<List<ExperimentSlot>> getSlotsByDate(String experimentId, DateTime date) async {
     final startOfDay = DateTime(date.year, date.month, date.day);
