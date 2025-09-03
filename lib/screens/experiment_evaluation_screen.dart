@@ -9,10 +9,14 @@ import 'package:intl/intl.dart';
 
 class ExperimentEvaluationScreen extends StatefulWidget {
   final Experiment experiment;
+  final String? targetUserId; // 評価対象の参加者ID（実験者から参加者を評価する場合）
+  final String? targetUserName; // 評価対象の参加者名
   
   const ExperimentEvaluationScreen({
     super.key,
     required this.experiment,
+    this.targetUserId,
+    this.targetUserName,
   });
 
   @override
@@ -57,7 +61,10 @@ class _ExperimentEvaluationScreenState extends State<ExperimentEvaluationScreen>
       
       // 相手のユーザー情報を取得
       String otherUserId;
-      if (widget.experiment.creatorId == currentUser.uid) {
+      if (widget.targetUserId != null) {
+        // 特定の参加者が指定されている場合（実験者から参加者を評価）
+        otherUserId = widget.targetUserId!;
+      } else if (widget.experiment.creatorId == currentUser.uid) {
         // 自分が実験者の場合、相手は参加者（最初の参加者）
         if (widget.experiment.participants.isEmpty) {
           throw Exception('参加者がいません');
@@ -68,7 +75,17 @@ class _ExperimentEvaluationScreenState extends State<ExperimentEvaluationScreen>
         otherUserId = widget.experiment.creatorId;
       }
       
-      final otherUser = await _userService.getUser(otherUserId);
+      final otherUser = widget.targetUserName != null 
+          ? AppUser(
+              uid: otherUserId,
+              name: widget.targetUserName!,
+              email: '', // 評価には必要ない
+              isWasedaUser: false,
+              canCreateExperiment: false,
+              createdAt: DateTime.now(),
+              emailVerified: false,
+            )
+          : await _userService.getUser(otherUserId);
       
       // 評価状態を確認
       final evaluationStatus = await _evaluationService.getExperimentEvaluationStatus(

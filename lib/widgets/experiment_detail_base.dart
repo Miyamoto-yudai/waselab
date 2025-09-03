@@ -192,8 +192,10 @@ class _ExperimentDetailBaseState extends State<ExperimentDetailBase> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // 自分の実験の場合のバナー
-            if (widget.isMyExperiment)
+            // 自分の実験かつ募集中または進行中の場合のみバナーを表示
+            if (widget.isMyExperiment && 
+                (widget.experiment.status == ExperimentStatus.recruiting || 
+                 widget.experiment.status == ExperimentStatus.ongoing))
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                 margin: const EdgeInsets.only(bottom: 16),
@@ -217,9 +219,11 @@ class _ExperimentDetailBaseState extends State<ExperimentDetailBase> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text(
-                            'あなたが募集中の実験',
-                            style: TextStyle(
+                          Text(
+                            widget.experiment.status == ExperimentStatus.recruiting 
+                              ? 'あなたが募集中の実験'
+                              : 'あなたが実施中の実験',
+                            style: const TextStyle(
                               color: Color(0xFF8E1728),
                               fontWeight: FontWeight.bold,
                               fontSize: 14,

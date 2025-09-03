@@ -8,6 +8,7 @@ import '../services/user_service.dart';
 import '../services/auth_service.dart';
 import 'chat_screen.dart';
 import 'experiment_detail_screen.dart';
+import 'experiment_evaluation_screen.dart';
 
 /// 実験管理画面
 /// 実験募集者が自分の実験を管理するための画面
@@ -207,6 +208,23 @@ class _ExperimentManagementScreenState extends State<ExperimentManagementScreen>
     return Scaffold(
       appBar: AppBar(
         title: const Text('実験管理'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.visibility),
+            tooltip: '実験詳細を表示',
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => ExperimentDetailScreen(
+                    experiment: _experiment,
+                    isMyExperiment: true,
+                  ),
+                ),
+              );
+            },
+          ),
+        ],
         bottom: TabBar(
           controller: _tabController,
           indicatorColor: Colors.white,
@@ -417,21 +435,6 @@ class _ExperimentManagementScreenState extends State<ExperimentManagementScreen>
                         },
                         icon: const Icon(Icons.edit),
                         label: const Text('実験情報を編集'),
-                      ),
-                      OutlinedButton.icon(
-                        onPressed: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => ExperimentDetailScreen(
-                                experiment: _experiment,
-                                isMyExperiment: true,
-                              ),
-                            ),
-                          );
-                        },
-                        icon: const Icon(Icons.visibility),
-                        label: const Text('詳細を見る'),
                       ),
                     ],
                   ),
@@ -679,12 +682,20 @@ class _ExperimentManagementScreenState extends State<ExperimentManagementScreen>
                           Expanded(
                             child: ElevatedButton.icon(
                               onPressed: () {
-                                // TODO: 評価画面へ遷移
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
-                                    content: Text('評価機能は実装予定です'),
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) => ExperimentEvaluationScreen(
+                                      experiment: _experiment,
+                                      targetUserId: participant.uid,
+                                      targetUserName: participant.name,
+                                    ),
                                   ),
-                                );
+                                ).then((result) {
+                                  if (result == true) {
+                                    _loadData(); // 評価完了後にデータを再読み込み
+                                  }
+                                });
                               },
                               icon: const Icon(Icons.star, size: 16),
                               label: const Text('評価する'),

@@ -1328,10 +1328,8 @@ class _MyPageScreenState extends State<MyPageScreen> with TickerProviderStateMix
           child: InkWell(
             borderRadius: BorderRadius.circular(12),
             onTap: () {
-              // 自分が作成した実験で募集中または進行中の場合は管理画面へ
-              if (isMyExperiment && 
-                  (experiment.status == ExperimentStatus.recruiting || 
-                   experiment.status == ExperimentStatus.ongoing)) {
+              // 自分が作成した実験は常に管理画面へ
+              if (isMyExperiment) {
                 Navigator.push(
                   context,
                   MaterialPageRoute(
@@ -1471,9 +1469,7 @@ class _MyPageScreenState extends State<MyPageScreen> with TickerProviderStateMix
                           ),
                         ),
                       ),
-                      if (isMyExperiment && 
-                          (experiment.status == ExperimentStatus.recruiting || 
-                           experiment.status == ExperimentStatus.ongoing)) ...[
+                      if (isMyExperiment) ...[
                         const SizedBox(height: 4),
                         Container(
                           padding: const EdgeInsets.all(4),
