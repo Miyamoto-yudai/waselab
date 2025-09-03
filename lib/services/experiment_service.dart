@@ -5,6 +5,24 @@ import '../models/experiment.dart';
 class ExperimentService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
+  /// IDから実験を取得
+  Future<Experiment?> getExperimentById(String experimentId) async {
+    try {
+      final doc = await _firestore
+          .collection('experiments')
+          .doc(experimentId)
+          .get();
+      
+      if (doc.exists) {
+        return Experiment.fromFirestore(doc);
+      }
+      return null;
+    } catch (e) {
+      debugPrint('Error fetching experiment by ID: $e');
+      return null;
+    }
+  }
+
   /// ユーザーが参加した実験履歴を取得
   Future<List<Experiment>> getUserParticipatedExperiments(String userId) async {
     try {

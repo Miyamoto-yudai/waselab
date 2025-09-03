@@ -5,6 +5,24 @@ import '../models/app_user.dart';
 class UserService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
+  /// IDからユーザーを取得
+  Future<AppUser?> getUserById(String userId) async {
+    try {
+      final doc = await _firestore
+          .collection('users')
+          .doc(userId)
+          .get();
+      
+      if (doc.exists) {
+        return AppUser.fromFirestore(doc);
+      }
+      return null;
+    } catch (e) {
+      debugPrint('Error fetching user by ID: $e');
+      return null;
+    }
+  }
+
   Future<AppUser?> getUser(String userId) async {
     try {
       final doc = await _firestore.collection('users').doc(userId).get();

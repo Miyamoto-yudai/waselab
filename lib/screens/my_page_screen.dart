@@ -9,6 +9,7 @@ import '../models/experiment.dart';
 import 'login_screen.dart';
 import 'experiment_detail_screen.dart';
 import 'experiment_evaluation_screen.dart';
+import 'experiment_management_screen.dart';
 import 'package:intl/intl.dart';
 
 class MyPageScreen extends StatefulWidget {
@@ -1320,8 +1321,24 @@ class _MyPageScreenState extends State<MyPageScreen> with TickerProviderStateMix
           child: InkWell(
             borderRadius: BorderRadius.circular(12),
             onTap: () {
-              // 評価待ちの場合は評価画面へ、そうでなければ詳細画面へ
-              if (experiment.status == ExperimentStatus.waitingEvaluation &&
+              // 自分が作成した実験で募集中または進行中の場合は管理画面へ
+              if (isMyExperiment && 
+                  (experiment.status == ExperimentStatus.recruiting || 
+                   experiment.status == ExperimentStatus.ongoing)) {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => ExperimentManagementScreen(
+                      experiment: experiment,
+                    ),
+                  ),
+                ).then((_) {
+                  // 管理画面から戻ってきた時にデータを再読み込み
+                  _loadUserData();
+                });
+              } 
+              // 評価待ちの場合は評価画面へ
+              else if (experiment.status == ExperimentStatus.waitingEvaluation &&
                   !experiment.hasEvaluated(_currentUser?.uid ?? '')) {
                 Navigator.push(
                   context,
@@ -1336,7 +1353,9 @@ class _MyPageScreenState extends State<MyPageScreen> with TickerProviderStateMix
                     _loadUserData();
                   }
                 });
-              } else {
+              } 
+              // それ以外は詳細画面へ
+              else {
                 Navigator.push(
                   context,
                   MaterialPageRoute(
@@ -1424,24 +1443,45 @@ class _MyPageScreenState extends State<MyPageScreen> with TickerProviderStateMix
                     ),
                   ),
                   const SizedBox(width: 8),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: experiment.type == ExperimentType.online
-                          ? Colors.blue.withValues(alpha: 0.1)
-                          : experiment.type == ExperimentType.onsite
-                              ? Colors.orange.withValues(alpha: 0.1)
-                              : Colors.green.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Text(
-                      experiment.type.label,
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: _getTypeColor(experiment.type),
-                        fontWeight: FontWeight.bold,
+                  Column(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: experiment.type == ExperimentType.online
+                              ? Colors.blue.withValues(alpha: 0.1)
+                              : experiment.type == ExperimentType.onsite
+                                  ? Colors.orange.withValues(alpha: 0.1)
+                                  : Colors.green.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Text(
+                          experiment.type.label,
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: _getTypeColor(experiment.type),
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
                       ),
-                    ),
+                      if (isMyExperiment && 
+                          (experiment.status == ExperimentStatus.recruiting || 
+                           experiment.status == ExperimentStatus.ongoing)) ...[
+                        const SizedBox(height: 4),
+                        Container(
+                          padding: const EdgeInsets.all(4),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF8E1728).withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: const Icon(
+                            Icons.settings,
+                            size: 16,
+                            color: Color(0xFF8E1728),
+                          ),
+                        ),
+                      ],
+                    ],
                   ),
                   const SizedBox(width: 4),
                   Icon(
