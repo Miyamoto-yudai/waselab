@@ -674,7 +674,6 @@ class _ExperimentDetailScreenState extends State<ExperimentDetailScreen> {
               conversationId: conversationId,
               otherUserId: widget.experiment.creatorId,
               otherUserName: experimenterName,
-              experimentTitle: widget.experiment.title,
             ),
           ),
         );

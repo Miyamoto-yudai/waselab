@@ -9,14 +9,12 @@ class ChatScreen extends StatefulWidget {
   final String conversationId;
   final String otherUserId;
   final String otherUserName;
-  final String? experimentTitle;
 
   const ChatScreen({
     super.key,
     required this.conversationId,
     required this.otherUserId,
     required this.otherUserName,
-    this.experimentTitle,
   });
 
   @override
@@ -125,7 +123,6 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   List<Map<String, dynamic>> _getQuickTemplates() {
-    final experiment = widget.experimentTitle ?? '[実験名]';
     final userInfo = _currentAppUser?.name ?? '[お名前]';
     String affiliation = '';
     
@@ -147,7 +144,7 @@ class _ChatScreenState extends State<ChatScreen> {
         'icon': Icons.person_outline,
         'template': 'お世話になっております。\n'
             '$affiliation$userInfoと申します。\n\n'
-            '「$experiment」の実験を拝見し、大変興味を持ちました。\n'
+            '実験を拝見し、大変興味を持ちました。\n'
             'ぜひ参加させていただきたく、ご連絡差し上げました。\n\n'
             '実験の詳細について、いくつかお伺いしたいことがございます。\n'
             'お忙しいところ恐れ入りますが、ご教示いただけますと幸いです。\n\n'
@@ -158,7 +155,7 @@ class _ChatScreenState extends State<ChatScreen> {
         'label': '質問',
         'icon': Icons.help_outline,
         'template': 'お世話になっております。$userInfoです。\n\n'
-            '「$experiment」の実験について、以下の点をお伺いできますでしょうか。\n\n'
+            '実験について、以下の点をお伺いできますでしょうか。\n\n'
             '1. \n'
             '2. \n\n'
             'お手数をおかけしますが、ご回答いただけますと幸いです。\n'
@@ -169,7 +166,7 @@ class _ChatScreenState extends State<ChatScreen> {
         'label': '日程調整',
         'icon': Icons.calendar_today,
         'template': 'お世話になっております。$userInfoです。\n\n'
-            '「$experiment」の実験に参加させていただきたく存じます。\n\n'
+            '実験に参加させていただきたく存じます。\n\n'
             '私の参加可能な日時は以下の通りです：\n'
             '・\n'
             '・\n\n'
@@ -181,7 +178,7 @@ class _ChatScreenState extends State<ChatScreen> {
         'label': '参加条件',
         'icon': Icons.checklist,
         'template': 'お世話になっております。$userInfoです。\n\n'
-            '「$experiment」の実験への参加を検討しております。\n'
+            '実験への参加を検討しております。\n'
             '参加条件について確認させていただけますでしょうか。\n\n'
             'ご確認のほど、よろしくお願いいたします。',
       },
@@ -190,7 +187,7 @@ class _ChatScreenState extends State<ChatScreen> {
         'label': 'アクセス',
         'icon': Icons.location_on,
         'template': 'お世話になっております。$userInfoです。\n\n'
-            '「$experiment」の実験会場へのアクセスについて、\n'
+            '実験会場へのアクセスについて、\n'
             '詳細を教えていただけますでしょうか。\n\n'
             'よろしくお願いいたします。',
       },
@@ -199,7 +196,7 @@ class _ChatScreenState extends State<ChatScreen> {
         'label': 'お礼',
         'icon': Icons.favorite,
         'template': 'お世話になっております。$userInfoです。\n\n'
-            '先日は「$experiment」の実験でお世話になり、\n'
+            '先日は実験でお世話になり、\n'
             '誠にありがとうございました。\n\n'
             '貴重な経験をさせていただき、大変勉強になりました。\n'
             '今後ともどうぞよろしくお願いいたします。',
