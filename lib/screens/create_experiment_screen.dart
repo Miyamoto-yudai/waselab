@@ -46,6 +46,10 @@ class CreateExperimentScreen extends StatelessWidget {
       'requirements': data['requirements'],
       'timeSlots': data['timeSlots'],
       'simultaneousCapacity': data['simultaneousCapacity'],
+      'fixedExperimentDate': data['fixedExperimentDate'] != null
+        ? Timestamp.fromDate(data['fixedExperimentDate'])
+        : null,
+      'fixedExperimentTime': data['fixedExperimentTime'],
       'surveyUrl': data['surveyUrl'],
     });
   }

@@ -886,12 +886,17 @@ class _MyPageScreenState extends State<MyPageScreen> with TickerProviderStateMix
       if (mutuallyCompleted) {
         // この参加者との相互評価が完了
         completedExperiments.add(experiment);
-      } else if (experiment.hasEvaluated(_currentUser?.uid ?? '') || 
-                 experiment.canEvaluate(_currentUser?.uid ?? '')) {
-        // 評価待ちまたは評価可能
+      } else if (experiment.hasEvaluated(_currentUser?.uid ?? '')) {
+        // 既に評価済み（相手の評価待ち）
+        completedExperiments.add(experiment);
+      } else if (experiment.isScheduledFuture(_currentUser?.uid ?? '')) {
+        // まだ実験日時が来ていない
+        scheduledExperiments.add(experiment);
+      } else if (experiment.canEvaluate(_currentUser?.uid ?? '')) {
+        // 評価可能（実験日時を過ぎた）
         waitingEvaluationExperiments.add(experiment);
       } else {
-        // まだ実験を実施していない
+        // その他（日時指定なしで未実施など）
         scheduledExperiments.add(experiment);
       }
     }

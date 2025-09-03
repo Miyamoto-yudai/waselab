@@ -211,9 +211,60 @@ class Experiment {
 
   /// 実験が評価可能かどうかをチェック
   bool canEvaluate(String userId) {
-    // 実験者または参加者である場合は評価可能
-    // ステータスに関わらず、関係者であれば評価できる
-    return creatorId == userId || participants.contains(userId);
+    // 基本的なチェック：実験者または参加者でない場合は評価不可
+    if (!(creatorId == userId || participants.contains(userId))) {
+      return false;
+    }
+    
+    // 既に評価済みの場合は評価不可
+    if (hasEvaluated(userId)) {
+      return false;
+    }
+    
+    // アンケート型は日時制限なし
+    if (type == ExperimentType.survey) {
+      return true;
+    }
+    
+    // 固定日時の実験の場合
+    if (fixedExperimentDate != null) {
+      // 実施日時を過ぎているかチェック
+      final experimentDateTime = fixedExperimentDate!;
+      if (fixedExperimentTime != null) {
+        // 時刻情報がある場合は時刻も考慮
+        final hour = fixedExperimentTime!['hour'] ?? 0;
+        final minute = fixedExperimentTime!['minute'] ?? 0;
+        final scheduledDateTime = DateTime(
+          experimentDateTime.year,
+          experimentDateTime.month,
+          experimentDateTime.day,
+          hour,
+          minute,
+        );
+        return DateTime.now().isAfter(scheduledDateTime);
+      }
+      // 日付のみの場合はその日の終わり（23:59）を基準にする
+      final endOfDay = DateTime(
+        experimentDateTime.year,
+        experimentDateTime.month,
+        experimentDateTime.day,
+        23,
+        59,
+      );
+      return DateTime.now().isAfter(endOfDay);
+    }
+    
+    // 柔軟な日程調整の実験で参加者の場合
+    if (allowFlexibleSchedule && participants.contains(userId) && participantEvaluations != null) {
+      final participantInfo = participantEvaluations![userId];
+      if (participantInfo != null && participantInfo['scheduledDate'] != null) {
+        final scheduledDate = (participantInfo['scheduledDate'] as Timestamp).toDate();
+        return DateTime.now().isAfter(scheduledDate);
+      }
+    }
+    
+    // その他の場合（日時指定なしの実験など）は評価可能
+    return true;
   }
 
   /// ユーザーが既に評価済みかどうかをチェック
@@ -221,6 +272,46 @@ class Experiment {
     if (evaluations == null) return false;
     final userEval = evaluations![userId];
     return userEval != null && userEval['evaluated'] == true;
+  }
+
+  /// 実験が将来の予定かどうかをチェック
+  bool isScheduledFuture(String userId) {
+    // アンケート型は常に現在実施可能
+    if (type == ExperimentType.survey) {
+      return false;
+    }
+    
+    // 固定日時の実験の場合
+    if (fixedExperimentDate != null) {
+      final experimentDateTime = fixedExperimentDate!;
+      if (fixedExperimentTime != null) {
+        // 時刻情報がある場合
+        final hour = fixedExperimentTime!['hour'] ?? 0;
+        final minute = fixedExperimentTime!['minute'] ?? 0;
+        final scheduledDateTime = DateTime(
+          experimentDateTime.year,
+          experimentDateTime.month,
+          experimentDateTime.day,
+          hour,
+          minute,
+        );
+        return DateTime.now().isBefore(scheduledDateTime);
+      }
+      // 日付のみの場合
+      return DateTime.now().isBefore(experimentDateTime);
+    }
+    
+    // 柔軟な日程調整の実験で参加者の場合
+    if (allowFlexibleSchedule && participants.contains(userId) && participantEvaluations != null) {
+      final participantInfo = participantEvaluations![userId];
+      if (participantInfo != null && participantInfo['scheduledDate'] != null) {
+        final scheduledDate = (participantInfo['scheduledDate'] as Timestamp).toDate();
+        return DateTime.now().isBefore(scheduledDate);
+      }
+    }
+    
+    // その他の場合は将来の予定ではない
+    return false;
   }
 
   /// 実験が自動完了の対象かどうかをチェック（1週間経過）

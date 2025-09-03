@@ -332,8 +332,8 @@ class ExperimentService {
         if (!experimentIds.contains(doc.id)) {
           experimentIds.add(doc.id);
           final experiment = Experiment.fromFirestore(doc);
-          // まだ評価していない実験のみを追加
-          if (!experiment.hasEvaluated(userId)) {
+          // 評価可能な実験のみを追加（日時チェックを含む）
+          if (experiment.canEvaluate(userId)) {
             experiments.add(experiment);
           }
         }

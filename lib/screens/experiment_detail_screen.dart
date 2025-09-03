@@ -939,7 +939,7 @@ class _ExperimentDetailScreenState extends State<ExperimentDetailScreen> {
                       _buildInfoRow(
                         Icons.calendar_today,
                         '実施日時',
-                        _formatDateTime(widget.experiment.experimentDate),
+                        _getExperimentDateTimeText(),
                         Colors.blue,
                       ),
                     if (widget.experiment.duration != null) ...[
@@ -1197,6 +1197,23 @@ class _ExperimentDetailScreenState extends State<ExperimentDetailScreen> {
         ),
       ),
     );
+  }
+
+  /// 実験日時のテキストを取得
+  String _getExperimentDateTimeText() {
+    // 固定日時の実験の場合
+    if (!widget.experiment.allowFlexibleSchedule && widget.experiment.fixedExperimentDate != null) {
+      final dateStr = DateFormat('yyyy/MM/dd').format(widget.experiment.fixedExperimentDate!);
+      if (widget.experiment.fixedExperimentTime != null) {
+        final hour = widget.experiment.fixedExperimentTime!['hour'] ?? 0;
+        final minute = widget.experiment.fixedExperimentTime!['minute'] ?? 0;
+        return '$dateStr ${hour.toString().padLeft(2, '0')}:${minute.toString().padLeft(2, '0')}';
+      }
+      return dateStr;
+    }
+    
+    // それ以外の場合（フォールバック）
+    return _formatDateTime(widget.experiment.recruitmentStartDate);
   }
 
   /// 情報行のウィジェット

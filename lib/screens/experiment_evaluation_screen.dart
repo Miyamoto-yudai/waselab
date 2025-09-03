@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/experiment.dart';
 import '../models/experiment_evaluation.dart';
 import '../models/app_user.dart';
@@ -54,6 +55,42 @@ class _ExperimentEvaluationScreenState extends State<ExperimentEvaluationScreen>
       final currentUser = await _authService.getCurrentAppUser();
       if (currentUser == null) {
         if (mounted) {
+          Navigator.pop(context);
+        }
+        return;
+      }
+      
+      // 評価可能かチェック（日時制限を含む）
+      if (!widget.experiment.canEvaluate(currentUser.uid)) {
+        if (mounted) {
+          String message = '評価はまだできません';
+          
+          // 将来の実験かチェック
+          if (widget.experiment.isScheduledFuture(currentUser.uid)) {
+            message = '実験実施後に評価が可能になります';
+            
+            // 実施予定日時を表示
+            if (widget.experiment.fixedExperimentDate != null) {
+              final dateStr = DateFormat('yyyy/MM/dd').format(widget.experiment.fixedExperimentDate!);
+              if (widget.experiment.fixedExperimentTime != null) {
+                final hour = widget.experiment.fixedExperimentTime!['hour'] ?? 0;
+                final minute = widget.experiment.fixedExperimentTime!['minute'] ?? 0;
+                message += '\n実施予定: $dateStr ${hour.toString().padLeft(2, '0')}:${minute.toString().padLeft(2, '0')}';
+              } else {
+                message += '\n実施予定: $dateStr';
+              }
+            }
+          } else if (widget.experiment.hasEvaluated(currentUser.uid)) {
+            message = '既に評価済みです';
+          }
+          
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(message),
+              backgroundColor: Colors.orange,
+              duration: const Duration(seconds: 3),
+            ),
+          );
           Navigator.pop(context);
         }
         return;
@@ -258,6 +295,44 @@ class _ExperimentEvaluationScreenState extends State<ExperimentEvaluationScreen>
     }
   }
   
+  String _getExperimentDateText() {
+    // アンケート型の場合
+    if (widget.experiment.type == ExperimentType.survey) {
+      return 'アンケート実験';
+    }
+    
+    // 固定日時の実験の場合
+    if (widget.experiment.fixedExperimentDate != null) {
+      final dateStr = DateFormat('yyyy/MM/dd').format(widget.experiment.fixedExperimentDate!);
+      if (widget.experiment.fixedExperimentTime != null) {
+        final hour = widget.experiment.fixedExperimentTime!['hour'] ?? 0;
+        final minute = widget.experiment.fixedExperimentTime!['minute'] ?? 0;
+        return '$dateStr ${hour.toString().padLeft(2, '0')}:${minute.toString().padLeft(2, '0')}';
+      }
+      return dateStr;
+    }
+    
+    // 柔軟な日程調整の実験で、参加者が自分の場合
+    if (widget.experiment.allowFlexibleSchedule && 
+        _currentUser != null &&
+        widget.experiment.participants.contains(_currentUser!.uid) && 
+        widget.experiment.participantEvaluations != null) {
+      final participantInfo = widget.experiment.participantEvaluations![_currentUser!.uid];
+      if (participantInfo != null && participantInfo['scheduledDate'] != null) {
+        final scheduledDate = (participantInfo['scheduledDate'] as Timestamp).toDate();
+        return DateFormat('yyyy/MM/dd HH:mm').format(scheduledDate);
+      }
+    }
+    
+    // 実験期間が設定されている場合
+    if (widget.experiment.experimentPeriodEnd != null) {
+      return '${DateFormat('yyyy/MM/dd').format(widget.experiment.experimentPeriodEnd!)} まで';
+    }
+    
+    // それ以外の場合
+    return '日程調整中';
+  }
+  
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -293,9 +368,7 @@ class _ExperimentEvaluationScreenState extends State<ExperimentEvaluationScreen>
                             Icon(Icons.calendar_today, size: 16, color: Colors.grey[600]),
                             const SizedBox(width: 4),
                             Text(
-                              widget.experiment.experimentPeriodEnd != null
-                                ? DateFormat('yyyy/MM/dd').format(widget.experiment.experimentPeriodEnd!)
-                                : '日程未定',
+                              _getExperimentDateText(),
                               style: TextStyle(color: Colors.grey[600]),
                             ),
                             const SizedBox(width: 16),
