@@ -540,27 +540,63 @@ class _LoginScreenState extends State<LoginScreen> {
                       Container(
                         padding: const EdgeInsets.all(12),
                         decoration: BoxDecoration(
-                          color: Colors.blue.withValues(alpha: 0.1),
+                          color: Colors.amber.withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(8),
                           border: Border.all(
-                            color: Colors.blue.withValues(alpha: 0.3),
+                            color: Colors.amber.withValues(alpha: 0.5),
                           ),
                         ),
-                        child: Row(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            const Icon(
-                              Icons.info_outline,
-                              color: Colors.blue,
-                              size: 20,
+                            Row(
+                              children: [
+                                Icon(
+                                  Icons.warning_amber_rounded,
+                                  color: Colors.amber[700],
+                                  size: 20,
+                                ),
+                                const SizedBox(width: 8),
+                                Text(
+                                  'アカウントタイプによる機能制限',
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.amber[900],
+                                  ),
+                                ),
+                              ],
                             ),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: Text(
-                                '早稲田メール: 実験募集可\nGoogle: 閲覧・応募のみ',
+                            const SizedBox(height: 8),
+                            RichText(
+                              text: TextSpan(
                                 style: TextStyle(
                                   fontSize: 12,
-                                  color: Colors.blue[700],
+                                  color: Colors.grey[800],
+                                  height: 1.4,
                                 ),
+                                children: [
+                                  TextSpan(
+                                    text: '● 早稲田メールアカウント (@waseda.jp)\n',
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.green[700],
+                                    ),
+                                  ),
+                                  const TextSpan(
+                                    text: '  ✓ 実験の募集・掲載が可能\n  ✓ 実験への応募が可能\n',
+                                  ),
+                                  TextSpan(
+                                    text: '\n● Googleアカウント\n',
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.blue[700],
+                                    ),
+                                  ),
+                                  const TextSpan(
+                                    text: '  ✓ 実験の閲覧・応募のみ可能\n  ✗ 実験の募集・掲載は不可',
+                                  ),
+                                ],
                               ),
                             ),
                           ],
