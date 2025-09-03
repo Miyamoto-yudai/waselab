@@ -797,7 +797,7 @@ class _MyPageScreenState extends State<MyPageScreen> with TickerProviderStateMix
           // 参加履歴タブ
           _buildParticipatedExperimentsTab(),
           // 募集履歴タブ
-          _buildExperimentHistoryTab(_createdExperiments, '募集した実験'),
+          _buildCreatedExperimentsTab(),
         ],
       ),
     );
@@ -1291,6 +1291,125 @@ class _MyPageScreenState extends State<MyPageScreen> with TickerProviderStateMix
     );
   }
 
+  /// 募集履歴タブを構築
+  Widget _buildCreatedExperimentsTab() {
+    if (_createdExperiments.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.science_outlined,
+              size: 64,
+              color: Colors.grey[400],
+            ),
+            const SizedBox(height: 16),
+            Text(
+              '募集した実験がありません',
+              style: TextStyle(
+                fontSize: 16,
+                color: Colors.grey[600],
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    // 実験を分類
+    final ongoingExperiments = <Experiment>[];
+    final unevaluatedExperiments = <Experiment>[];
+    final completedExperiments = <Experiment>[];
+    
+    for (final experiment in _createdExperiments) {
+      final unevaluatedCount = _getUnevaluatedParticipantCount(experiment);
+      
+      if (experiment.status == ExperimentStatus.recruiting || 
+          experiment.status == ExperimentStatus.ongoing) {
+        ongoingExperiments.add(experiment);
+      } else if (unevaluatedCount > 0) {
+        unevaluatedExperiments.add(experiment);
+      } else {
+        completedExperiments.add(experiment);
+      }
+    }
+    
+    final unevaluatedTotal = unevaluatedExperiments.fold<int>(
+      0, (sum, exp) => sum + _getUnevaluatedParticipantCount(exp)
+    );
+
+    return DefaultTabController(
+      length: 3,
+      child: Column(
+        children: [
+          Container(
+            color: Colors.grey[100],
+            child: TabBar(
+              indicatorColor: const Color(0xFF8E1728),
+              indicatorWeight: 3,
+              labelColor: const Color(0xFF8E1728),
+              unselectedLabelColor: Colors.grey[600],
+              tabs: [
+                Tab(text: '進行中 (${ongoingExperiments.length})'),
+                Tab(
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text('未評価あり'),
+                      if (unevaluatedTotal > 0) ...[
+                        const SizedBox(width: 4),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+                          decoration: BoxDecoration(
+                            color: Colors.orange,
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Text(
+                            '$unevaluatedTotal',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+                Tab(text: '完了済み (${completedExperiments.length})'),
+              ],
+            ),
+          ),
+          Expanded(
+            child: TabBarView(
+              children: [
+                _buildExperimentHistoryTab(ongoingExperiments, '進行中の実験がありません'),
+                _buildExperimentHistoryTab(unevaluatedExperiments, '未評価の実験がありません'),
+                _buildExperimentHistoryTab(completedExperiments, '完了した実験がありません'),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+  
+  /// 未評価の参加者数を取得
+  int _getUnevaluatedParticipantCount(Experiment experiment) {
+    int count = 0;
+    final participantEvals = experiment.participantEvaluations ?? {};
+    
+    for (final participantId in experiment.participants) {
+      final evalData = participantEvals[participantId] ?? {};
+      if (!(evalData['creatorEvaluated'] ?? false)) {
+        count++;
+      }
+    }
+    
+    return count;
+  }
+
   Widget _buildExperimentHistoryTab(List<Experiment> experiments, String emptyMessage) {
     if (experiments.isEmpty) {
       return Center(
@@ -1502,9 +1621,88 @@ class _MyPageScreenState extends State<MyPageScreen> with TickerProviderStateMix
   }
 
   Widget _buildStatusBadge(Experiment experiment, bool isMyExperiment) {
+    // 自分が作成した実験の場合
+    if (isMyExperiment) {
+      final unevaluatedCount = _getUnevaluatedParticipantCount(experiment);
+      
+      // 未評価の参加者がいる場合を最優先で表示
+      if (unevaluatedCount > 0) {
+        return Container(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+          decoration: BoxDecoration(
+            color: Colors.orange,
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Text(
+            '未評価: $unevaluatedCount名',
+            style: const TextStyle(
+              fontSize: 11,
+              color: Colors.white,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        );
+      }
+      
+      // 募集中
+      if (experiment.status == ExperimentStatus.recruiting) {
+        return Container(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+          decoration: BoxDecoration(
+            color: const Color(0xFF8E1728).withValues(alpha: 0.1),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: const Text(
+            '募集中',
+            style: TextStyle(
+              fontSize: 11,
+              color: Color(0xFF8E1728),
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        );
+      }
+      
+      // 実施中
+      if (experiment.status == ExperimentStatus.ongoing) {
+        return Container(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+          decoration: BoxDecoration(
+            color: Colors.blue.withValues(alpha: 0.1),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: const Text(
+            '実施中',
+            style: TextStyle(
+              fontSize: 11,
+              color: Colors.blue,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        );
+      }
+      
+      // すべて評価完了
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+        decoration: BoxDecoration(
+          color: Colors.green.withValues(alpha: 0.1),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: const Text(
+          '完了',
+          style: TextStyle(
+            fontSize: 11,
+            color: Colors.green,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+      );
+    }
+    
+    // 参加者として参加した実験の場合（既存のロジックを維持）
     final hasEvaluated = experiment.hasEvaluated(_currentUser?.uid ?? '');
     
-    // 未評価の場合（ステータスに関わらず）
     if (!hasEvaluated && experiment.canEvaluate(_currentUser?.uid ?? '')) {
       return Container(
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
@@ -1523,7 +1721,6 @@ class _MyPageScreenState extends State<MyPageScreen> with TickerProviderStateMix
       );
     }
     
-    // 評価済みだが相手がまだの場合
     if (hasEvaluated && experiment.status == ExperimentStatus.waitingEvaluation) {
       return Container(
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
@@ -1542,7 +1739,6 @@ class _MyPageScreenState extends State<MyPageScreen> with TickerProviderStateMix
       );
     }
     
-    // 完了済みの場合
     if (experiment.status == ExperimentStatus.completed) {
       return Container(
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
@@ -1555,44 +1751,6 @@ class _MyPageScreenState extends State<MyPageScreen> with TickerProviderStateMix
           style: TextStyle(
             fontSize: 11,
             color: Colors.grey,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-      );
-    }
-    
-    // 進行中の場合
-    if (experiment.status == ExperimentStatus.ongoing) {
-      return Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-        decoration: BoxDecoration(
-          color: Colors.blue.withValues(alpha: 0.1),
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: const Text(
-          '進行中',
-          style: TextStyle(
-            fontSize: 11,
-            color: Colors.blue,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-      );
-    }
-    
-    // 募集中の場合（デフォルト）
-    if (isMyExperiment) {
-      return Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-        decoration: BoxDecoration(
-          color: const Color(0xFF8E1728).withValues(alpha: 0.1),
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: const Text(
-          '募集中',
-          style: TextStyle(
-            fontSize: 11,
-            color: Color(0xFF8E1728),
             fontWeight: FontWeight.bold,
           ),
         ),
