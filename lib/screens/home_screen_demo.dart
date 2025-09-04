@@ -50,6 +50,7 @@ class _HomeScreenDemoState extends State<HomeScreenDemo> {
       duration: 30,
       maxParticipants: 20,
       requirements: ['視力矯正後1.0以上', '色覚正常'],
+      consentItems: ['実験中の映像記録に同意します', '実験データの学術利用に同意します', '実験中の生理指標測定に同意します'],
     ),
     Experiment(
       id: '2',
@@ -69,6 +70,7 @@ class _HomeScreenDemoState extends State<HomeScreenDemo> {
       duration: 15,
       maxParticipants: 100,
       requirements: ['早稲田大学の学部生'],
+      consentItems: [],
     ),
     Experiment(
       id: '3',
@@ -91,6 +93,7 @@ class _HomeScreenDemoState extends State<HomeScreenDemo> {
       duration: 45,
       maxParticipants: 15,
       requirements: ['日本語ネイティブスピーカー'],
+      consentItems: [],
     ),
     Experiment(
       id: '4',
@@ -112,6 +115,7 @@ class _HomeScreenDemoState extends State<HomeScreenDemo> {
       duration: 45,
       maxParticipants: 15,
       requirements: ['日本語ネイティブスピーカー', '20-30歳'],
+      consentItems: ['実験中の脳波測定に同意します', '測定データの研究使用に同意します'],
     ),
     Experiment(
       id: '5',
@@ -133,6 +137,7 @@ class _HomeScreenDemoState extends State<HomeScreenDemo> {
       duration: 60,
       maxParticipants: 10,
       requirements: ['VR酔いしにくい方', '視力矯正可'],
+      consentItems: ['VRヘッドセット装着による身体データ収集に同意します', '実験中の行動ログ記録に同意します', '心拍数測定に同意します'],
     ),
     Experiment(
       id: '6',
@@ -154,6 +159,7 @@ class _HomeScreenDemoState extends State<HomeScreenDemo> {
       duration: 40,
       maxParticipants: 25,
       requirements: ['日本語ネイティブ', '標準語話者'],
+      consentItems: ['音声録音データの研究利用に同意します', '録音データの音響分析に同意します'],
     ),
     Experiment(
       id: '7',
@@ -174,6 +180,7 @@ class _HomeScreenDemoState extends State<HomeScreenDemo> {
       duration: 20,
       maxParticipants: 50,
       requirements: ['iOSまたはAndroidスマートフォン所持'],
+      consentItems: ['画面録画データの収集に同意します', 'アプリ操作ログの記録に同意します'],
     ),
     Experiment(
       id: '8',
@@ -193,6 +200,7 @@ class _HomeScreenDemoState extends State<HomeScreenDemo> {
       duration: 10,
       maxParticipants: 200,
       requirements: ['早稲田大学学部生'],
+      consentItems: [],
     ),
     Experiment(
       id: '9',

@@ -19,6 +19,34 @@ class CreateExperimentScreen extends StatelessWidget {
       throw Exception('ユーザーが見つかりません');
     }
 
+    // データ整合性チェック（デバッグ用）
+    debugPrint('=== 実験作成データ確認 ===');
+    debugPrint('タイトル: ${data['title']}');
+    debugPrint('説明: ${data['description']}');
+    debugPrint('詳細: ${data['detailedContent']}');
+    debugPrint('報酬: ${data['reward']}');
+    debugPrint('場所: ${data['location']}');
+    debugPrint('タイプ: ${data['type']}');
+    debugPrint('有償: ${data['isPaid']}');
+    debugPrint('募集開始日: ${data['recruitmentStartDate']}');
+    debugPrint('募集終了日: ${data['recruitmentEndDate']}');
+    debugPrint('実験期間開始: ${data['experimentPeriodStart']}');
+    debugPrint('実験期間終了: ${data['experimentPeriodEnd']}');
+    debugPrint('柔軟なスケジュール: ${data['allowFlexibleSchedule']}');
+    debugPrint('研究室名: ${data['labName']}');
+    debugPrint('所要時間: ${data['duration']}');
+    debugPrint('最大参加者数: ${data['maxParticipants']}');
+    debugPrint('参加条件: ${data['requirements']}');
+    debugPrint('同意項目: ${data['consentItems']}');
+    debugPrint('日時スロット数: ${(data['dateTimeSlots'] as List?)?.length ?? 0}');
+    debugPrint('同時実験可能人数: ${data['simultaneousCapacity']}');
+    debugPrint('固定実験日: ${data['fixedExperimentDate']}');
+    debugPrint('固定実験時刻: ${data['fixedExperimentTime']}');
+    debugPrint('予約締切日数: ${data['reservationDeadlineDays']}');
+    debugPrint('アンケートURL: ${data['surveyUrl']}');
+    debugPrint('研究室/個人: ${data['isLabExperiment']}');
+    debugPrint('=========================');
+
     // Firestoreに実験を追加
     final docRef = await firestore.collection('experiments').add({
       'title': data['title'],
@@ -47,6 +75,7 @@ class CreateExperimentScreen extends StatelessWidget {
       'duration': data['duration'],
       'maxParticipants': data['maxParticipants'],
       'requirements': data['requirements'],
+      'consentItems': data['consentItems'] ?? [],
       'timeSlots': data['timeSlots'] ?? [],
       'dateTimeSlots': data['dateTimeSlots'] ?? [],
       'simultaneousCapacity': data['simultaneousCapacity'],
@@ -54,7 +83,11 @@ class CreateExperimentScreen extends StatelessWidget {
         ? Timestamp.fromDate(data['fixedExperimentDate'])
         : null,
       'fixedExperimentTime': data['fixedExperimentTime'],
+      'reservationDeadlineDays': data['reservationDeadlineDays'] ?? 1,
       'surveyUrl': data['surveyUrl'],
+      'isLabExperiment': data['isLabExperiment'] ?? true,
+      'participants': [], // 初期値として空配列を設定
+      'status': 'recruiting', // 初期ステータスを設定
     });
 
     // タイムスロットから実験スロットを生成

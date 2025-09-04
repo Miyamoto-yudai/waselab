@@ -44,10 +44,19 @@ class _ExperimentDetailScreenState extends State<ExperimentDetailScreen> {
   String? _experimenterName;
   ExperimentReservation? _currentUserReservation;
   ExperimentSlot? _reservedSlot;
+  late List<bool> _detailConsentChecked;
 
   @override
   void initState() {
     super.initState();
+    // 同意項目のチェック状態を初期化
+    _detailConsentChecked = List.filled(widget.experiment.consentItems.length, false);
+    // デバッグ: consentItemsの内容を確認
+    debugPrint('=== ExperimentDetailScreen: consentItems確認 ===');
+    debugPrint('実験タイトル: ${widget.experiment.title}');
+    debugPrint('consentItems数: ${widget.experiment.consentItems.length}');
+    debugPrint('consentItems内容: ${widget.experiment.consentItems}');
+    debugPrint('=======================================');
     _checkParticipation();
     _loadExperimenterName();
     _loadUserReservation();
@@ -171,63 +180,12 @@ class _ExperimentDetailScreenState extends State<ExperimentDetailScreen> {
     // 予約確認ダイアログを表示
     final confirmed = await showDialog<bool>(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('予約確認'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              '以下の日時で予約しますか？',
-              style: Theme.of(context).textTheme.bodyLarge,
-            ),
-            const SizedBox(height: 16),
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Colors.grey.shade100,
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      const Icon(Icons.calendar_today, size: 16),
-                      const SizedBox(width: 8),
-                      Text(
-                        DateFormat('yyyy年MM月dd日(E)', 'ja').format(slot.startTime),
-                        style: const TextStyle(fontWeight: FontWeight.bold),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 4),
-                  Row(
-                    children: [
-                      const Icon(Icons.access_time, size: 16),
-                      const SizedBox(width: 8),
-                      Text(
-                        '${DateFormat('HH:mm').format(slot.startTime)} - ${DateFormat('HH:mm').format(slot.endTime)}',
-                        style: const TextStyle(fontWeight: FontWeight.bold),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('キャンセル'),
-          ),
-          ElevatedButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('予約する'),
-          ),
-        ],
-      ),
+      builder: (context) {
+        return _ReservationConfirmDialog(
+          experiment: widget.experiment,
+          slot: slot,
+        );
+      },
     );
 
     if (confirmed == true) {
@@ -542,59 +500,8 @@ class _ExperimentDetailScreenState extends State<ExperimentDetailScreen> {
         // アンケート参加確認ダイアログ
         final confirmed = await showDialog<bool>(
           context: context,
-          builder: (context) => AlertDialog(
-            title: const Text('アンケートへの参加'),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('「${widget.experiment.title}」のアンケートに参加しますか？'),
-                const SizedBox(height: 16),
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: Colors.orange.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: Colors.orange.withValues(alpha: 0.3)),
-                  ),
-                  child: Row(
-                    children: [
-                      const Icon(Icons.info_outline, color: Colors.orange, size: 20),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          widget.experiment.surveyUrl != null 
-                            ? '参加後、アンケートURLが表示されます'
-                            : '参加後、実験者から個別チャットでアンケートの詳細が送られます',
-                          style: const TextStyle(fontSize: 12, color: Colors.orange),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                if (widget.experiment.reward != null && widget.experiment.reward! > 0) ...[
-                  const SizedBox(height: 12),
-                  Row(
-                    children: [
-                      const Icon(Icons.monetization_on, color: Colors.amber, size: 16),
-                      const SizedBox(width: 8),
-                      Text('謝礼: ${widget.experiment.reward}円', 
-                        style: const TextStyle(fontWeight: FontWeight.bold)),
-                    ],
-                  ),
-                ],
-              ],
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context, false),
-                child: const Text('キャンセル'),
-              ),
-              ElevatedButton(
-                onPressed: () => Navigator.pop(context, true),
-                child: const Text('参加する'),
-              ),
-            ],
+          builder: (context) => _SurveyParticipationDialog(
+            experiment: widget.experiment,
           ),
         );
 
@@ -623,78 +530,11 @@ class _ExperimentDetailScreenState extends State<ExperimentDetailScreen> {
         return;
       }
 
-      // 通常の実験の場合の確認ダイアログ
+      // 通常の実験の場合の確認ダイアログ（同意項目にもチェックが必要だが、画面上でチェック済みの状態で確認）
       final confirmed = await showDialog<bool>(
         context: context,
-        builder: (context) => AlertDialog(
-          title: const Text('実験への参加確認'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text('「${widget.experiment.title}」に参加申請しますか？'),
-              const SizedBox(height: 16),
-              const SizedBox(height: 12),
-              // 相互評価必須の注意書きを追加
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: Colors.amber.withValues(alpha: 0.15),
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: Colors.amber.withValues(alpha: 0.5)),
-                ),
-                child: Row(
-                  children: [
-                    Icon(Icons.warning_amber_rounded, color: Colors.amber[700], size: 20),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            '重要なお願い',
-                            style: TextStyle(
-                              fontSize: 13,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.amber[800],
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            '実験終了後は必ず相互評価を行ってください。相互評価により実験の完了が確認されます。',
-                            style: TextStyle(
-                              fontSize: 11,
-                              color: Colors.amber[700],
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              if (widget.experiment.experimentDate != null) ...[
-                const Text('実験日時:', style: TextStyle(fontWeight: FontWeight.bold)),
-                Text(DateFormat('yyyy年MM月dd日 HH:mm').format(widget.experiment.experimentDate!)),
-                const SizedBox(height: 8),
-              ],
-              if (widget.experiment.reward != null && widget.experiment.reward! > 0) ...[
-                const Text('謝礼:', style: TextStyle(fontWeight: FontWeight.bold)),
-                Text('${widget.experiment.reward}円'),
-              ],
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context, false),
-              child: const Text('キャンセル'),
-            ),
-            ElevatedButton(
-              onPressed: () => Navigator.pop(context, true),
-              child: const Text('参加する'),
-            ),
-          ],
+        builder: (context) => _DirectApplicationDialog(
+          experiment: widget.experiment,
         ),
       );
 
@@ -1203,6 +1043,104 @@ class _ExperimentDetailScreenState extends State<ExperimentDetailScreen> {
               ),
             ],
 
+            // 特別な同意項目
+            if (widget.experiment.consentItems.isNotEmpty) ...[
+              const SizedBox(height: 16),
+              Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Icon(
+                            Icons.warning_amber_rounded,
+                            color: Colors.amber[700],
+                            size: 20,
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            '特別な同意項目',
+                            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                              fontWeight: FontWeight.bold,
+                              color: Colors.amber[700],
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Colors.amber.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: Colors.amber.withValues(alpha: 0.3)),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'この実験に参加する際は、以下の項目への同意が必要です：',
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.amber[800],
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            ...widget.experiment.consentItems.asMap().entries.map((entry) {
+                              final index = entry.key;
+                              final item = entry.value;
+                              return Padding(
+                                padding: const EdgeInsets.only(bottom: 6),
+                                child: Row(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    SizedBox(
+                                      width: 20,
+                                      height: 20,
+                                      child: Checkbox(
+                                        value: _detailConsentChecked[index],
+                                        onChanged: (value) {
+                                          setState(() {
+                                            _detailConsentChecked[index] = value ?? false;
+                                          });
+                                        },
+                                        activeColor: Colors.amber[700],
+                                        materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Expanded(
+                                      child: GestureDetector(
+                                        onTap: () {
+                                          setState(() {
+                                            _detailConsentChecked[index] = !_detailConsentChecked[index];
+                                          });
+                                        },
+                                        child: Text(
+                                          item,
+                                          style: TextStyle(
+                                            fontSize: 13,
+                                            color: Colors.amber[700],
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              );
+                            }).toList(),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+
             // 柔軟なスケジュール調整の場合はカレンダー表示（自分の実験でない場合のみ）
             if (widget.experiment.allowFlexibleSchedule && 
                 !widget.isMyExperiment &&
@@ -1404,8 +1342,9 @@ class _ExperimentDetailScreenState extends State<ExperimentDetailScreen> {
                   width: double.infinity,
                   height: 48,
                   child: ElevatedButton.icon(
-                    onPressed: _isParticipating || _isLoading
-                      ? null // 既に参加している、読み込み中の場合は無効化
+                    onPressed: _isParticipating || _isLoading || 
+                        (widget.experiment.consentItems.isNotEmpty && !_detailConsentChecked.every((checked) => checked))
+                      ? null // 既に参加している、読み込み中、または同意項目未チェックの場合は無効化
                       : () => _handleDirectApplication(),
                     icon: _isLoading
                       ? const SizedBox(
@@ -1423,12 +1362,17 @@ class _ExperimentDetailScreenState extends State<ExperimentDetailScreen> {
                     label: Text(
                       _isParticipating
                         ? '参加予定'
-                        : widget.experiment.type == ExperimentType.survey
-                            ? '今すぐ参加'
-                            : '参加申請する',
+                        : (widget.experiment.consentItems.isNotEmpty && !_detailConsentChecked.every((checked) => checked))
+                            ? 'すべての同意項目にチェックしてください'
+                            : widget.experiment.type == ExperimentType.survey
+                                ? '今すぐ参加'
+                                : '参加申請する',
                     ),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: _isParticipating ? Colors.grey : null,
+                      backgroundColor: _isParticipating || 
+                          (widget.experiment.consentItems.isNotEmpty && !_detailConsentChecked.every((checked) => checked))
+                          ? Colors.grey 
+                          : null,
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(8),
                       ),
@@ -1575,6 +1519,418 @@ class _ExperimentDetailScreenState extends State<ExperimentDetailScreen> {
             value,
             style: const TextStyle(
               fontSize: 14,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// 通常の実験の参加申請ダイアログ（StatefulWidgetとして実装）
+class _DirectApplicationDialog extends StatefulWidget {
+  final Experiment experiment;
+
+  const _DirectApplicationDialog({
+    required this.experiment,
+  });
+
+  @override
+  State<_DirectApplicationDialog> createState() => _DirectApplicationDialogState();
+}
+
+class _DirectApplicationDialogState extends State<_DirectApplicationDialog> {
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('実験への参加確認'),
+      content: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('「${widget.experiment.title}」に参加申請しますか？'),
+            const SizedBox(height: 16),
+            // 相互評価必須の注意書きを追加
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.amber.withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.amber.withValues(alpha: 0.5)),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.warning_amber_rounded, color: Colors.amber[700], size: 20),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          '重要なお願い',
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.amber[800],
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          '実験終了後は必ず相互評価を行ってください。相互評価により実験の完了が確認されます。',
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: Colors.amber[700],
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            if (widget.experiment.fixedExperimentDate != null) ...[
+              const SizedBox(height: 12),
+              const Text('実験日時:', style: TextStyle(fontWeight: FontWeight.bold)),
+              Text(DateFormat('yyyy年MM月dd日').format(widget.experiment.fixedExperimentDate!)),
+              if (widget.experiment.fixedExperimentTime != null) ...[
+                Text('時刻: ${widget.experiment.fixedExperimentTime!['hour']}:${widget.experiment.fixedExperimentTime!['minute'].toString().padLeft(2, '0')}'),
+              ],
+            ],
+            if (widget.experiment.reward > 0) ...[
+              const SizedBox(height: 8),
+              const Text('謝礼:', style: TextStyle(fontWeight: FontWeight.bold)),
+              Text('${widget.experiment.reward}円'),
+            ],
+            // 同意項目の確認（画面上でチェック済みであることを前提）
+            if (widget.experiment.consentItems.isNotEmpty) ...[
+              const SizedBox(height: 12),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.green.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.green.withValues(alpha: 0.3)),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.check_circle, color: Colors.green, size: 20),
+                    const SizedBox(width: 8),
+                    const Expanded(
+                      child: Text(
+                        '特別な同意項目への同意が確認されました',
+                        style: TextStyle(fontSize: 12, color: Colors.green, fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context, false),
+          child: const Text('キャンセル'),
+        ),
+        ElevatedButton(
+          onPressed: () => Navigator.pop(context, true),
+          child: const Text('参加する'),
+        ),
+      ],
+    );
+  }
+}
+
+/// アンケート参加ダイアログ（StatefulWidgetとして実装）  
+class _SurveyParticipationDialog extends StatefulWidget {
+  final Experiment experiment;
+
+  const _SurveyParticipationDialog({
+    required this.experiment,
+  });
+
+  @override
+  State<_SurveyParticipationDialog> createState() => _SurveyParticipationDialogState();
+}
+
+class _SurveyParticipationDialogState extends State<_SurveyParticipationDialog> {
+  late List<bool> consentChecked;
+
+  @override
+  void initState() {
+    super.initState();
+    consentChecked = List.filled(widget.experiment.consentItems.length, false);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final allChecked = widget.experiment.consentItems.isEmpty || 
+        consentChecked.every((checked) => checked);
+        
+    return AlertDialog(
+      title: const Text('アンケートへの参加'),
+      content: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('「${widget.experiment.title}」のアンケートに参加しますか？'),
+            const SizedBox(height: 16),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.orange.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.orange.withValues(alpha: 0.3)),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.info_outline, color: Colors.orange, size: 20),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      widget.experiment.surveyUrl != null 
+                        ? '参加後、アンケートURLが表示されます'
+                        : '参加後、実験者から個別チャットでアンケートの詳細が送られます',
+                      style: const TextStyle(fontSize: 12, color: Colors.orange),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            if (widget.experiment.reward > 0) ...[
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  const Icon(Icons.monetization_on, color: Colors.amber, size: 16),
+                  const SizedBox(width: 8),
+                  Text('謝礼: ${widget.experiment.reward}円', 
+                    style: const TextStyle(fontWeight: FontWeight.bold)),
+                ],
+              ),
+            ],
+            // 特別な同意項目がある場合のチェックボックス
+            if (widget.experiment.consentItems.isNotEmpty) ...[
+              const SizedBox(height: 12),
+              const Divider(),
+              const SizedBox(height: 8),
+              const Text(
+                '以下の項目にすべて同意してください：',
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.orange,
+                ),
+              ),
+              const SizedBox(height: 8),
+              ...widget.experiment.consentItems.asMap().entries.map((entry) {
+                final index = entry.key;
+                final item = entry.value;
+                return Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 2),
+                  child: Row(
+                    children: [
+                      Checkbox(
+                        value: consentChecked[index],
+                        onChanged: (value) {
+                          setState(() {
+                            consentChecked[index] = value ?? false;
+                          });
+                        },
+                        activeColor: Colors.orange,
+                      ),
+                      Expanded(
+                        child: GestureDetector(
+                          onTap: () {
+                            setState(() {
+                              consentChecked[index] = !consentChecked[index];
+                            });
+                          },
+                          child: Text(
+                            item,
+                            style: const TextStyle(fontSize: 13),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              }).toList(),
+            ],
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context, false),
+          child: const Text('キャンセル'),
+        ),
+        ElevatedButton(
+          onPressed: allChecked ? () => Navigator.pop(context, true) : null,
+          style: ElevatedButton.styleFrom(
+            backgroundColor: allChecked ? Colors.orange : Colors.grey.shade300,
+          ),
+          child: Text(
+            allChecked ? '参加する' : 'すべての項目に同意してください',
+            style: TextStyle(
+              color: allChecked ? Colors.white : Colors.grey.shade600,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// 予約確認ダイアログ（StatefulWidgetとして実装）
+class _ReservationConfirmDialog extends StatefulWidget {
+  final Experiment experiment;
+  final ExperimentSlot slot;
+
+  const _ReservationConfirmDialog({
+    required this.experiment,
+    required this.slot,
+  });
+
+  @override
+  State<_ReservationConfirmDialog> createState() => _ReservationConfirmDialogState();
+}
+
+class _ReservationConfirmDialogState extends State<_ReservationConfirmDialog> {
+  late List<bool> consentChecked;
+
+  @override
+  void initState() {
+    super.initState();
+    // 同意項目のチェック状態を初期化（すべてfalse）
+    consentChecked = List.filled(widget.experiment.consentItems.length, false);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('予約確認'),
+      content: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              '以下の日時で予約しますか？',
+              style: Theme.of(context).textTheme.bodyLarge,
+            ),
+            const SizedBox(height: 16),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.grey.shade100,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      const Icon(Icons.calendar_today, size: 16),
+                      const SizedBox(width: 8),
+                      Text(
+                        DateFormat('yyyy年MM月dd日(E)', 'ja').format(widget.slot.startTime),
+                        style: const TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  Row(
+                    children: [
+                      const Icon(Icons.access_time, size: 16),
+                      const SizedBox(width: 8),
+                      Text(
+                        '${DateFormat('HH:mm').format(widget.slot.startTime)} - ${DateFormat('HH:mm').format(widget.slot.endTime)}',
+                        style: const TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            // 特別な同意項目がある場合のチェックボックス
+            if (widget.experiment.consentItems.isNotEmpty) ...[
+              const SizedBox(height: 12),
+              const Divider(),
+              const SizedBox(height: 8),
+              const Text(
+                '以下の項目にすべて同意してください：',
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 8),
+              ...widget.experiment.consentItems.asMap().entries.map((entry) {
+                final index = entry.key;
+                final item = entry.value;
+                return Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 2),
+                  child: Row(
+                    children: [
+                      Checkbox(
+                        value: consentChecked[index],
+                        onChanged: (value) {
+                          setState(() {
+                            consentChecked[index] = value ?? false;
+                          });
+                        },
+                        activeColor: const Color(0xFF8E1728),
+                        materialTapTargetSize: MaterialTapTargetSize.padded,
+                      ),
+                      Expanded(
+                        child: GestureDetector(
+                          onTap: () {
+                            setState(() {
+                              consentChecked[index] = !consentChecked[index];
+                            });
+                          },
+                          child: Text(
+                            item,
+                            style: const TextStyle(fontSize: 13),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              }).toList(),
+            ],
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context, false),
+          child: const Text('キャンセル'),
+        ),
+        ElevatedButton(
+          onPressed: widget.experiment.consentItems.isEmpty || 
+              consentChecked.every((checked) => checked)
+            ? () => Navigator.pop(context, true)
+            : null,
+          style: ElevatedButton.styleFrom(
+            backgroundColor: const Color(0xFF8E1728),
+            disabledBackgroundColor: Colors.grey.shade300,
+          ),
+          child: Text(
+            widget.experiment.consentItems.isEmpty || 
+                consentChecked.every((checked) => checked)
+              ? '予約する' 
+              : 'すべての項目に同意してください',
+            style: TextStyle(
+              color: widget.experiment.consentItems.isEmpty || 
+                  consentChecked.every((checked) => checked)
+                ? Colors.white 
+                : Colors.grey.shade600,
             ),
           ),
         ),

@@ -50,6 +50,8 @@ class _CreateExperimentBaseState extends State<CreateExperimentBase> {
   TimeOfDay? _fixedExperimentTime; // 固定日時の場合の実施時刻
   final List<String> _requirements = [];
   final _requirementController = TextEditingController();
+  final List<String> _consentItems = [];
+  final _consentItemController = TextEditingController();
   Map<DateTime, List<DateTimeSlot>> _dateTimeSlots = {};
   int _simultaneousCapacity = 1;
   
@@ -67,6 +69,7 @@ class _CreateExperimentBaseState extends State<CreateExperimentBase> {
     _maxParticipantsController.dispose();
     _labNameController.dispose();
     _requirementController.dispose();
+    _consentItemController.dispose();
     _reservationDeadlineController.dispose();
     _surveyUrlController.dispose();
     _pageController.dispose();
@@ -105,6 +108,8 @@ class _CreateExperimentBaseState extends State<CreateExperimentBase> {
       _experimentPeriodEnd = DateTime.now().add(const Duration(days: 21));
       _requirements.clear();
       _requirements.addAll(['視力矯正後1.0以上', '色覚正常']);
+      _consentItems.clear();
+      _consentItems.addAll(['実験中の映像記録に同意します', '実験データの学術利用に同意します']);
     });
   }
 
@@ -180,6 +185,17 @@ class _CreateExperimentBaseState extends State<CreateExperimentBase> {
       });
     }
   }
+  
+  /// 同意項目を追加
+  void _addConsentItem() {
+    final text = _consentItemController.text.trim();
+    if (text.isNotEmpty) {
+      setState(() {
+        _consentItems.add(text);
+        _consentItemController.clear();
+      });
+    }
+  }
 
   /// プレビュー用の実験オブジェクトを作成
   Experiment _createPreviewExperiment() {
@@ -203,6 +219,7 @@ class _CreateExperimentBaseState extends State<CreateExperimentBase> {
       duration: int.tryParse(_durationController.text),
       maxParticipants: int.tryParse(_maxParticipantsController.text),
       requirements: _requirements,
+      consentItems: _consentItems,
       timeSlots: [], // 曜日ベースは使用しない
       dateTimeSlots: _dateTimeSlots.values.expand((slots) => slots).toList(),
       simultaneousCapacity: _simultaneousCapacity,
@@ -217,6 +234,71 @@ class _CreateExperimentBaseState extends State<CreateExperimentBase> {
   /// 実験を保存
   Future<void> _saveExperiment() async {
     if (!_formKey.currentState!.validate()) return;
+    
+    // 追加のバリデーション
+    if (_titleController.text.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('タイトルを入力してください'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+    
+    if (_descriptionController.text.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('実験概要を入力してください'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+    
+    if (_locationController.text.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('実施場所を入力してください'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+    
+    // 日付の整合性チェック
+    if (_allowFlexibleSchedule) {
+      if (_experimentPeriodStart == null || _experimentPeriodEnd == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('実験期間を設定してください'),
+            backgroundColor: Colors.orange,
+          ),
+        );
+        return;
+      }
+      
+      if (_dateTimeSlots.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('予約可能な時間枠を設定してください'),
+            backgroundColor: Colors.orange,
+          ),
+        );
+        return;
+      }
+    } else if (_selectedType != ExperimentType.survey) {
+      // アンケート以外で固定日時の場合
+      if (_fixedExperimentDate == null || _fixedExperimentTime == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('実験の日時を設定してください'),
+            backgroundColor: Colors.orange,
+          ),
+        );
+        return;
+      }
+    }
     
     setState(() => _isLoading = true);
     
@@ -237,6 +319,7 @@ class _CreateExperimentBaseState extends State<CreateExperimentBase> {
       'duration': int.tryParse(_durationController.text),
       'maxParticipants': int.tryParse(_maxParticipantsController.text),
       'requirements': _requirements,
+      'consentItems': _consentItems,
       'timeSlots': [], // 曜日ベースは使用しない
       'dateTimeSlots': _dateTimeSlots.isNotEmpty 
         ? List<Map<String, dynamic>>.from(
@@ -252,6 +335,7 @@ class _CreateExperimentBaseState extends State<CreateExperimentBase> {
         : null,
       'reservationDeadlineDays': int.tryParse(_reservationDeadlineController.text) ?? 1,
       'surveyUrl': _selectedType == ExperimentType.survey ? _surveyUrlController.text.trim() : null,
+      'isLabExperiment': _isLabExperiment,
     };
     
     try {
@@ -1385,6 +1469,84 @@ class _CreateExperimentBaseState extends State<CreateExperimentBase> {
               ),
             ),
           ],
+          const SizedBox(height: 24),
+          
+          // 特別な同意項目
+          const Text('特別な同意項目（任意）', style: TextStyle(fontWeight: FontWeight.bold)),
+          const SizedBox(height: 8),
+          Text(
+            '特殊な器具を使用する場合など、参加者に特別な同意が必要な項目を追加できます',
+            style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: _consentItemController,
+                  decoration: const InputDecoration(
+                    hintText: '例: 実験中の映像記録に同意します',
+                    border: OutlineInputBorder(),
+                  ),
+                  onSubmitted: (_) => _addConsentItem(),
+                ),
+              ),
+              const SizedBox(width: 8),
+              IconButton(
+                onPressed: _addConsentItem,
+                icon: const Icon(Icons.add_circle),
+                color: const Color(0xFF8E1728),
+                iconSize: 32,
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          
+          if (_consentItems.isNotEmpty) ...[
+            Container(
+              decoration: BoxDecoration(
+                border: Border.all(color: Colors.grey.shade300),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Column(
+                children: _consentItems.asMap().entries.map((entry) {
+                  final index = entry.key;
+                  final item = entry.value;
+                  return ListTile(
+                    leading: Icon(
+                      Icons.check_box_outlined,
+                      color: const Color(0xFF8E1728),
+                      size: 20,
+                    ),
+                    title: Text(item),
+                    trailing: IconButton(
+                      icon: const Icon(Icons.delete, size: 20),
+                      onPressed: () {
+                        setState(() {
+                          _consentItems.removeAt(index);
+                        });
+                      },
+                    ),
+                  );
+                }).toList(),
+              ),
+            ),
+          ] else ...[
+            Container(
+              padding: const EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                color: Colors.blue.shade50,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.blue.shade200),
+              ),
+              child: Center(
+                child: Text(
+                  '特別な同意項目はありません',
+                  style: TextStyle(color: Colors.blue.shade700),
+                ),
+              ),
+            ),
+          ],
         ],
       ),
     );
@@ -1487,12 +1649,14 @@ class _CreateExperimentBaseState extends State<CreateExperimentBase> {
           ]),
           const SizedBox(height: 16),
           
-          if (previewExperiment.maxParticipants != null || _requirements.isNotEmpty)
+          if (previewExperiment.maxParticipants != null || _requirements.isNotEmpty || _consentItems.isNotEmpty)
             _buildConfirmationSection('募集要項', [
               if (previewExperiment.maxParticipants != null)
                 _buildConfirmationItem('募集人数', '${previewExperiment.maxParticipants}名'),
               if (_requirements.isNotEmpty)
                 _buildConfirmationItem('参加条件', _requirements.join('、')),
+              if (_consentItems.isNotEmpty)
+                _buildConfirmationItem('特別な同意項目', _consentItems.join('、')),
             ]),
         ],
       ),

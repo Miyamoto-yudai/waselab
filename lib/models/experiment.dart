@@ -64,6 +64,7 @@ class Experiment {
   final Map<String, Map<String, dynamic>>? participantEvaluations; // 参加者ごとの個別評価状態
   final DateTime? actualStartDate; // 実際の実験開始日
   final String? surveyUrl; // アンケートURL（アンケートタイプの実験用）
+  final List<String> consentItems; // 特別な同意項目リスト
   
   // 旧フィールドとの互換性のため
   DateTime? get experimentDate => recruitmentStartDate;
@@ -102,6 +103,7 @@ class Experiment {
     this.participantEvaluations,
     this.actualStartDate,
     this.surveyUrl,
+    this.consentItems = const [],
   });
 
   /// FirestoreのドキュメントからExperimentを作成
@@ -155,6 +157,7 @@ class Experiment {
         : null,
       actualStartDate: (data['actualStartDate'] as Timestamp?)?.toDate(),
       surveyUrl: data['surveyUrl'],
+      consentItems: List<String>.from(data['consentItems'] ?? []),
       participantEvaluations: data['participantEvaluations'] != null
         ? Map<String, Map<String, dynamic>>.from(
             (data['participantEvaluations'] as Map).map(
@@ -213,6 +216,7 @@ class Experiment {
         ? Timestamp.fromDate(actualStartDate!)
         : null,
       'surveyUrl': surveyUrl,
+      'consentItems': consentItems,
     };
   }
 

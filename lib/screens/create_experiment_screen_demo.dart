@@ -17,6 +17,8 @@ class CreateExperimentScreenDemo extends StatelessWidget {
     print('タイプ: ${data['type']}');
     print('報酬: ${data['isPaid'] ? '¥${data['reward']}' : '無償'}');
     print('場所: ${data['location']}');
+    print('参加条件: ${data['requirements']}');
+    print('同意項目: ${data['consentItems']}');
     print('柔軟な日程調整: ${data['allowFlexibleSchedule']}');
     
     // 成功を返す

@@ -27,6 +27,16 @@ class ExperimentDetailBase extends StatefulWidget {
 
 class _ExperimentDetailBaseState extends State<ExperimentDetailBase> {
   bool _showCalendar = false;
+  
+  @override
+  void initState() {
+    super.initState();
+    // デバッグ: consentItemsの内容を確認
+    debugPrint('=== ExperimentDetailBase: consentItems確認 ===');
+    debugPrint('consentItems数: ${widget.experiment.consentItems.length}');
+    debugPrint('consentItems内容: ${widget.experiment.consentItems}');
+    debugPrint('=======================================');
+  }
 
   /// 実験種別のアイコンを取得
   IconData _getTypeIcon(ExperimentType type) {
@@ -82,6 +92,9 @@ class _ExperimentDetailBaseState extends State<ExperimentDetailBase> {
       }
     } else if (widget.isDemo) {
       // デモモード用の処理
+      // 同意項目がある場合は同意チェックリストを初期化
+      final List<bool> consentChecked = List.filled(widget.experiment.consentItems.length, false);
+      
       final confirmed = await showDialog<bool>(
         context: context,
         builder: (context) => AlertDialog(
@@ -129,6 +142,45 @@ class _ExperimentDetailBaseState extends State<ExperimentDetailBase> {
                 ),
               ),
               const SizedBox(height: 12),
+              // 特別な同意項目がある場合のチェックボックス
+              if (widget.experiment.consentItems.isNotEmpty) ...[
+                const Divider(),
+                const SizedBox(height: 8),
+                const Text(
+                  '以下の項目にすべて同意してください：',
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                StatefulBuilder(
+                  builder: (context, setDialogState) {
+                    return Column(
+                      children: List.generate(
+                        widget.experiment.consentItems.length,
+                        (index) => CheckboxListTile(
+                          value: consentChecked[index],
+                          onChanged: (value) {
+                            setDialogState(() {
+                              consentChecked[index] = value ?? false;
+                            });
+                          },
+                          title: Text(
+                            widget.experiment.consentItems[index],
+                            style: const TextStyle(fontSize: 13),
+                          ),
+                          controlAffinity: ListTileControlAffinity.leading,
+                          dense: true,
+                          contentPadding: EdgeInsets.zero,
+                          activeColor: const Color(0xFF8E1728),
+                        ),
+                      ),
+                    );
+                  },
+                ),
+                const SizedBox(height: 8),
+              ],
               // 相互評価必須の注意書きを追加
               Container(
                 padding: const EdgeInsets.all(12),
@@ -175,12 +227,26 @@ class _ExperimentDetailBaseState extends State<ExperimentDetailBase> {
               onPressed: () => Navigator.pop(context, false),
               child: const Text('キャンセル'),
             ),
-            ElevatedButton(
-              onPressed: () => Navigator.pop(context, true),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF8E1728),
-              ),
-              child: const Text('予約する'),
+            StatefulBuilder(
+              builder: (context, setDialogState) {
+                final allConsented = widget.experiment.consentItems.isEmpty || 
+                    consentChecked.every((checked) => checked);
+                return ElevatedButton(
+                  onPressed: allConsented 
+                    ? () => Navigator.pop(context, true)
+                    : null,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF8E1728),
+                    disabledBackgroundColor: Colors.grey.shade300,
+                  ),
+                  child: Text(
+                    allConsented ? '予約する' : 'すべての項目に同意してください',
+                    style: TextStyle(
+                      color: allConsented ? Colors.white : Colors.grey.shade600,
+                    ),
+                  ),
+                );
+              },
             ),
           ],
         ),
@@ -551,6 +617,86 @@ class _ExperimentDetailBaseState extends State<ExperimentDetailBase> {
                           style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                             height: 1.6,
                           ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+
+            // 特別な同意項目
+            if (widget.experiment.consentItems.isNotEmpty) ...[
+              const SizedBox(height: 16),
+              Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Icon(
+                            Icons.warning_amber_rounded,
+                            color: Colors.amber[700],
+                            size: 20,
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            '特別な同意項目',
+                            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                              fontWeight: FontWeight.bold,
+                              color: Colors.amber[700],
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Colors.amber.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: Colors.amber.withValues(alpha: 0.3)),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'この実験に参加する際は、以下の項目への同意が必要です：',
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.amber[800],
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            ...widget.experiment.consentItems.map((item) {
+                              return Padding(
+                                padding: const EdgeInsets.only(bottom: 6),
+                                child: Row(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Icon(
+                                      Icons.check_box_outlined,
+                                      size: 18,
+                                      color: Colors.amber[700],
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Expanded(
+                                      child: Text(
+                                        item,
+                                        style: TextStyle(
+                                          fontSize: 13,
+                                          color: Colors.amber[700],
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              );
+                            }),
+                          ],
                         ),
                       ),
                     ],
