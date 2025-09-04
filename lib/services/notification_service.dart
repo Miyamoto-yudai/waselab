@@ -136,11 +136,15 @@ class NotificationService {
     required String experimentId,
     required bool isGood,
   }) async {
+    final message = isGood 
+      ? '$evaluatorNameさんから「$experimentTitle」に対してGood評価を受けました🎉 +1ポイント獲得！'
+      : '$evaluatorNameさんから「$experimentTitle」に対してBad評価を受けました';
+    
     await createNotification(
       userId: userId,
       type: NotificationType.evaluation,
-      title: '評価が届きました',
-      message: '$evaluatorNameさんから「$experimentTitle」に対して${isGood ? "Good" : "Bad"}評価を受けました',
+      title: isGood ? '評価が届きました（+1P）' : '評価が届きました',
+      message: message,
       data: {
         'experimentId': experimentId,
         'evaluatorName': evaluatorName,

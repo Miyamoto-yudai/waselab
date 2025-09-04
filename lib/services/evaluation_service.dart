@@ -100,6 +100,7 @@ class EvaluationService {
           final userUpdateData = <String, dynamic>{};
           if (type == EvaluationType.good) {
             userUpdateData['goodCount'] = FieldValue.increment(1);
+            userUpdateData['points'] = FieldValue.increment(1); // Good評価で1ポイント追加
           } else if (type == EvaluationType.bad) {
             userUpdateData['badCount'] = FieldValue.increment(1);
           }
@@ -115,6 +116,7 @@ class EvaluationService {
           await _firestore.collection('users').doc(evaluatedUserId).set({
             'goodCount': type == EvaluationType.good ? 1 : 0,
             'badCount': type == EvaluationType.bad ? 1 : 0,
+            'points': type == EvaluationType.good ? 1 : 0,
           }, SetOptions(merge: true));
           debugPrint('User document created with initial statistics');
         }

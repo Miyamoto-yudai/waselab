@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import '../services/auth_service.dart';
 import '../services/user_service.dart';
 import '../models/app_user.dart';
+import '../widgets/custom_circle_avatar.dart';
 import 'login_screen.dart';
 import 'evaluation_history_screen.dart';
+import 'frame_shop_screen.dart';
 
 class MyPageScreen extends StatefulWidget {
   const MyPageScreen({super.key});
@@ -191,21 +193,49 @@ class _MyPageScreenState extends State<MyPageScreen> {
                     padding: const EdgeInsets.all(16),
                     child: Column(
                       children: [
-                        CircleAvatar(
-                          radius: 50,
-                          backgroundColor: const Color(0xFF8E1728),
-                          backgroundImage: _currentUser!.photoUrl != null
-                              ? NetworkImage(_currentUser!.photoUrl!)
-                              : null,
-                          child: _currentUser!.photoUrl == null
-                              ? Text(
-                                  _currentUser!.name[0].toUpperCase(),
-                                  style: const TextStyle(
-                                    fontSize: 36,
-                                    color: Colors.white,
-                                  ),
-                                )
-                              : null,
+                        Stack(
+                          alignment: Alignment.center,
+                          children: [
+                            CustomCircleAvatar(
+                              frameId: _currentUser!.selectedFrame,
+                              radius: 50,
+                              backgroundColor: const Color(0xFF8E1728),
+                              backgroundImage: _currentUser!.photoUrl,
+                              child: _currentUser!.photoUrl == null
+                                  ? Text(
+                                      _currentUser!.name[0].toUpperCase(),
+                                      style: const TextStyle(
+                                        fontSize: 36,
+                                        color: Colors.white,
+                                      ),
+                                    )
+                                  : null,
+                            ),
+                            Positioned(
+                              bottom: 0,
+                              right: 0,
+                              child: Container(
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFF8E1728),
+                                  shape: BoxShape.circle,
+                                  border: Border.all(color: Colors.white, width: 2),
+                                ),
+                                child: IconButton(
+                                  icon: const Icon(Icons.auto_awesome, color: Colors.white, size: 16),
+                                  onPressed: () {
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (context) => const FrameShopScreen(),
+                                      ),
+                                    ).then((_) => _loadUserData());
+                                  },
+                                  tooltip: 'フレームを変更',
+                                  padding: const EdgeInsets.all(4),
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
                         const SizedBox(height: 16),
                         if (_isEditing)
@@ -521,19 +551,52 @@ class _MyPageScreenState extends State<MyPageScreen> {
                                     ),
                                   ],
                                 ),
+                                const SizedBox(height: 12),
+                                Divider(color: Colors.grey[300]),
                                 const SizedBox(height: 8),
-                                if (_currentUser!.goodCount + _currentUser!.badCount > 0)
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Row(
+                                      children: [
+                                        Icon(
+                                          Icons.stars,
+                                          color: Colors.amber[600],
+                                          size: 16,
+                                        ),
+                                        const SizedBox(width: 6),
+                                        Text(
+                                          '保有ポイント',
+                                          style: TextStyle(
+                                            fontSize: 12,
+                                            color: Colors.grey[600],
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    Text(
+                                      '${_currentUser!.points} P',
+                                      style: TextStyle(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.amber[700],
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                if (_currentUser!.goodCount + _currentUser!.badCount > 0) ...[
+                                  const SizedBox(height: 8),
                                   Center(
                                     child: Text(
                                       '評価率: ${((_currentUser!.goodCount / (_currentUser!.goodCount + _currentUser!.badCount)) * 100).toStringAsFixed(1)}%',
                                       style: TextStyle(
-                                        fontSize: 14,
-                                        color: Colors.grey[700],
-                                        fontWeight: FontWeight.w500,
+                                        fontSize: 12,
+                                        color: Colors.grey[600],
                                       ),
                                     ),
                                   ),
-                                const SizedBox(height: 8),
+                                ],
+                                const SizedBox(height: 12),
                                 Center(
                                   child: Text(
                                     '詳細を見る',

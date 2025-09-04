@@ -25,6 +25,9 @@ class AppUser {
   final DateTime? emailVerifiedAt; // メール認証完了日時
   final String? gender;             // 性別
   final int? age;                   // 年齢
+  final int points;                 // 保有ポイント（Good評価1つ = 1ポイント）
+  final List<String> unlockedFrames; // 解放済みフレームIDリスト
+  final String? selectedFrame;      // 選択中のフレームID
 
   AppUser({
     required this.uid,
@@ -49,6 +52,9 @@ class AppUser {
     this.emailVerifiedAt,
     this.gender,
     this.age,
+    this.points = 0,
+    this.unlockedFrames = const ['none', 'simple'], // デフォルトで2つ解放
+    this.selectedFrame,
   });
 
   /// Firestoreのドキュメントからユーザーを作成
@@ -78,6 +84,9 @@ class AppUser {
       emailVerifiedAt: (data['emailVerifiedAt'] as Timestamp?)?.toDate(),
       gender: data['gender'],
       age: data['age'],
+      points: data['points'] ?? data['goodCount'] ?? 0, // goodCountをデフォルトポイントとして使用
+      unlockedFrames: List<String>.from(data['unlockedFrames'] ?? ['none', 'simple']),
+      selectedFrame: data['selectedFrame'],
     );
   }
 
@@ -110,6 +119,9 @@ class AppUser {
         : null,
       'gender': gender,
       'age': age,
+      'points': points,
+      'unlockedFrames': unlockedFrames,
+      'selectedFrame': selectedFrame,
     };
   }
 

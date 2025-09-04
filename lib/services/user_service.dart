@@ -193,4 +193,73 @@ class UserService {
       'scheduledExperiments': FieldValue.increment(-1),
     });
   }
+
+  /// ポイントを追加（Good評価時に呼び出す）
+  Future<void> addPoints({
+    required String userId,
+    required int points,
+  }) async {
+    await _firestore.collection('users').doc(userId).update({
+      'points': FieldValue.increment(points),
+    });
+  }
+
+  /// フレームを解放（購入）
+  Future<void> unlockFrame({
+    required String userId,
+    required String frameId,
+    required int cost,
+  }) async {
+    final userDoc = await _firestore.collection('users').doc(userId).get();
+    
+    if (!userDoc.exists) {
+      throw Exception('ユーザーが見つかりません');
+    }
+    
+    final userData = userDoc.data() as Map<String, dynamic>;
+    final currentPoints = userData['points'] ?? 0;
+    
+    if (currentPoints < cost) {
+      throw Exception('ポイントが不足しています');
+    }
+    
+    await _firestore.collection('users').doc(userId).update({
+      'points': FieldValue.increment(-cost),
+      'unlockedFrames': FieldValue.arrayUnion([frameId]),
+    });
+  }
+
+  /// フレームを選択（装備）
+  Future<void> selectFrame({
+    required String userId,
+    required String frameId,
+  }) async {
+    final userDoc = await _firestore.collection('users').doc(userId).get();
+    
+    if (!userDoc.exists) {
+      throw Exception('ユーザーが見つかりません');
+    }
+    
+    final userData = userDoc.data() as Map<String, dynamic>;
+    // デフォルトで解放されているフレームも含める
+    final unlockedFrames = List<String>.from(userData['unlockedFrames'] ?? ['none', 'simple']);
+    
+    // 無料フレームは常に装備可能
+    final freeFrames = ['none', 'simple'];
+    
+    if (!unlockedFrames.contains(frameId) && !freeFrames.contains(frameId)) {
+      throw Exception('このフレームは解放されていません');
+    }
+    
+    await _firestore.collection('users').doc(userId).update({
+      'selectedFrame': frameId,
+    });
+  }
+
+  /// フレームの選択を解除
+  Future<void> unselectFrame(String userId) async {
+    await _firestore.collection('users').doc(userId).update({
+      'selectedFrame': null,
+    });
+  }
 }
