@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../services/user_service.dart';
 import '../services/auth_service.dart';
 import '../models/app_user.dart';
+import '../widgets/custom_circle_avatar.dart';
 import 'chat_screen.dart';
 
 class UserSelectionScreen extends StatefulWidget {
@@ -222,7 +223,9 @@ class _UserSelectionScreenState extends State<UserSelectionScreen> {
                       elevation: 1,
                       margin: const EdgeInsets.symmetric(vertical: 4),
                       child: ListTile(
-                        leading: CircleAvatar(
+                        leading: CustomCircleAvatar(
+                          frameId: user.selectedFrame,
+                          radius: 20,
                           backgroundColor: const Color(0xFF8E1728),
                           child: Text(
                             user.name.isNotEmpty ? user.name[0].toUpperCase() : '?',

@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import '../services/message_service.dart';
 import '../services/auth_service.dart';
+import '../services/user_service.dart';
 import '../models/message.dart';
 import '../models/app_user.dart';
+import '../widgets/custom_circle_avatar.dart';
 import '../widgets/user_detail_dialog.dart';
 
 class ChatScreen extends StatefulWidget {
@@ -24,11 +26,13 @@ class ChatScreen extends StatefulWidget {
 class _ChatScreenState extends State<ChatScreen> {
   final MessageService _messageService = MessageService();
   final AuthService _authService = AuthService();
+  final UserService _userService = UserService();
   final TextEditingController _messageController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
   String? _currentUserId;
   String? _currentUserName;
   AppUser? _currentAppUser;
+  AppUser? _otherUser;
   String? _actualConversationId;
   bool _isSending = false;
   bool _showTemplates = false;
@@ -38,6 +42,7 @@ class _ChatScreenState extends State<ChatScreen> {
     super.initState();
     _actualConversationId = widget.conversationId;
     _getCurrentUser();
+    _getOtherUser();
     if (widget.conversationId != null && widget.conversationId!.isNotEmpty) {
       _markMessagesAsRead();
     }
@@ -51,6 +56,15 @@ class _ChatScreenState extends State<ChatScreen> {
         _currentUserId = user.uid;
         _currentUserName = appUser?.name ?? 'Unknown';
         _currentAppUser = appUser;
+      });
+    }
+  }
+
+  Future<void> _getOtherUser() async {
+    final user = await _userService.getUserById(widget.otherUserId);
+    if (mounted) {
+      setState(() {
+        _otherUser = user;
       });
     }
   }
@@ -339,49 +353,83 @@ class _ChatScreenState extends State<ChatScreen> {
                     return Align(
                       alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
                       child: Container(
-                        margin: const EdgeInsets.symmetric(vertical: 4),
-                        constraints: BoxConstraints(
-                          maxWidth: MediaQuery.of(context).size.width * 0.7,
-                        ),
-                        child: Column(
-                          crossAxisAlignment:
-                              isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+                        margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
+                        child: Row(
+                          mainAxisAlignment: isMe ? MainAxisAlignment.end : MainAxisAlignment.start,
+                          crossAxisAlignment: CrossAxisAlignment.end,
                           children: [
+                            if (!isMe) ...[
+                              CustomCircleAvatar(
+                                frameId: _otherUser?.selectedFrame,
+                                radius: 16,
+                                backgroundColor: const Color(0xFF8E1728),
+                                child: Text(
+                                  widget.otherUserName.isNotEmpty ? widget.otherUserName[0].toUpperCase() : '?',
+                                  style: const TextStyle(color: Colors.white, fontSize: 12),
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                            ],
                             Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 16,
-                                vertical: 10,
+                              constraints: BoxConstraints(
+                                maxWidth: MediaQuery.of(context).size.width * 0.65,
                               ),
-                              decoration: BoxDecoration(
-                                color: isMe
-                                    ? const Color(0xFF8E1728)
-                                    : Colors.grey[200],
-                                borderRadius: BorderRadius.only(
-                                  topLeft: const Radius.circular(16),
-                                  topRight: const Radius.circular(16),
-                                  bottomLeft: Radius.circular(isMe ? 16 : 4),
-                                  bottomRight: Radius.circular(isMe ? 4 : 16),
-                                ),
-                              ),
-                              child: Text(
-                                message.content,
-                                style: TextStyle(
-                                  color: isMe ? Colors.white : Colors.black87,
-                                  fontSize: 15,
-                                ),
+                              child: Column(
+                                crossAxisAlignment:
+                                    isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+                                children: [
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 16,
+                                      vertical: 10,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: isMe
+                                          ? const Color(0xFF8E1728)
+                                          : Colors.grey[200],
+                                      borderRadius: BorderRadius.only(
+                                        topLeft: const Radius.circular(16),
+                                        topRight: const Radius.circular(16),
+                                        bottomLeft: Radius.circular(isMe ? 16 : 4),
+                                        bottomRight: Radius.circular(isMe ? 4 : 16),
+                                      ),
+                                    ),
+                                    child: Text(
+                                      message.content,
+                                      style: TextStyle(
+                                        color: isMe ? Colors.white : Colors.black87,
+                                        fontSize: 15,
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Padding(
+                                    padding: const EdgeInsets.symmetric(horizontal: 4),
+                                    child: Text(
+                                      _formatTime(message.createdAt),
+                                      style: TextStyle(
+                                        fontSize: 11,
+                                        color: Colors.grey[600],
+                                      ),
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
-                            const SizedBox(height: 4),
-                            Padding(
-                              padding: const EdgeInsets.symmetric(horizontal: 4),
-                              child: Text(
-                                _formatTime(message.createdAt),
-                                style: TextStyle(
-                                  fontSize: 11,
-                                  color: Colors.grey[600],
+                            if (isMe) ...[
+                              const SizedBox(width: 8),
+                              CustomCircleAvatar(
+                                frameId: _currentAppUser?.selectedFrame,
+                                radius: 16,
+                                backgroundColor: const Color(0xFF8E1728),
+                                child: Text(
+                                  _currentUserName != null && _currentUserName!.isNotEmpty 
+                                    ? _currentUserName![0].toUpperCase() 
+                                    : '?',
+                                  style: const TextStyle(color: Colors.white, fontSize: 12),
                                 ),
                               ),
-                            ),
+                            ],
                           ],
                         ),
                       ),

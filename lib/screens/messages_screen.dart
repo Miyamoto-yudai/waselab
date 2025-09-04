@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import '../services/message_service.dart';
 import '../services/auth_service.dart';
+import '../services/user_service.dart';
 import '../models/conversation.dart';
+import '../models/app_user.dart';
+import '../widgets/custom_circle_avatar.dart';
 import 'chat_screen.dart';
 import 'support_chat_screen.dart';
 import 'user_selection_screen.dart';
@@ -16,6 +19,7 @@ class MessagesScreen extends StatefulWidget {
 class _MessagesScreenState extends State<MessagesScreen> {
   final MessageService _messageService = MessageService();
   final AuthService _authService = AuthService();
+  final UserService _userService = UserService();
   String? _currentUserId;
 
   @override
@@ -174,12 +178,31 @@ class _MessagesScreenState extends State<MessagesScreen> {
                 margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 elevation: 1,
                 child: ListTile(
-                  leading: CircleAvatar(
-                    backgroundColor: const Color(0xFF8E1728),
-                    child: Text(
-                      otherUserName.isNotEmpty ? otherUserName[0].toUpperCase() : '?',
-                      style: const TextStyle(color: Colors.white),
-                    ),
+                  leading: FutureBuilder<AppUser?>(
+                    future: _userService.getUserById(otherUserId),
+                    builder: (context, userSnapshot) {
+                      if (userSnapshot.hasData && userSnapshot.data != null) {
+                        return CustomCircleAvatar(
+                          frameId: userSnapshot.data!.selectedFrame,
+                          radius: 20,
+                          backgroundColor: const Color(0xFF8E1728),
+                          child: Text(
+                            otherUserName.isNotEmpty ? otherUserName[0].toUpperCase() : '?',
+                            style: const TextStyle(color: Colors.white),
+                          ),
+                        );
+                      } else {
+                        return CustomCircleAvatar(
+                          frameId: null,
+                          radius: 20,
+                          backgroundColor: const Color(0xFF8E1728),
+                          child: Text(
+                            otherUserName.isNotEmpty ? otherUserName[0].toUpperCase() : '?',
+                            style: const TextStyle(color: Colors.white),
+                          ),
+                        );
+                      }
+                    },
                   ),
                   title: Row(
                     children: [

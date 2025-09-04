@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import '../models/app_user.dart';
 import '../services/auth_service.dart';
 import '../services/experiment_service.dart';
+import '../widgets/custom_circle_avatar.dart';
 import '../screens/evaluation_history_screen.dart';
 
 class UserDetailDialog extends StatefulWidget {
@@ -263,7 +264,8 @@ class _UserDetailDialogState extends State<UserDetailDialog> {
             // ヘッダー部分（固定）
             Row(
               children: [
-                CircleAvatar(
+                CustomCircleAvatar(
+                  frameId: _user?.selectedFrame,
                   radius: 30,
                   backgroundColor: const Color(0xFF8E1728),
                   child: Text(
