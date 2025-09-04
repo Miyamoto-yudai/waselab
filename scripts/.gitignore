@@ -1,0 +1,11 @@
+# サービスアカウントキー（絶対にコミットしない！）
+serviceAccountKey.json
+service-account-key.json
+*.serviceAccountKey.json
+
+# Node.js
+node_modules/
+package-lock.json
+
+# ログファイル
+*.log

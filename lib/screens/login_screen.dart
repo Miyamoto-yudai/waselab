@@ -3,6 +3,7 @@ import '../services/auth_service.dart';  // Firebase使用時はこちらを有�
 // import '../services/demo_auth_service.dart';  // デモモード用
 import 'navigation_screen.dart';
 import 'email_verification_screen.dart';
+import 'admin/admin_login_screen.dart';
 
 /// ログイン画面
 /// 早稲田大学メールアドレス（@waseda.jp）でのみログイン・新規登録が可能
@@ -597,6 +598,41 @@ class _LoginScreenState extends State<LoginScreen> {
                                     text: '  ✓ 実験の閲覧・応募のみ可能\n  ✗ 実験の募集・掲載は不可',
                                   ),
                                 ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      
+                      // 管理者ログインボタン（控えめに配置）
+                      const SizedBox(height: 24),
+                      TextButton(
+                        onPressed: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => const AdminLoginScreen(),
+                            ),
+                          );
+                        },
+                        style: TextButton.styleFrom(
+                          foregroundColor: Colors.grey[500],
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              Icons.admin_panel_settings,
+                              size: 14,
+                              color: Colors.grey[500],
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              '管理者',
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: Colors.grey[500],
                               ),
                             ),
                           ],

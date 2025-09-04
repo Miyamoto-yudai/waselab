@@ -1,0 +1,12 @@
+{
+  "name": "admin-setup-scripts",
+  "version": "1.0.0",
+  "description": "管理者アカウント設定用スクリプト",
+  "main": "setup_admin.js",
+  "scripts": {
+    "setup-admin": "node setup_admin.js"
+  },
+  "dependencies": {
+    "firebase-admin": "^12.0.0"
+  }
+}
