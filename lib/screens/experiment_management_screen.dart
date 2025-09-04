@@ -86,20 +86,43 @@ class _ExperimentManagementScreenState extends State<ExperimentManagementScreen>
   // 2. 進行中: 実験期間中
   // 3. 評価待ち/完了: 参加者ごとに個別管理
 
-  /// 評価可能な参加者数を取得（参加者が実験者を評価済みで、実験者が参加者を未評価の場合）
+  /// 評価可能な参加者数を取得
   int _getEvaluatableParticipantCount() {
     int count = 0;
     final experimentData = _experiment.toFirestore();
     final participantEvals = experimentData['participantEvaluations'] as Map<String, dynamic>? ?? {};
+    
+    // 実験が実施日時を迎えているかチェック
+    bool isExperimentStarted = false;
+    
+    if (_experiment.allowFlexibleSchedule) {
+      // 柔軟なスケジュールの場合（予約制）
+      // 実験期間が開始していれば評価可能
+      if (_experiment.experimentPeriodStart != null) {
+        isExperimentStarted = DateTime.now().isAfter(_experiment.experimentPeriodStart!);
+      } else {
+        // 期間が設定されていない場合は常に評価可能
+        isExperimentStarted = true;
+      }
+    } else if (_experiment.fixedExperimentDate != null) {
+      // 固定日時の場合
+      isExperimentStarted = DateTime.now().isAfter(_experiment.fixedExperimentDate!);
+    } else {
+      // 日時不定の場合は常に評価可能
+      isExperimentStarted = true;
+    }
     
     for (final participantId in _experiment.participants) {
       final userEval = participantEvals[participantId] as Map<String, dynamic>? ?? {};
       final creatorToParticipant = userEval['creatorEvaluated'] ?? false;
       final participantToCreator = userEval['participantEvaluated'] ?? false;
       
-      // 参加者が実験者を評価済みで、実験者がまだ参加者を評価していない場合のみカウント
-      if (participantToCreator && !creatorToParticipant) {
-        count++;
+      // 実験者がまだ参加者を評価していない場合
+      if (!creatorToParticipant) {
+        // 実施日時を迎えているか、参加者が既に評価している場合はカウント
+        if (isExperimentStarted || participantToCreator) {
+          count++;
+        }
       }
     }
     
@@ -573,6 +596,26 @@ class _ExperimentManagementScreenState extends State<ExperimentManagementScreen>
         ),
       );
     }
+    
+    // 実験が実施日時を迎えているかチェック（評価ボタン表示用）
+    bool isExperimentStarted = false;
+    
+    if (_experiment.allowFlexibleSchedule) {
+      // 柔軟なスケジュールの場合（予約制）
+      // 実験期間が開始していれば評価可能
+      if (_experiment.experimentPeriodStart != null) {
+        isExperimentStarted = DateTime.now().isAfter(_experiment.experimentPeriodStart!);
+      } else {
+        // 期間が設定されていない場合は常に評価可能
+        isExperimentStarted = true;
+      }
+    } else if (_experiment.fixedExperimentDate != null) {
+      // 固定日時の場合
+      isExperimentStarted = DateTime.now().isAfter(_experiment.fixedExperimentDate!);
+    } else {
+      // 日時不定の場合は常に評価可能
+      isExperimentStarted = true;
+    }
 
     return ListView.builder(
       padding: const EdgeInsets.all(16),
@@ -750,8 +793,8 @@ class _ExperimentManagementScreenState extends State<ExperimentManagementScreen>
                             label: const Text('メッセージ'),
                           ),
                         ),
-                        // 参加者が実験者を評価済みで、実験者がまだ参加者を評価していない場合のみ評価ボタンを表示
-                        if (participantToCreator && !creatorToParticipant) ...[
+                        // 実験者がまだ参加者を評価していない場合、かつ（実施日時を迎えている OR 参加者が既に評価済み）の場合に評価ボタンを表示
+                        if (!creatorToParticipant && (isExperimentStarted || participantToCreator)) ...[
                           const SizedBox(width: 8),
                           Expanded(
                             child: ElevatedButton.icon(
