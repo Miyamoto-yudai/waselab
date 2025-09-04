@@ -9,6 +9,7 @@ import 'messages_screen.dart';
 import 'experiment_detail_screen.dart';
 import 'experiment_management_screen.dart';
 import 'evaluation_history_screen.dart';
+import 'support_chat_screen.dart';
 
 class NotificationScreen extends StatefulWidget {
   const NotificationScreen({super.key});
@@ -116,6 +117,17 @@ class _NotificationScreenState extends State<NotificationScreen> {
       case NotificationType.adminMessage:
         // 運営からのお知らせはダイアログで表示
         _showAdminMessageDialog(notification);
+        break;
+        
+      case NotificationType.supportTicket:
+      case NotificationType.supportReply:
+        // サポートチャット画面に遷移
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => const SupportChatScreen(),
+          ),
+        );
         break;
     }
   }
@@ -418,6 +430,10 @@ class _NotificationScreenState extends State<NotificationScreen> {
         return Colors.purple;
       case NotificationType.adminMessage:
         return Colors.red[700]!;
+      case NotificationType.supportTicket:
+        return Colors.indigo;
+      case NotificationType.supportReply:
+        return Colors.teal;
     }
   }
 }

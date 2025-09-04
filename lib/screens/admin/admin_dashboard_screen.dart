@@ -4,6 +4,7 @@ import 'admin_user_management_screen.dart';
 import 'admin_chat_monitor_screen.dart';
 import 'admin_support_message_screen.dart';
 import 'admin_announcement_screen.dart';
+import 'admin_support_chat_management_screen.dart';
 import '../login_screen.dart';
 
 /// 管理者ダッシュボード画面
@@ -231,6 +232,21 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                     ),
                     const SizedBox(height: 12),
                     _buildMenuCard(
+                      title: 'サポートチャット管理',
+                      subtitle: 'ユーザーからのお問い合わせ対応',
+                      icon: Icons.support_agent,
+                      color: Colors.teal,
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const AdminSupportChatManagementScreen(),
+                          ),
+                        );
+                      },
+                    ),
+                    const SizedBox(height: 12),
+                    _buildMenuCard(
                       title: 'サポートメッセージ',
                       subtitle: '個別ユーザーへのメッセージ送信',
                       icon: Icons.support_agent,
@@ -368,6 +384,8 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     required IconData icon,
     required Color color,
     required VoidCallback onTap,
+    bool hasNotification = false,
+    int notificationCount = 0,
   }) {
     return Card(
       elevation: 2,
@@ -409,6 +427,23 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                   ],
                 ),
               ),
+              if (hasNotification)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: Colors.red,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    notificationCount.toString(),
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              const SizedBox(width: 8),
               Icon(
                 Icons.arrow_forward_ios,
                 color: Colors.grey[400],

@@ -17,28 +17,21 @@ service cloud.firestore {
         exists(/databases/$(database)/documents/admins/$(request.auth.uid));
     }
     
-    // Admins collection - secure access with proper permissions
+    // Admins collection - users can read their own admin doc, admins can read all
     match /admins/{adminId} {
-      // Allow users to check their own admin status
+      // Allow users to read their own admin document to check if they're admin
+      // OR allow if the user is already confirmed as admin (for reading other admin docs)
       allow get: if isAuthenticated() && request.auth.uid == adminId;
-      // Allow admins to list all admin documents
-      allow list: if isAdmin();
-      // Allow admins to update their own lastLoginAt field
-      allow update: if isAuthenticated() && 
-        request.auth.uid == adminId &&
-        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['lastLoginAt']);
-      // No create or delete allowed from client (use Admin SDK)
-      allow create, delete: if false;
+      // List operation is blocked for security (use Admin SDK for listing)
+      allow list: if false;
+      allow write: if false; // Admin accounts should be managed via Admin SDK only
     }
     
-    // Admin logs collection - secure logging with admin-only access
+    // Admin logs collection - only admins can read, system writes only
     match /admin_logs/{logId} {
-      // Only admins can read logs
       allow read: if isAdmin();
-      // Only admins can create logs
-      allow create: if isAdmin();
-      // Logs are immutable - no updates or deletes
-      allow update, delete: if false;
+      allow create: if isAdmin(); // Allow admins to create logs
+      allow update, delete: if false; // Logs should be immutable
     }
     
     // Announcements collection - admins can read/write, users can read
@@ -176,44 +169,6 @@ service cloud.firestore {
       // ユーザーは自分の通知のみ削除可能
       allow delete: if isAuthenticated() && 
         request.auth.uid == resource.data.userId;
-    }
-    
-    // Support tickets collection - サポートチケット
-    match /support_tickets/{ticketId} {
-      // ユーザーは自分のチケットのみ読み取り可能、管理者はすべて読み取り可能
-      allow read: if isAuthenticated() && 
-        (resource.data.userId == request.auth.uid || isAdmin());
-      
-      // リスト操作は管理者のみ（ユーザーは個別取得のみ）
-      allow list: if isAdmin();
-      
-      // 認証済みユーザーはチケットを作成可能
-      allow create: if isAuthenticated();
-      
-      // チケットの更新は管理者またはチケット所有者
-      allow update: if isAuthenticated() && 
-        (resource.data.userId == request.auth.uid || isAdmin());
-      
-      // 削除は不可
-      allow delete: if false;
-    }
-    
-    // Support messages collection - サポートメッセージ
-    match /support_messages/{messageId} {
-      // メッセージの読み取りは関連するチケットの関係者のみ
-      allow read: if isAuthenticated() && isAdmin();
-      
-      // リスト操作も管理者のみ
-      allow list: if isAuthenticated();
-      
-      // メッセージの作成は認証済みユーザー
-      allow create: if isAuthenticated();
-      
-      // メッセージの更新（既読フラグなど）
-      allow update: if isAuthenticated();
-      
-      // 削除は不可
-      allow delete: if false;
     }
     
     // Admin-specific collections that require admin access

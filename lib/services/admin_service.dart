@@ -24,6 +24,14 @@ class AdminService {
     required String password,
   }) async {
     try {
+      // デバッグ情報
+      debugPrint('========== 管理者ログイン開始 ==========');
+      debugPrint('メールアドレス: $email');
+      debugPrint('パスワード長: ${password.length}文字');
+      
+      // まず、通常のユーザーとしてログインを試みる
+      debugPrint('Step 1: Firebase認証を試行中...');
+      
       // Firebaseで認証
       final UserCredential userCredential = await _auth.signInWithEmailAndPassword(
         email: email,
@@ -31,23 +39,61 @@ class AdminService {
       );
 
       if (userCredential.user == null) {
+        debugPrint('エラー: userCredentialがnull');
+        await _auth.signOut();
         return '認証に失敗しました';
       }
 
+      debugPrint('Step 2: 認証成功！');
+      debugPrint('UID: ${userCredential.user!.uid}');
+      debugPrint('メール: ${userCredential.user!.email}');
+      debugPrint('メール認証済み: ${userCredential.user!.emailVerified}');
+
       // 管理者権限を確認
-      final adminDoc = await _firestore
-          .collection('admins')
-          .doc(userCredential.user!.uid)
-          .get();
+      debugPrint('Step 3: Firestoreから管理者権限を確認中...');
+      debugPrint('取得しようとしているドキュメント: admins/${userCredential.user!.uid}');
+      
+      DocumentSnapshot adminDoc;
+      try {
+        adminDoc = await _firestore
+            .collection('admins')
+            .doc(userCredential.user!.uid)
+            .get();
+        debugPrint('Firestoreアクセス成功');
+      } catch (firestoreError) {
+        debugPrint('Firestoreアクセスエラー: $firestoreError');
+        await _auth.signOut();
+        return 'Firestore権限エラー: $firestoreError';
+      }
+
+      debugPrint('管理者ドキュメント存在: ${adminDoc.exists}');
+      
+      if (adminDoc.exists) {
+        final data = adminDoc.data();
+        debugPrint('管理者データ: $data');
+      }
 
       if (!adminDoc.exists) {
+        debugPrint('エラー: adminsコレクションにドキュメントが見つかりません');
+        debugPrint('探しているUID: ${userCredential.user!.uid}');
+        
+        // デバッグ用：adminsコレクションの読み取りは権限エラーになる可能性があるため削除
+        // 代わりにUIDのみを出力
+        debugPrint('このUIDの管理者ドキュメントが存在しません');
+        debugPrint('Firebaseコンソールで admins/${userCredential.user!.uid} が存在するか確認してください');
+        
         await _auth.signOut();
-        return '管理者権限がありません';
+        return '管理者権限がありません\nUID: ${userCredential.user!.uid}\nadminsコレクションにこのUIDのドキュメントが見つかりません';
       }
 
       final admin = Admin.fromFirestore(adminDoc);
+      debugPrint('Step 4: 管理者オブジェクト作成成功');
+      debugPrint('管理者名: ${admin.name}');
+      debugPrint('役割: ${admin.role}');
+      debugPrint('アクティブ: ${admin.isActive}');
       
       if (!admin.isActive) {
+        debugPrint('エラー: 管理者アカウントが無効化されています');
         await _auth.signOut();
         return '管理者アカウントが無効化されています';
       }
@@ -68,17 +114,46 @@ class AdminService {
 
       return null; // 成功
     } on FirebaseAuthException catch (e) {
+      debugPrint('========== Firebase認証エラー ==========');
+      debugPrint('エラーコード: ${e.code}');
+      debugPrint('エラーメッセージ: ${e.message}');
+      debugPrint('詳細: $e');
+      
+      // Firebase認証エラーの場合も念のためサインアウト
+      try {
+        await _auth.signOut();
+      } catch (signOutError) {
+        debugPrint('サインアウト中にエラー: $signOutError');
+      }
+      
       switch (e.code) {
         case 'user-not-found':
-          return 'ユーザーが見つかりません';
+          return 'ユーザーが見つかりません\nメール: $email';
         case 'wrong-password':
           return 'パスワードが間違っています';
         case 'invalid-email':
           return 'メールアドレスの形式が正しくありません';
+        case 'invalid-credential':
+          return 'メールアドレスまたはパスワードが正しくありません';
+        case 'user-disabled':
+          return 'このユーザーアカウントは無効化されています';
+        case 'too-many-requests':
+          return 'ログイン試行回数が多すぎます。しばらく待ってから再試行してください';
         default:
-          return 'エラーが発生しました: ${e.message}';
+          return 'エラーが発生しました\nコード: ${e.code}\n詳細: ${e.message}';
       }
     } catch (e) {
+      debugPrint('========== 予期しないエラー ==========');
+      debugPrint('エラー: $e');
+      
+      // エラーが発生した場合は必ずサインアウト
+      try {
+        await _auth.signOut();
+        debugPrint('エラー後のサインアウト完了');
+      } catch (signOutError) {
+        debugPrint('サインアウト中にエラー: $signOutError');
+      }
+      
       return 'エラーが発生しました: $e';
     }
   }

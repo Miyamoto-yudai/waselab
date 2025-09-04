@@ -35,14 +35,18 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
     final user = _authService.currentUser;
     if (user != null) {
       final appUser = await _authService.getCurrentAppUser();
+      
+      
       setState(() {
         _currentUserId = user.uid;
-        _currentUserName = appUser?.name ?? 'Unknown';
+        // AppUserが取得できない場合は、FirebaseAuthのdisplayNameまたはemailを使用
+        _currentUserName = appUser?.name ?? user.displayName ?? user.email?.split('@')[0] ?? 'ユーザー';
         // サポートとの会話IDを生成（ユーザーIDとサポートIDを組み合わせて一意のIDを作成）
         final ids = [_currentUserId!, supportUserId];
         ids.sort();
         _conversationId = ids.join('_');
       });
+      
       _markMessagesAsRead();
     }
   }

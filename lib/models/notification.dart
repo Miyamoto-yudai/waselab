@@ -7,7 +7,9 @@ enum NotificationType {
   experimentJoined('experiment_joined', '実験参加', Icons.person_add),
   experimentCancelled('experiment_cancelled', '予約キャンセル', Icons.cancel),
   experimentCompleted('experiment_completed', '実験終了', Icons.check_circle),
-  adminMessage('admin_message', '運営からのお知らせ', Icons.campaign);
+  adminMessage('admin_message', '運営からのお知らせ', Icons.campaign),
+  supportTicket('support_ticket', '新規サポート', Icons.support_agent),
+  supportReply('support_reply', 'サポート返信', Icons.reply);
 
   final String value;
   final String label;
