@@ -46,16 +46,51 @@ class _AdminSupportChatManagementScreenState extends State<AdminSupportChatManag
 
   Future<void> _loadSupportConversations() async {
     try {
-      // サポートチャットの会話を取得（support_teamが含まれる会話）
-      final conversationsSnapshot = await FirebaseFirestore.instance
-          .collection('conversations')
-          .where('participantIds', arrayContains: 'support_team')
+      _unreadCounts.clear();
+      _lastMessages.clear();
+      _usersCache.clear();
+      
+      // メッセージコレクションから直接support_team関連のメッセージを取得
+      debugPrint('Loading support messages directly from messages collection...');
+      
+      // support_teamが受信者または送信者のメッセージを取得
+      final messagesAsReceiver = await FirebaseFirestore.instance
+          .collection('messages')
+          .where('receiverId', isEqualTo: 'support_team')
+          .orderBy('createdAt', descending: true)
           .get();
-
-      for (var doc in conversationsSnapshot.docs) {
-        final data = doc.data();
-        final participantIds = List<String>.from(data['participantIds'] ?? []);
-        final userId = participantIds.firstWhere((id) => id != 'support_team', orElse: () => '');
+      
+      final messagesAsSender = await FirebaseFirestore.instance
+          .collection('messages')
+          .where('senderId', isEqualTo: 'support_team')
+          .orderBy('createdAt', descending: true)
+          .get();
+      
+      debugPrint('Found ${messagesAsReceiver.docs.length} messages to support_team');
+      debugPrint('Found ${messagesAsSender.docs.length} messages from support_team');
+      
+      // ユーザーIDごとにメッセージをグループ化
+      final Map<String, List<QueryDocumentSnapshot>> userMessages = {};
+      
+      for (var doc in messagesAsReceiver.docs) {
+        final senderId = doc.data()['senderId'] as String;
+        if (senderId != 'support_team') {
+          userMessages.putIfAbsent(senderId, () => []).add(doc);
+        }
+      }
+      
+      for (var doc in messagesAsSender.docs) {
+        final receiverId = doc.data()['receiverId'] as String;
+        if (receiverId != 'support_team') {
+          userMessages.putIfAbsent(receiverId, () => []).add(doc);
+        }
+      }
+      
+      debugPrint('Found conversations with ${userMessages.length} users');
+      
+      // 各ユーザーの情報を取得
+      for (var userId in userMessages.keys) {
+        debugPrint('Processing user: $userId');
         
         if (userId.isNotEmpty) {
           // ユーザー情報を取得
@@ -93,36 +128,42 @@ class _AdminSupportChatManagementScreenState extends State<AdminSupportChatManag
             );
           }
 
-          // 最新メッセージを取得
-          final messagesSnapshot = await FirebaseFirestore.instance
-              .collection('messages')
-              .where('conversationId', isEqualTo: doc.id)
-              .orderBy('createdAt', descending: true)
-              .limit(1)
-              .get();
-
-          if (messagesSnapshot.docs.isNotEmpty) {
-            final messageData = messagesSnapshot.docs.first.data();
+          // 最新メッセージと未読数を取得
+          final messages = userMessages[userId]!;
+          // メッセージを日付順にソート
+          messages.sort((a, b) {
+            final aData = a.data() as Map<String, dynamic>;
+            final bData = b.data() as Map<String, dynamic>;
+            final aTime = (aData['createdAt'] as Timestamp).toDate();
+            final bTime = (bData['createdAt'] as Timestamp).toDate();
+            return bTime.compareTo(aTime); // 降順
+          });
+          
+          // 最新メッセージを設定
+          if (messages.isNotEmpty) {
+            final latestMessageData = messages.first.data() as Map<String, dynamic>;
+            final conversationId = latestMessageData['conversationId'] ?? '';
+            
             _lastMessages[userId] = Message(
-              id: messagesSnapshot.docs.first.id,
-              senderId: messageData['senderId'] ?? '',
-              receiverId: messageData['receiverId'] ?? '',
-              conversationId: messageData['conversationId'] ?? '',
-              content: messageData['content'] ?? '',
-              createdAt: (messageData['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
-              isRead: messageData['isRead'] ?? false,
+              id: messages.first.id,
+              senderId: latestMessageData['senderId'] ?? '',
+              receiverId: latestMessageData['receiverId'] ?? '',
+              conversationId: conversationId,
+              content: latestMessageData['content'] ?? '',
+              createdAt: (latestMessageData['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
+              isRead: latestMessageData['isRead'] ?? false,
             );
+            
+            // 未読メッセージ数をカウント
+            int unreadCount = 0;
+            for (var msg in messages) {
+              final msgData = msg.data() as Map<String, dynamic>;
+              if (msgData['receiverId'] == 'support_team' && msgData['isRead'] == false) {
+                unreadCount++;
+              }
+            }
+            _unreadCounts[userId] = unreadCount;
           }
-
-          // 未読メッセージ数を取得
-          final unreadSnapshot = await FirebaseFirestore.instance
-              .collection('messages')
-              .where('conversationId', isEqualTo: doc.id)
-              .where('receiverId', isEqualTo: 'support_team')
-              .where('isRead', isEqualTo: false)
-              .get();
-
-          _unreadCounts[userId] = unreadSnapshot.docs.length;
         }
       }
 
