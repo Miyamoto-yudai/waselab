@@ -2,10 +2,13 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 import '../models/experiment_slot.dart';
 import '../models/experiment_reservation.dart';
+import '../models/notification.dart';
+import 'notification_service.dart';
 
 /// 予約管理サービス
 class ReservationService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final NotificationService _notificationService = NotificationService();
 
   /// 実験の予約枠を取得
   Stream<List<ExperimentSlot>> getExperimentSlots(String experimentId) {
@@ -174,6 +177,43 @@ class ReservationService {
         },
       );
     });
+    
+    // 実験作成者に通知を送信（トランザクション外で実行）
+    try {
+      // 予約情報を再取得
+      final reservationDoc = await _firestore.collection('experiment_reservations').doc(reservationId).get();
+      if (!reservationDoc.exists) return;
+      
+      final reservation = ExperimentReservation.fromFirestore(reservationDoc);
+      
+      // 実験情報を取得
+      final experimentDoc = await _firestore.collection('experiments').doc(reservation.experimentId).get();
+      if (experimentDoc.exists) {
+        final experimentData = experimentDoc.data()!;
+        final creatorId = experimentData['creatorId'] as String?;
+        final experimentTitle = experimentData['title'] as String? ?? '実験';
+        
+        // キャンセルしたユーザーの名前を取得
+        String participantName = 'ユーザー';
+        final userDoc = await _firestore.collection('users').doc(reservation.userId).get();
+        if (userDoc.exists) {
+          participantName = userDoc.data()!['name'] as String? ?? 'ユーザー';
+        }
+        
+        // 実験作成者に通知
+        if (creatorId != null && creatorId != reservation.userId) {
+          await _notificationService.createExperimentCancelledNotification(
+            userId: creatorId,
+            participantName: participantName,
+            experimentTitle: experimentTitle,
+            experimentId: reservation.experimentId,
+            reason: reason,
+          );
+        }
+      }
+    } catch (notificationError) {
+      debugPrint('通知送信エラー（無視）: $notificationError');
+    }
   }
 
   /// ユーザーの予約を取得

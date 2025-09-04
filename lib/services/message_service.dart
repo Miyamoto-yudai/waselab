@@ -1,9 +1,11 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/message.dart';
 import '../models/conversation.dart';
+import 'notification_service.dart';
 
 class MessageService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final NotificationService _notificationService = NotificationService();
 
   Stream<List<Conversation>> getUserConversations(String userId) {
     return _firestore
@@ -57,6 +59,24 @@ class MessageService {
       'lastMessageTime': Timestamp.fromDate(DateTime.now()),
       'unreadCounts.$receiverId': FieldValue.increment(1),
     });
+
+    // 受信者に通知を送信
+    try {
+      // メッセージのプレビューを作成（最大30文字）
+      final messagePreview = content.length > 30 
+        ? '${content.substring(0, 30)}...' 
+        : content;
+      
+      await _notificationService.createMessageNotification(
+        userId: receiverId,
+        senderName: senderName,
+        messagePreview: messagePreview,
+        conversationId: conversationId,
+      );
+    } catch (e) {
+      // 通知送信に失敗してもメッセージ送信は成功とする
+      print('通知送信エラー（無視）: $e');
+    }
 
     return conversationId;
   }

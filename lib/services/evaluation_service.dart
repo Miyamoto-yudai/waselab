@@ -3,10 +3,12 @@ import 'package:flutter/foundation.dart';
 import '../models/experiment.dart';
 import '../models/experiment_evaluation.dart';
 import 'user_service.dart';
+import 'notification_service.dart';
 
 class EvaluationService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final UserService _userService = UserService();
+  final NotificationService _notificationService = NotificationService();
 
   /// 評価を作成
   Future<void> createEvaluation({
@@ -119,6 +121,30 @@ class EvaluationService {
       } catch (userUpdateError) {
         debugPrint('Error updating user statistics: $userUpdateError');
         // ユーザー統計の更新に失敗しても評価自体は成功とする
+      }
+      
+      // 評価通知を送信
+      try {
+        // 評価者の名前を取得
+        String evaluatorName = 'ユーザー';
+        final evaluatorDoc = await _firestore.collection('users').doc(evaluatorId).get();
+        if (evaluatorDoc.exists) {
+          evaluatorName = evaluatorDoc.data()!['name'] as String? ?? 'ユーザー';
+        }
+        
+        // 実験タイトルを取得
+        final experimentTitle = experiment.title;
+        
+        // 評価された人に通知を送信
+        await _notificationService.createEvaluationNotification(
+          userId: evaluatedUserId,
+          evaluatorName: evaluatorName,
+          experimentTitle: experimentTitle,
+          experimentId: experimentId,
+          isGood: type == EvaluationType.good,
+        );
+      } catch (notificationError) {
+        debugPrint('通知送信エラー（無視）: $notificationError');
       }
       
       // 個別の参加者評価状態を更新

@@ -121,6 +121,27 @@ service cloud.firestore {
          request.auth.uid == resource.data.experimentCreatorId);
     }
     
+    // Notifications collection - 通知
+    match /notifications/{notificationId} {
+      // ユーザーは自分の通知のみ読み取り可能
+      allow read: if isAuthenticated() && 
+        request.auth.uid == resource.data.userId;
+      
+      // リスト操作（クエリ）も自分の通知のみ
+      allow list: if isAuthenticated();
+      
+      // システムからの通知作成を許可（任意の認証済みユーザーが他のユーザーに通知を送信可能）
+      allow create: if isAuthenticated();
+      
+      // ユーザーは自分の通知のみ更新可能（既読フラグの更新など）
+      allow update: if isAuthenticated() && 
+        request.auth.uid == resource.data.userId;
+      
+      // ユーザーは自分の通知のみ削除可能
+      allow delete: if isAuthenticated() && 
+        request.auth.uid == resource.data.userId;
+    }
+    
     // Allow reading and writing to any other collections for authenticated users (for future collections)
     match /{document=**} {
       allow read, write: if false; // Default deny for any other collections

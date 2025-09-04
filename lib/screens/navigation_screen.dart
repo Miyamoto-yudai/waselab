@@ -9,6 +9,7 @@ import '../services/message_service.dart';
 import '../services/auth_service.dart';
 import '../services/experiment_service.dart';
 import '../services/user_service.dart';
+import '../services/notification_service.dart';
 
 class NavigationScreen extends StatefulWidget {
   const NavigationScreen({super.key});
@@ -23,8 +24,10 @@ class _NavigationScreenState extends State<NavigationScreen> {
   final AuthService _authService = AuthService();
   final ExperimentService _experimentService = ExperimentService();
   final UserService _userService = UserService();
+  final NotificationService _notificationService = NotificationService();
   int _unreadCount = 0;
   int _pendingEvaluations = 0; // 未評価の実験数
+  int _unreadNotifications = 0; // 未読通知数
 
   late final List<Widget> _screens;
 
@@ -40,6 +43,7 @@ class _NavigationScreenState extends State<NavigationScreen> {
     ];
     _loadUnreadCount();
     _loadPendingEvaluations();
+    _loadUnreadNotifications();
   }
 
   Future<void> _loadUnreadCount() async {
@@ -49,6 +53,18 @@ class _NavigationScreenState extends State<NavigationScreen> {
       if (mounted) {
         setState(() {
           _unreadCount = count;
+        });
+      }
+    }
+  }
+
+  Future<void> _loadUnreadNotifications() async {
+    final user = _authService.currentUser;
+    if (user != null) {
+      final count = await _notificationService.getUnreadNotificationCount(user.uid);
+      if (mounted) {
+        setState(() {
+          _unreadNotifications = count;
         });
       }
     }
@@ -164,9 +180,17 @@ class _NavigationScreenState extends State<NavigationScreen> {
               ),
               label: 'メッセージ',
             ),
-            const NavigationDestination(
-              icon: Icon(Icons.notifications_outlined),
-              selectedIcon: Icon(Icons.notifications, color: Color(0xFF8E1728)),
+            NavigationDestination(
+              icon: Badge(
+                label: Text('$_unreadNotifications'),
+                isLabelVisible: _unreadNotifications > 0,
+                child: const Icon(Icons.notifications_outlined),
+              ),
+              selectedIcon: Badge(
+                label: Text('$_unreadNotifications'),
+                isLabelVisible: _unreadNotifications > 0,
+                child: const Icon(Icons.notifications, color: Color(0xFF8E1728)),
+              ),
               label: '通知',
             ),
             NavigationDestination(
@@ -209,6 +233,9 @@ class _NavigationScreenState extends State<NavigationScreen> {
                 });
                 if (index == 1) {
                   _loadUnreadCount();
+                } else if (index == 2) {
+                  // 通知画面に遷移したら未読数を更新
+                  _loadUnreadNotifications();
                 } else if (index == 3) {
                   // 履歴画面に遷移したら再構築して最新状態を表示
                   _screens[3] = const HistoryScreen();
@@ -236,10 +263,18 @@ class _NavigationScreenState extends State<NavigationScreen> {
                   ),
                   label: const Text('メッセージ'),
                 ),
-                const NavigationRailDestination(
-                  icon: Icon(Icons.notifications_outlined),
-                  selectedIcon: Icon(Icons.notifications, color: Color(0xFF8E1728)),
-                  label: Text('通知'),
+                NavigationRailDestination(
+                  icon: Badge(
+                    label: Text('$_unreadNotifications'),
+                    isLabelVisible: _unreadNotifications > 0,
+                    child: const Icon(Icons.notifications_outlined),
+                  ),
+                  selectedIcon: Badge(
+                    label: Text('$_unreadNotifications'),
+                    isLabelVisible: _unreadNotifications > 0,
+                    child: const Icon(Icons.notifications, color: Color(0xFF8E1728)),
+                  ),
+                  label: const Text('通知'),
                 ),
                 NavigationRailDestination(
                   icon: Badge(

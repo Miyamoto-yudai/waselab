@@ -1,10 +1,14 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 import '../models/experiment.dart';
+import '../models/notification.dart';
 import 'user_service.dart';
+import 'notification_service.dart';
 
 class ExperimentService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final NotificationService _notificationService = NotificationService();
+  final UserService _userService = UserService();
 
   /// IDから実験を取得
   Future<Experiment?> getExperimentById(String experimentId) async {
@@ -22,6 +26,11 @@ class ExperimentService {
       debugPrint('Error fetching experiment by ID: $e');
       return null;
     }
+  }
+
+  /// IDから実験を取得（エイリアス）
+  Future<Experiment?> getExperiment(String experimentId) async {
+    return getExperimentById(experimentId);
   }
 
   /// ユーザーが参加した実験履歴を取得
@@ -170,6 +179,37 @@ class ExperimentService {
       });
       
       debugPrint('Successfully joined experiment: $experimentId');
+      
+      // 通知を送信（トランザクション外で実行）
+      try {
+        // 実験情報を取得
+        final experimentDoc = await _firestore.collection('experiments').doc(experimentId).get();
+        if (experimentDoc.exists) {
+          final experimentData = experimentDoc.data()!;
+          final creatorId = experimentData['creatorId'] as String?;
+          final experimentTitle = experimentData['title'] as String? ?? '実験';
+          
+          // 参加者情報を取得
+          final userDoc = await _firestore.collection('users').doc(userId).get();
+          String participantName = 'ユーザー';
+          if (userDoc.exists) {
+            participantName = userDoc.data()!['name'] as String? ?? 'ユーザー';
+          }
+          
+          // 実験作成者に通知を送信
+          if (creatorId != null && creatorId != userId) {
+            await _notificationService.createExperimentJoinedNotification(
+              userId: creatorId,
+              participantName: participantName,
+              experimentTitle: experimentTitle,
+              experimentId: experimentId,
+            );
+          }
+        }
+      } catch (notificationError) {
+        // 通知送信に失敗しても参加処理は成功とする
+        debugPrint('通知送信エラー（無視）: $notificationError');
+      }
     } catch (e, stackTrace) {
       debugPrint('Error joining experiment: $e');
       debugPrint('Stack trace: $stackTrace');
@@ -348,7 +388,7 @@ class ExperimentService {
   }
 
   /// 実験参加をキャンセル
-  Future<void> cancelParticipation(String experimentId, String userId) async {
+  Future<void> cancelParticipation(String experimentId, String userId, {String? reason}) async {
     try {
       final experimentDoc = await _firestore.collection('experiments').doc(experimentId).get();
       
@@ -372,8 +412,30 @@ class ExperimentService {
       });
       
       // ユーザーのscheduledExperimentsを減らす
-      final userService = UserService();
-      await userService.decrementScheduledExperiments(userId);
+      await _userService.decrementScheduledExperiments(userId);
+      
+      // 実験作成者に通知を送信
+      try {
+        // キャンセルしたユーザーの名前を取得
+        String participantName = 'ユーザー';
+        final userDoc = await _firestore.collection('users').doc(userId).get();
+        if (userDoc.exists) {
+          participantName = userDoc.data()!['name'] as String? ?? 'ユーザー';
+        }
+        
+        // 実験作成者に通知
+        if (experiment.creatorId != userId) {
+          await _notificationService.createExperimentCancelledNotification(
+            userId: experiment.creatorId,
+            participantName: participantName,
+            experimentTitle: experiment.title,
+            experimentId: experimentId,
+            reason: reason,
+          );
+        }
+      } catch (notificationError) {
+        debugPrint('通知送信エラー（無視）: $notificationError');
+      }
       
     } catch (e) {
       debugPrint('Error canceling participation: $e');
