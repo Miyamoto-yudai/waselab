@@ -1191,38 +1191,58 @@ class _ExperimentDetailScreenState extends State<ExperimentDetailScreen> {
                   child: Column(
                     children: [
                       ListTile(
-                        leading: const Icon(
+                        leading: Icon(
                           Icons.calendar_month,
-                          color: Color(0xFF8E1728),
+                          color: (widget.experiment.consentItems.isNotEmpty && !_detailConsentChecked.every((checked) => checked))
+                            ? Colors.grey
+                            : const Color(0xFF8E1728),
                         ),
-                        title: const Text(
+                        title: Text(
                           '予約日時を選択',
                           style: TextStyle(
                             fontWeight: FontWeight.bold,
+                            color: (widget.experiment.consentItems.isNotEmpty && !_detailConsentChecked.every((checked) => checked))
+                              ? Colors.grey
+                              : null,
                           ),
                         ),
                         subtitle: Text(
-                          widget.experiment.maxParticipants != null
-                            ? 'カレンダーから希望の日時を選んでください（残り${widget.experiment.maxParticipants! - widget.experiment.participants.length}名）'
-                            : 'カレンダーから希望の日時を選んでください',
+                          (widget.experiment.consentItems.isNotEmpty && !_detailConsentChecked.every((checked) => checked))
+                            ? '同意項目にチェックしてから日時を選択してください'
+                            : widget.experiment.maxParticipants != null
+                              ? 'カレンダーから希望の日時を選んでください（残り${widget.experiment.maxParticipants! - widget.experiment.participants.length}名）'
+                              : 'カレンダーから希望の日時を選んでください',
+                          style: TextStyle(
+                            color: (widget.experiment.consentItems.isNotEmpty && !_detailConsentChecked.every((checked) => checked))
+                              ? Colors.grey
+                              : null,
+                          ),
                         ),
                         trailing: IconButton(
                           icon: Icon(
                             _showCalendar
                               ? Icons.keyboard_arrow_up
                               : Icons.keyboard_arrow_down,
+                            color: (widget.experiment.consentItems.isNotEmpty && !_detailConsentChecked.every((checked) => checked))
+                              ? Colors.grey
+                              : null,
                           ),
-                          onPressed: () {
-                            setState(() {
-                              _showCalendar = !_showCalendar;
-                            });
-                          },
+                          onPressed: (widget.experiment.consentItems.isNotEmpty && !_detailConsentChecked.every((checked) => checked))
+                            ? null
+                            : () {
+                                setState(() {
+                                  _showCalendar = !_showCalendar;
+                                });
+                              },
                         ),
-                        onTap: () {
-                          setState(() {
-                            _showCalendar = !_showCalendar;
-                          });
-                        },
+                        onTap: (widget.experiment.consentItems.isNotEmpty && !_detailConsentChecked.every((checked) => checked))
+                          ? null
+                          : () {
+                              setState(() {
+                                _showCalendar = !_showCalendar;
+                              });
+                            },
+                        enabled: !(widget.experiment.consentItems.isNotEmpty && !_detailConsentChecked.every((checked) => checked)),
                       ),
                       if (_showCalendar)
                         ExperimentCalendarView(

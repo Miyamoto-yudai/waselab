@@ -266,39 +266,9 @@ class _CreateExperimentBaseState extends State<CreateExperimentBase> {
       return;
     }
     
-    // 日付の整合性チェック
-    if (_allowFlexibleSchedule) {
-      if (_experimentPeriodStart == null || _experimentPeriodEnd == null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('実験期間を設定してください'),
-            backgroundColor: Colors.orange,
-          ),
-        );
-        return;
-      }
-      
-      if (_dateTimeSlots.isEmpty) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('予約可能な時間枠を設定してください'),
-            backgroundColor: Colors.orange,
-          ),
-        );
-        return;
-      }
-    } else if (_selectedType != ExperimentType.survey) {
-      // アンケート以外で固定日時の場合
-      if (_fixedExperimentDate == null || _fixedExperimentTime == null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('実験の日時を設定してください'),
-            backgroundColor: Colors.orange,
-          ),
-        );
-        return;
-      }
-    }
+    // 日付の整合性チェック（日時未定も許可）
+    // 柔軟なスケジュールの場合、期間やスロットが設定されていなくても許可
+    // 固定日時の場合も、未設定を許可（個別調整で決定）
     
     setState(() => _isLoading = true);
     
@@ -457,12 +427,8 @@ class _CreateExperimentBaseState extends State<CreateExperimentBase> {
         if (_recruitmentEndDate == null) {
           return '募集終了日を選択してください';
         }
-        // アンケート以外の場合のみ日程調整をチェック
-        if (_selectedType != ExperimentType.survey && _allowFlexibleSchedule) {
-          if (_dateTimeSlots.isEmpty) {
-            return '時間枠を設定してください（カレンダーで日付を選択後「＋」ボタンまたは自動割当を使用）';
-          }
-        }
+        // 日程調整のチェックは不要（任意設定とする）
+        // 日時未定でも実験作成可能
         break;
       case 3:
         if (_maxParticipantsController.text.trim().isEmpty) {
@@ -1602,6 +1568,8 @@ class _CreateExperimentBaseState extends State<CreateExperimentBase> {
           _buildConfirmationSection('基本情報', [
             _buildConfirmationItem('タイトル', previewExperiment.title),
             _buildConfirmationItem('説明', previewExperiment.description),
+            if (_detailedContentController.text.trim().isNotEmpty)
+              _buildConfirmationItem('詳細内容', _detailedContentController.text.trim()),
             if (previewExperiment.labName != null)
               _buildConfirmationItem(
                 _isLabExperiment ? '研究室' : '実施者',
@@ -1619,6 +1587,8 @@ class _CreateExperimentBaseState extends State<CreateExperimentBase> {
             ),
             if (previewExperiment.duration != null)
               _buildConfirmationItem('所要時間', '${previewExperiment.duration}分'),
+            if (_selectedType == ExperimentType.survey && _surveyUrlController.text.trim().isNotEmpty)
+              _buildConfirmationItem('アンケートURL', _surveyUrlController.text.trim()),
           ]),
           const SizedBox(height: 16),
           
@@ -1627,20 +1597,43 @@ class _CreateExperimentBaseState extends State<CreateExperimentBase> {
               '募集期間',
               '${_formatDate(_recruitmentStartDate)} 〜 ${_formatDate(_recruitmentEndDate)}',
             ),
-            if (_allowFlexibleSchedule)
+            if (_allowFlexibleSchedule) ...[
               _buildConfirmationItem(
                 '実施期間',
                 '${_formatDate(_experimentPeriodStart)} 〜 ${_formatDate(_experimentPeriodEnd)}',
               ),
+              if (_dateTimeSlots.isNotEmpty) ...[
+                _buildConfirmationItem(
+                  '設定済みスロット数',
+                  '${_dateTimeSlots.values.expand((slots) => slots).length}個',
+                ),
+                _buildConfirmationItem(
+                  '同時実験可能人数',
+                  '$_simultaneousCapacity名',
+                ),
+              ],
+            ],
             _buildConfirmationItem(
               '日程調整',
               _allowFlexibleSchedule ? '柔軟（予約制）' : '固定',
             ),
-            if (!_allowFlexibleSchedule && _fixedExperimentDate != null)
-              _buildConfirmationItem(
-                '実施日時',
-                '${_formatDate(_fixedExperimentDate)}${_fixedExperimentTime != null ? " ${_fixedExperimentTime!.hour.toString().padLeft(2, '0')}:${_fixedExperimentTime!.minute.toString().padLeft(2, '0')}" : ""}',
-              ),
+            if (!_allowFlexibleSchedule) ...[
+              if (_fixedExperimentDate != null || _fixedExperimentTime != null)
+                _buildConfirmationItem(
+                  '実施日時',
+                  '${_formatDate(_fixedExperimentDate)}${_fixedExperimentTime != null ? " ${_fixedExperimentTime!.hour.toString().padLeft(2, '0')}:${_fixedExperimentTime!.minute.toString().padLeft(2, '0')}" : ""}',
+                )
+              else
+                _buildConfirmationItem(
+                  '実施日時',
+                  '未定（個別調整）',
+                ),
+              if (_simultaneousCapacity > 1)
+                _buildConfirmationItem(
+                  '同時実験可能人数',
+                  '$_simultaneousCapacity名',
+                ),
+            ],
             if (_selectedType != ExperimentType.survey)
               _buildConfirmationItem(
                 '予約締切',
@@ -1688,13 +1681,51 @@ class _CreateExperimentBaseState extends State<CreateExperimentBase> {
 
   /// 確認項目
   Widget _buildConfirmationItem(String label, String value) {
+    // 長いテキストの場合は縦並びにする
+    final isLongText = value.length > 50 || value.contains('\n');
+    
+    if (isLongText) {
+      return Padding(
+        padding: const EdgeInsets.only(bottom: 12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              label,
+              style: TextStyle(
+                color: Colors.grey.shade600,
+                fontSize: 14,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Colors.grey.shade50,
+                borderRadius: BorderRadius.circular(4),
+                border: Border.all(color: Colors.grey.shade300),
+              ),
+              child: Text(
+                value,
+                style: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+    
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           SizedBox(
-            width: 100,
+            width: 120,
             child: Text(
               label,
               style: TextStyle(
