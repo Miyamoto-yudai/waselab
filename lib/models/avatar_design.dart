@@ -1,39 +1,39 @@
 import 'package:flutter/material.dart';
 
 enum AvatarDesignCategory {
-  animal,
+  minimal,
+  geometric,
+  tech,
   initial,
-  emoji,
-  iconDesign,
-  pattern;
+  emoji;
 
   String get label {
     switch (this) {
-      case AvatarDesignCategory.animal:
-        return '動物';
+      case AvatarDesignCategory.minimal:
+        return 'ミニマル';
+      case AvatarDesignCategory.geometric:
+        return '幾何学';
+      case AvatarDesignCategory.tech:
+        return 'テック';
       case AvatarDesignCategory.initial:
         return 'イニシャル';
       case AvatarDesignCategory.emoji:
-        return '絵文字';
-      case AvatarDesignCategory.iconDesign:
-        return 'アイコン';
-      case AvatarDesignCategory.pattern:
-        return 'パターン';
+        return 'その他';
     }
   }
 
   IconData get icon {
     switch (this) {
-      case AvatarDesignCategory.animal:
-        return Icons.pets;
+      case AvatarDesignCategory.minimal:
+        return Icons.radio_button_unchecked;
+      case AvatarDesignCategory.geometric:
+        return Icons.hexagon_outlined;
+      case AvatarDesignCategory.tech:
+        return Icons.memory;
       case AvatarDesignCategory.initial:
         return Icons.abc;
       case AvatarDesignCategory.emoji:
-        return Icons.emoji_emotions;
-      case AvatarDesignCategory.iconDesign:
-        return Icons.star;
-      case AvatarDesignCategory.pattern:
-        return Icons.grid_3x3;
+        return Icons.more_horiz;
     }
   }
 }
@@ -62,53 +62,144 @@ class AvatarDesigns {
     AvatarDesign(
       id: 'default',
       name: 'デフォルト',
-      category: AvatarDesignCategory.iconDesign,
+      category: AvatarDesignCategory.minimal,
       builder: (size) => Icon(Icons.person, color: Colors.white, size: size),
       price: 0,
     ),
     
-    // 動物カテゴリー
+    // ミニマルカテゴリー
     AvatarDesign(
-      id: 'cat',
-      name: 'ネコ',
-      category: AvatarDesignCategory.animal,
-      builder: (size) => Text('🐱', style: TextStyle(fontSize: size * 0.8)),
+      id: 'circle',
+      name: 'サークル',
+      category: AvatarDesignCategory.minimal,
+      builder: (size) => Icon(Icons.circle_outlined, color: Colors.white, size: size * 0.8),
+      price: 0,
+    ),
+    AvatarDesign(
+      id: 'cross',
+      name: 'クロス',
+      category: AvatarDesignCategory.minimal,
+      builder: (size) => Icon(Icons.close, color: Colors.white, size: size),
+      price: 2,
+    ),
+    AvatarDesign(
+      id: 'plus',
+      name: 'プラス',
+      category: AvatarDesignCategory.minimal,
+      builder: (size) => Icon(Icons.add, color: Colors.white, size: size),
+      price: 2,
+    ),
+    AvatarDesign(
+      id: 'dot',
+      name: 'ドット',
+      category: AvatarDesignCategory.minimal,
+      builder: (size) => Icon(Icons.fiber_manual_record, color: Colors.white, size: size * 0.4),
+      price: 1,
+    ),
+    AvatarDesign(
+      id: 'ring',
+      name: 'リング',
+      category: AvatarDesignCategory.minimal,
+      builder: (size) => Icon(Icons.radio_button_unchecked, color: Colors.white, size: size),
+      price: 3,
+    ),
+    AvatarDesign(
+      id: 'infinity',
+      name: 'インフィニティ',
+      category: AvatarDesignCategory.minimal,
+      builder: (size) => Icon(Icons.all_inclusive, color: Colors.white, size: size * 0.9),
+      price: 10,
+    ),
+    
+    // 幾何学カテゴリー
+    AvatarDesign(
+      id: 'hexagon',
+      name: 'ヘキサゴン',
+      category: AvatarDesignCategory.geometric,
+      builder: (size) => Icon(Icons.hexagon_outlined, color: Colors.white, size: size),
       price: 5,
     ),
     AvatarDesign(
-      id: 'dog',
-      name: 'イヌ',
-      category: AvatarDesignCategory.animal,
-      builder: (size) => Text('🐶', style: TextStyle(fontSize: size * 0.8)),
+      id: 'triangle',
+      name: 'トライアングル',
+      category: AvatarDesignCategory.geometric,
+      builder: (size) => Icon(Icons.change_history, color: Colors.white, size: size * 0.9),
       price: 5,
     ),
     AvatarDesign(
-      id: 'rabbit',
-      name: 'ウサギ',
-      category: AvatarDesignCategory.animal,
-      builder: (size) => Text('🐰', style: TextStyle(fontSize: size * 0.8)),
-      price: 5,
+      id: 'square',
+      name: 'スクエア',
+      category: AvatarDesignCategory.geometric,
+      builder: (size) => Icon(Icons.square_outlined, color: Colors.white, size: size * 0.8),
+      price: 3,
     ),
     AvatarDesign(
-      id: 'bear',
-      name: 'クマ',
-      category: AvatarDesignCategory.animal,
-      builder: (size) => Text('🐻', style: TextStyle(fontSize: size * 0.8)),
+      id: 'diamond',
+      name: 'ダイヤモンド',
+      category: AvatarDesignCategory.geometric,
+      builder: (size) => Transform.rotate(
+        angle: 0.785398, // 45度
+        child: Icon(Icons.square_outlined, color: Colors.white, size: size * 0.7),
+      ),
+      price: 8,
+    ),
+    AvatarDesign(
+      id: 'pentagon',
+      name: 'ペンタゴン',
+      category: AvatarDesignCategory.geometric,
+      builder: (size) => Icon(Icons.pentagon_outlined, color: Colors.white, size: size),
+      price: 7,
+    ),
+    AvatarDesign(
+      id: 'octagon',
+      name: 'オクタゴン',
+      category: AvatarDesignCategory.geometric,
+      builder: (size) => Icon(Icons.stop_outlined, color: Colors.white, size: size),
+      price: 7,
+    ),
+    
+    // テック系カテゴリー
+    AvatarDesign(
+      id: 'code',
+      name: 'コード',
+      category: AvatarDesignCategory.tech,
+      builder: (size) => Icon(Icons.code, color: Colors.white, size: size),
       price: 10,
     ),
     AvatarDesign(
-      id: 'panda',
-      name: 'パンダ',
-      category: AvatarDesignCategory.animal,
-      builder: (size) => Text('🐼', style: TextStyle(fontSize: size * 0.8)),
+      id: 'terminal',
+      name: 'ターミナル',
+      category: AvatarDesignCategory.tech,
+      builder: (size) => Icon(Icons.terminal, color: Colors.white, size: size * 0.9),
+      price: 12,
+    ),
+    AvatarDesign(
+      id: 'cpu',
+      name: 'CPU',
+      category: AvatarDesignCategory.tech,
+      builder: (size) => Icon(Icons.memory, color: Colors.white, size: size * 0.9),
       price: 15,
     ),
     AvatarDesign(
-      id: 'unicorn',
-      name: 'ユニコーン',
-      category: AvatarDesignCategory.animal,
-      builder: (size) => Text('🦄', style: TextStyle(fontSize: size * 0.8)),
-      price: 30,
+      id: 'wifi',
+      name: 'WiFi',
+      category: AvatarDesignCategory.tech,
+      builder: (size) => Icon(Icons.wifi, color: Colors.white, size: size * 0.9),
+      price: 8,
+    ),
+    AvatarDesign(
+      id: 'qr',
+      name: 'QR',
+      category: AvatarDesignCategory.tech,
+      builder: (size) => Icon(Icons.qr_code_2, color: Colors.white, size: size * 0.9),
+      price: 10,
+    ),
+    AvatarDesign(
+      id: 'atom',
+      name: 'アトム',
+      category: AvatarDesignCategory.tech,
+      builder: (size) => Icon(Icons.hub_outlined, color: Colors.white, size: size),
+      price: 20,
       isPremium: true,
     ),
     
@@ -121,22 +212,39 @@ class AvatarDesigns {
         'A',
         style: TextStyle(
           fontSize: size * 0.6,
-          fontWeight: FontWeight.bold,
+          fontWeight: FontWeight.w900,
           color: Colors.white,
+          fontFamily: 'SF Pro Display',
+        ),
+      ),
+      price: 2,
+    ),
+    AvatarDesign(
+      id: 'initial_x',
+      name: 'X',
+      category: AvatarDesignCategory.initial,
+      builder: (size) => Text(
+        'X',
+        style: TextStyle(
+          fontSize: size * 0.6,
+          fontWeight: FontWeight.w900,
+          color: Colors.white,
+          fontFamily: 'SF Pro Display',
         ),
       ),
       price: 3,
     ),
     AvatarDesign(
-      id: 'initial_k',
-      name: 'K',
+      id: 'initial_z',
+      name: 'Z',
       category: AvatarDesignCategory.initial,
       builder: (size) => Text(
-        'K',
+        'Z',
         style: TextStyle(
           fontSize: size * 0.6,
-          fontWeight: FontWeight.bold,
+          fontWeight: FontWeight.w900,
           color: Colors.white,
+          fontFamily: 'SF Pro Display',
         ),
       ),
       price: 3,
@@ -149,25 +257,12 @@ class AvatarDesigns {
         'S',
         style: TextStyle(
           fontSize: size * 0.6,
-          fontWeight: FontWeight.bold,
+          fontWeight: FontWeight.w900,
           color: Colors.white,
+          fontFamily: 'SF Pro Display',
         ),
       ),
-      price: 3,
-    ),
-    AvatarDesign(
-      id: 'initial_t',
-      name: 'T',
-      category: AvatarDesignCategory.initial,
-      builder: (size) => Text(
-        'T',
-        style: TextStyle(
-          fontSize: size * 0.6,
-          fontWeight: FontWeight.bold,
-          color: Colors.white,
-        ),
-      ),
-      price: 3,
+      price: 2,
     ),
     AvatarDesign(
       id: 'initial_m',
@@ -177,128 +272,50 @@ class AvatarDesigns {
         'M',
         style: TextStyle(
           fontSize: size * 0.6,
-          fontWeight: FontWeight.bold,
+          fontWeight: FontWeight.w900,
           color: Colors.white,
+          fontFamily: 'SF Pro Display',
         ),
       ),
-      price: 3,
+      price: 2,
     ),
     
-    // 絵文字カテゴリー
-    AvatarDesign(
-      id: 'smile',
-      name: 'スマイル',
-      category: AvatarDesignCategory.emoji,
-      builder: (size) => Text('😊', style: TextStyle(fontSize: size * 0.8)),
-      price: 5,
-    ),
-    AvatarDesign(
-      id: 'cool',
-      name: 'クール',
-      category: AvatarDesignCategory.emoji,
-      builder: (size) => Text('😎', style: TextStyle(fontSize: size * 0.8)),
-      price: 8,
-    ),
-    AvatarDesign(
-      id: 'star_eyes',
-      name: 'キラキラ',
-      category: AvatarDesignCategory.emoji,
-      builder: (size) => Text('🤩', style: TextStyle(fontSize: size * 0.8)),
-      price: 10,
-    ),
-    AvatarDesign(
-      id: 'heart_eyes',
-      name: 'ハート',
-      category: AvatarDesignCategory.emoji,
-      builder: (size) => Text('😍', style: TextStyle(fontSize: size * 0.8)),
-      price: 10,
-    ),
-    AvatarDesign(
-      id: 'fire',
-      name: 'ファイア',
-      category: AvatarDesignCategory.emoji,
-      builder: (size) => Text('🔥', style: TextStyle(fontSize: size * 0.8)),
-      price: 20,
-      isPremium: true,
-    ),
-    
-    // アイコンカテゴリー
+    // その他カテゴリー（絵文字・特殊）
     AvatarDesign(
       id: 'star',
       name: 'スター',
-      category: AvatarDesignCategory.iconDesign,
-      builder: (size) => Icon(Icons.star, color: Colors.amber, size: size),
-      price: 10,
+      category: AvatarDesignCategory.emoji,
+      builder: (size) => Icon(Icons.star, color: Colors.white, size: size),
+      price: 5,
     ),
     AvatarDesign(
-      id: 'diamond',
-      name: 'ダイヤモンド',
-      category: AvatarDesignCategory.iconDesign,
-      builder: (size) => Icon(Icons.diamond, color: Colors.cyan, size: size),
-      price: 25,
-      isPremium: true,
+      id: 'bolt',
+      name: 'サンダー',
+      category: AvatarDesignCategory.emoji,
+      builder: (size) => Icon(Icons.bolt, color: Colors.white, size: size),
+      price: 8,
+    ),
+    AvatarDesign(
+      id: 'favorite',
+      name: 'ハート',
+      category: AvatarDesignCategory.emoji,
+      builder: (size) => Icon(Icons.favorite_outline, color: Colors.white, size: size * 0.9),
+      price: 5,
     ),
     AvatarDesign(
       id: 'crown',
       name: 'クラウン',
-      category: AvatarDesignCategory.iconDesign,
+      category: AvatarDesignCategory.emoji,
       builder: (size) => Text('👑', style: TextStyle(fontSize: size * 0.8)),
       price: 50,
       isPremium: true,
     ),
     AvatarDesign(
-      id: 'rocket',
-      name: 'ロケット',
-      category: AvatarDesignCategory.iconDesign,
-      builder: (size) => Text('🚀', style: TextStyle(fontSize: size * 0.8)),
-      price: 20,
-    ),
-    
-    // パターンカテゴリー
-    AvatarDesign(
-      id: 'gradient',
-      name: 'グラデーション',
-      category: AvatarDesignCategory.pattern,
-      builder: (size) => Container(
-        width: size,
-        height: size,
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [Colors.purple, Colors.blue],
-          ),
-        ),
-      ),
+      id: 'flame',
+      name: 'フレイム',
+      category: AvatarDesignCategory.emoji,
+      builder: (size) => Icon(Icons.local_fire_department_outlined, color: Colors.white, size: size),
       price: 15,
-    ),
-    AvatarDesign(
-      id: 'rainbow',
-      name: 'レインボー',
-      category: AvatarDesignCategory.pattern,
-      builder: (size) => Container(
-        width: size,
-        height: size,
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              Colors.red,
-              Colors.orange,
-              Colors.yellow,
-              Colors.green,
-              Colors.blue,
-              Colors.indigo,
-              Colors.purple,
-            ],
-          ),
-        ),
-      ),
-      price: 30,
-      isPremium: true,
     ),
   ];
   

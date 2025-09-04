@@ -91,6 +91,10 @@ class EvaluationService {
       
       debugPrint('Updating user statistics for user: $evaluatedUserId');
       
+      // 無償実験の場合はポイントを3倍にする
+      final pointsToAdd = type == EvaluationType.good ? 
+          (experiment.isPaid ? 1 : 3) : 0;
+      
       // 被評価者のユーザー統計を更新
       try {
         // まずユーザードキュメントが存在するか確認
@@ -100,7 +104,7 @@ class EvaluationService {
           final userUpdateData = <String, dynamic>{};
           if (type == EvaluationType.good) {
             userUpdateData['goodCount'] = FieldValue.increment(1);
-            userUpdateData['points'] = FieldValue.increment(1); // Good評価で1ポイント追加
+            userUpdateData['points'] = FieldValue.increment(pointsToAdd); // 有償:1ポイント、無償:3ポイント
           } else if (type == EvaluationType.bad) {
             userUpdateData['badCount'] = FieldValue.increment(1);
           }
@@ -116,7 +120,7 @@ class EvaluationService {
           await _firestore.collection('users').doc(evaluatedUserId).set({
             'goodCount': type == EvaluationType.good ? 1 : 0,
             'badCount': type == EvaluationType.bad ? 1 : 0,
-            'points': type == EvaluationType.good ? 1 : 0,
+            'points': pointsToAdd,
           }, SetOptions(merge: true));
           debugPrint('User document created with initial statistics');
         }
@@ -144,6 +148,7 @@ class EvaluationService {
           experimentTitle: experimentTitle,
           experimentId: experimentId,
           isGood: type == EvaluationType.good,
+          pointsAwarded: pointsToAdd,
         );
       } catch (notificationError) {
         debugPrint('通知送信エラー（無視）: $notificationError');

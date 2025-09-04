@@ -14,6 +14,7 @@ import '../services/notification_service.dart';
 import '../widgets/experiment_calendar_view.dart';
 import '../widgets/custom_circle_avatar.dart';
 import '../models/avatar_design.dart';
+import '../models/avatar_color.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../services/message_service.dart';
 import '../services/auth_service.dart';
@@ -847,24 +848,30 @@ class _ExperimentDetailScreenState extends State<ExperimentDetailScreen> {
                           final user = snapshot.data;
                           return Row(
                             children: [
-                              CustomCircleAvatar(
-                                frameId: user?.selectedFrame,
-                                radius: 16,
-                                backgroundColor: const Color(0xFF8E1728),
-                                designBuilder: user?.selectedDesign != null && user?.selectedDesign != 'default'
-                                    ? AvatarDesigns.getById(user!.selectedDesign!).builder
-                                    : null,
-                                child: user?.selectedDesign == null || user?.selectedDesign == 'default'
-                                    ? Text(
-                                        user?.name.isNotEmpty == true 
-                                          ? user!.name[0].toUpperCase() 
-                                          : '?',
-                                        style: const TextStyle(
-                                          color: Colors.white,
-                                          fontSize: 12,
-                                        ),
-                                      )
-                                    : null,
+                              SizedBox(
+                                width: 20,
+                                height: 20,
+                                child: CustomCircleAvatar(
+                                  frameId: user?.selectedFrame,
+                                  radius: 10,
+                                  backgroundColor: user?.selectedColor != null
+                                      ? AvatarColors.getById(user!.selectedColor!).color
+                                      : const Color(0xFF8E1728),
+                                  designBuilder: user?.selectedDesign != null && user?.selectedDesign != 'default'
+                                      ? AvatarDesigns.getById(user!.selectedDesign!).builder
+                                      : null,
+                                  child: user?.selectedDesign == null || user?.selectedDesign == 'default'
+                                      ? Text(
+                                          user?.name.isNotEmpty == true 
+                                            ? user!.name[0].toUpperCase() 
+                                            : '?',
+                                          style: const TextStyle(
+                                            color: Colors.white,
+                                            fontSize: 8,
+                                          ),
+                                        )
+                                      : null,
+                                ),
                               ),
                               const SizedBox(width: 8),
                               const Text(

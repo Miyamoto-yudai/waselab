@@ -517,29 +517,41 @@ class _IconChangeScreenState extends State<IconChangeScreen>
       appBar: AppBar(
         title: const Text('アイコン変更'),
         bottom: PreferredSize(
-          preferredSize: const Size.fromHeight(148),
+          preferredSize: const Size.fromHeight(156),
           child: Column(
             children: [
               // ポイント表示
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                 color: Colors.amber.withValues(alpha: 0.1),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
+                child: Column(
                   children: [
-                    const Icon(Icons.stars, color: Colors.amber, size: 28),
-                    const SizedBox(width: 8),
-                    Text(
-                      '${_currentUser?.points ?? 0}',
-                      style: const TextStyle(
-                        fontSize: 24,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.amber,
-                      ),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(Icons.stars, color: Colors.amber, size: 28),
+                        const SizedBox(width: 8),
+                        Text(
+                          '${_currentUser?.points ?? 0}',
+                          style: const TextStyle(
+                            fontSize: 24,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.amber,
+                          ),
+                        ),
+                        const Text(
+                          ' ポイント',
+                          style: TextStyle(fontSize: 16),
+                        ),
+                      ],
                     ),
-                    const Text(
-                      ' ポイント',
-                      style: TextStyle(fontSize: 16),
+                    const SizedBox(height: 4),
+                    Text(
+                      '※ 無償実験への協力でポイント3倍獲得',
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: Colors.grey[600],
+                      ),
                     ),
                   ],
                 ),
@@ -560,9 +572,9 @@ class _IconChangeScreenState extends State<IconChangeScreen>
                   fontWeight: FontWeight.normal,
                 ),
                 tabs: const [
-                  Tab(text: 'フレーム'),
-                  Tab(text: 'デザイン'),
                   Tab(text: 'カラー'),
+                  Tab(text: 'デザイン'),
+                  Tab(text: 'フレーム'),
                 ],
               ),
             ],
@@ -572,6 +584,97 @@ class _IconChangeScreenState extends State<IconChangeScreen>
       body: TabBarView(
         controller: _mainTabController,
         children: [
+          // カラータブ
+          Column(
+            children: [
+              Container(
+                color: Theme.of(context).primaryColor.withValues(alpha: 0.1),
+                child: TabBar(
+                  controller: _colorTabController,
+                  isScrollable: true,
+                  indicatorColor: Theme.of(context).primaryColor,
+                  indicatorWeight: 3,
+                  labelColor: Theme.of(context).primaryColor,
+                  unselectedLabelColor: Colors.grey[600],
+                  labelStyle: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                  ),
+                  tabs: const [
+                    Tab(text: '無料'),
+                    Tab(text: 'ベーシック'),
+                    Tab(text: 'スペシャル'),
+                    Tab(text: 'プレミアム'),
+                  ],
+                ),
+              ),
+              Expanded(
+                child: TabBarView(
+                  controller: _colorTabController,
+                  children: [
+                    _buildColorGrid(ColorTier.free),
+                    _buildColorGrid(ColorTier.basic),
+                    _buildColorGrid(ColorTier.special),
+                    _buildColorGrid(ColorTier.premium),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          // デザインタブ
+          Column(
+            children: [
+              Container(
+                color: Theme.of(context).primaryColor.withValues(alpha: 0.1),
+                child: TabBar(
+                  controller: _designTabController,
+                  isScrollable: true,
+                  indicatorColor: Theme.of(context).primaryColor,
+                  indicatorWeight: 3,
+                  labelColor: Theme.of(context).primaryColor,
+                  unselectedLabelColor: Colors.grey[600],
+                  labelStyle: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                  ),
+                  tabs: [
+                    Tab(
+                      icon: Icon(AvatarDesignCategory.minimal.icon, size: 20),
+                      text: AvatarDesignCategory.minimal.label,
+                    ),
+                    Tab(
+                      icon: Icon(AvatarDesignCategory.geometric.icon, size: 20),
+                      text: AvatarDesignCategory.geometric.label,
+                    ),
+                    Tab(
+                      icon: Icon(AvatarDesignCategory.tech.icon, size: 20),
+                      text: AvatarDesignCategory.tech.label,
+                    ),
+                    Tab(
+                      icon: Icon(AvatarDesignCategory.initial.icon, size: 20),
+                      text: AvatarDesignCategory.initial.label,
+                    ),
+                    Tab(
+                      icon: Icon(AvatarDesignCategory.emoji.icon, size: 20),
+                      text: AvatarDesignCategory.emoji.label,
+                    ),
+                  ],
+                ),
+              ),
+              Expanded(
+                child: TabBarView(
+                  controller: _designTabController,
+                  children: [
+                    _buildDesignGrid(AvatarDesignCategory.minimal),
+                    _buildDesignGrid(AvatarDesignCategory.geometric),
+                    _buildDesignGrid(AvatarDesignCategory.tech),
+                    _buildDesignGrid(AvatarDesignCategory.initial),
+                    _buildDesignGrid(AvatarDesignCategory.emoji),
+                  ],
+                ),
+              ),
+            ],
+          ),
           // フレームタブ
           Column(
             children: [
@@ -606,97 +709,6 @@ class _IconChangeScreenState extends State<IconChangeScreen>
                     _buildFrameGrid(FrameTier.premium),
                     _buildFrameGrid(FrameTier.rare),
                     _buildFrameGrid(FrameTier.limited),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          // デザインタブ
-          Column(
-            children: [
-              Container(
-                color: Theme.of(context).primaryColor.withValues(alpha: 0.1),
-                child: TabBar(
-                  controller: _designTabController,
-                  isScrollable: true,
-                  indicatorColor: Theme.of(context).primaryColor,
-                  indicatorWeight: 3,
-                  labelColor: Theme.of(context).primaryColor,
-                  unselectedLabelColor: Colors.grey[600],
-                  labelStyle: const TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.bold,
-                  ),
-                  tabs: [
-                    Tab(
-                      icon: Icon(AvatarDesignCategory.animal.icon, size: 20),
-                      text: AvatarDesignCategory.animal.label,
-                    ),
-                    Tab(
-                      icon: Icon(AvatarDesignCategory.initial.icon, size: 20),
-                      text: AvatarDesignCategory.initial.label,
-                    ),
-                    Tab(
-                      icon: Icon(AvatarDesignCategory.emoji.icon, size: 20),
-                      text: AvatarDesignCategory.emoji.label,
-                    ),
-                    Tab(
-                      icon: Icon(AvatarDesignCategory.iconDesign.icon, size: 20),
-                      text: AvatarDesignCategory.iconDesign.label,
-                    ),
-                    Tab(
-                      icon: Icon(AvatarDesignCategory.pattern.icon, size: 20),
-                      text: AvatarDesignCategory.pattern.label,
-                    ),
-                  ],
-                ),
-              ),
-              Expanded(
-                child: TabBarView(
-                  controller: _designTabController,
-                  children: [
-                    _buildDesignGrid(AvatarDesignCategory.animal),
-                    _buildDesignGrid(AvatarDesignCategory.initial),
-                    _buildDesignGrid(AvatarDesignCategory.emoji),
-                    _buildDesignGrid(AvatarDesignCategory.iconDesign),
-                    _buildDesignGrid(AvatarDesignCategory.pattern),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          // カラータブ
-          Column(
-            children: [
-              Container(
-                color: Theme.of(context).primaryColor.withValues(alpha: 0.1),
-                child: TabBar(
-                  controller: _colorTabController,
-                  isScrollable: true,
-                  indicatorColor: Theme.of(context).primaryColor,
-                  indicatorWeight: 3,
-                  labelColor: Theme.of(context).primaryColor,
-                  unselectedLabelColor: Colors.grey[600],
-                  labelStyle: const TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.bold,
-                  ),
-                  tabs: const [
-                    Tab(text: '無料'),
-                    Tab(text: 'ベーシック'),
-                    Tab(text: 'スペシャル'),
-                    Tab(text: 'プレミアム'),
-                  ],
-                ),
-              ),
-              Expanded(
-                child: TabBarView(
-                  controller: _colorTabController,
-                  children: [
-                    _buildColorGrid(ColorTier.free),
-                    _buildColorGrid(ColorTier.basic),
-                    _buildColorGrid(ColorTier.special),
-                    _buildColorGrid(ColorTier.premium),
                   ],
                 ),
               ),
@@ -831,13 +843,13 @@ class _IconChangeScreenState extends State<IconChangeScreen>
                     )
                   else
                     ElevatedButton.icon(
-                      onPressed: _currentUser!.points >= frame.price
+                      onPressed: (_currentUser?.points ?? 0) >= frame.price
                           ? () => _purchaseFrame(frame)
                           : null,
                       icon: const Icon(Icons.shopping_cart, size: 16),
                       label: Text('${frame.price}P'),
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: _currentUser!.points >= frame.price
+                        backgroundColor: (_currentUser?.points ?? 0) >= frame.price
                             ? Colors.amber
                             : Colors.grey,
                         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
@@ -962,11 +974,11 @@ class _IconChangeScreenState extends State<IconChangeScreen>
                     )
                   else
                     ElevatedButton(
-                      onPressed: _currentUser!.points >= design.price
+                      onPressed: (_currentUser?.points ?? 0) >= design.price
                           ? () => _purchaseDesign(design)
                           : null,
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: _currentUser!.points >= design.price
+                        backgroundColor: (_currentUser?.points ?? 0) >= design.price
                             ? Colors.amber
                             : Colors.grey,
                         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
@@ -1099,11 +1111,11 @@ class _IconChangeScreenState extends State<IconChangeScreen>
                     )
                   else
                     ElevatedButton(
-                      onPressed: _currentUser!.points >= color.price
+                      onPressed: (_currentUser?.points ?? 0) >= color.price
                           ? () => _purchaseColor(color)
                           : null,
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: _currentUser!.points >= color.price
+                        backgroundColor: (_currentUser?.points ?? 0) >= color.price
                             ? Colors.amber
                             : Colors.grey,
                         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
