@@ -47,6 +47,11 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
         _conversationId = ids.join('_');
       });
       
+      debugPrint('Support Chat Initialized:');
+      debugPrint('  User ID: $_currentUserId');
+      debugPrint('  User Name: $_currentUserName');
+      debugPrint('  Conversation ID: $_conversationId');
+      
       _markMessagesAsRead();
     }
   }
@@ -65,17 +70,24 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
       _isSending = true;
     });
 
+    debugPrint('Sending support message:');
+    debugPrint('  From: $_currentUserId ($_currentUserName)');
+    debugPrint('  To: $supportUserId ($supportUserName)');
+    debugPrint('  Content: ${_messageController.text.trim()}');
+    
     try {
-      await _messageService.sendMessage(
+      final conversationId = await _messageService.sendMessage(
         senderId: _currentUserId!,
         receiverId: supportUserId,
         content: _messageController.text.trim(),
         senderName: _currentUserName!,
         receiverName: supportUserName,
       );
+      debugPrint('Message sent successfully. Conversation ID: $conversationId');
       _messageController.clear();
       _scrollToBottom();
     } catch (e) {
+      debugPrint('Error sending message: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -253,13 +265,32 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
                 }
 
                 if (snapshot.hasError) {
+                  debugPrint('StreamBuilder error: ${snapshot.error}');
+                  debugPrint('Error stack trace: ${snapshot.stackTrace}');
                   return Center(
-                    child: Text('エラー: ${snapshot.error}'),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(Icons.error_outline, size: 48, color: Colors.red),
+                        const SizedBox(height: 16),
+                        Text('エラー: ${snapshot.error}'),
+                        const SizedBox(height: 8),
+                        ElevatedButton(
+                          onPressed: () {
+                            setState(() {
+                              // 再読み込み
+                            });
+                          },
+                          child: const Text('再読み込み'),
+                        ),
+                      ],
+                    ),
                   );
                 }
 
                 final messages = snapshot.data ?? [];
-
+                debugPrint('Messages received: ${messages.length}');
+                
                 if (messages.isEmpty) {
                   return Center(
                     child: Column(
