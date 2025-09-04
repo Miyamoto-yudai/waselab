@@ -61,9 +61,40 @@ class _HomeScreenBaseState extends State<HomeScreenBase> {
   bool _isHeaderVisible = true;
   DateTime? _startDateFilter;
   DateTime? _endDateFilter;
+  bool _showOnlyAvailable = false; // 参加可能な実験のみ表示するフィルター
   
   List<Experiment> get filteredExperiments {
     List<Experiment> filtered = List.from(widget.experiments);
+    
+    // 参加可能な実験のみフィルター
+    if (_showOnlyAvailable && widget.currentUserId != null) {
+      final now = DateTime.now();
+      filtered = filtered.where((experiment) {
+        // 既に参加している実験は除外
+        if (experiment.participants.contains(widget.currentUserId)) {
+          return false;
+        }
+        
+        // 最大参加者数に達している実験は除外
+        if (experiment.maxParticipants != null && 
+            experiment.participants.length >= experiment.maxParticipants!) {
+          return false;
+        }
+        
+        // 募集期間外の実験は除外
+        if (experiment.recruitmentEndDate != null && 
+            experiment.recruitmentEndDate!.isBefore(now)) {
+          return false;
+        }
+        
+        // ステータスが募集中以外の実験は除外
+        if (experiment.status != ExperimentStatus.recruiting) {
+          return false;
+        }
+        
+        return true;
+      }).toList();
+    }
     
     // 検索フィルター
     if (_searchQuery.isNotEmpty) {
@@ -448,7 +479,7 @@ class _HomeScreenBaseState extends State<HomeScreenBase> {
           // 検索バー、日付フィルター、種別切り替えボタン、ソート選択
           AnimatedContainer(
             duration: const Duration(milliseconds: 200),
-            height: _isHeaderVisible ? 150 : 0,
+            height: _isHeaderVisible ? 180 : 0,
             child: SingleChildScrollView(
               physics: const NeverScrollableScrollPhysics(),
               child: AnimatedOpacity(
@@ -456,6 +487,84 @@ class _HomeScreenBaseState extends State<HomeScreenBase> {
                 opacity: _isHeaderVisible ? 1.0 : 0.0,
                 child: Column(
                   children: [
+                    // 参加可能な実験のみ表示ボタン
+                    Container(
+                      color: Colors.white,
+                      padding: const EdgeInsets.only(left: 16, right: 16, top: 8, bottom: 4),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: Material(
+                              color: _showOnlyAvailable 
+                                ? const Color(0xFF8E1728).withOpacity(0.1)
+                                : Colors.grey.shade100,
+                              borderRadius: BorderRadius.circular(20),
+                              child: InkWell(
+                                onTap: widget.currentUserId != null 
+                                  ? () {
+                                      setState(() {
+                                        _showOnlyAvailable = !_showOnlyAvailable;
+                                      });
+                                    }
+                                  : () {
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        const SnackBar(
+                                          content: Text('ログインすると参加可能な実験を絞り込めます'),
+                                          duration: Duration(seconds: 2),
+                                        ),
+                                      );
+                                    },
+                                borderRadius: BorderRadius.circular(20),
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(vertical: 10),
+                                  child: Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Icon(
+                                        _showOnlyAvailable ? Icons.check_circle : Icons.filter_alt,
+                                        size: 20,
+                                        color: _showOnlyAvailable 
+                                          ? const Color(0xFF8E1728) 
+                                          : Colors.grey.shade600,
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Text(
+                                        '参加できる実験のみ表示',
+                                        style: TextStyle(
+                                          fontSize: 14,
+                                          fontWeight: _showOnlyAvailable ? FontWeight.bold : FontWeight.normal,
+                                          color: _showOnlyAvailable 
+                                            ? const Color(0xFF8E1728) 
+                                            : Colors.grey.shade700,
+                                        ),
+                                      ),
+                                      if (_showOnlyAvailable) ...[  
+                                        const SizedBox(width: 8),
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                          decoration: BoxDecoration(
+                                            color: const Color(0xFF8E1728),
+                                            borderRadius: BorderRadius.circular(10),
+                                          ),
+                                          child: Text(
+                                            '${filteredExperiments.length}件',
+                                            style: const TextStyle(
+                                              color: Colors.white,
+                                              fontSize: 12,
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                     // 検索バー
                     Container(
                       color: Colors.white,

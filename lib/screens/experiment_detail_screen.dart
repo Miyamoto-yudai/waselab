@@ -438,6 +438,20 @@ class _ExperimentDetailScreenState extends State<ExperimentDetailScreen> {
         throw Exception('ログインが必要です');
       }
 
+      // 募集人数上限チェック
+      if (widget.experiment.maxParticipants != null &&
+          widget.experiment.participants.length >= widget.experiment.maxParticipants!) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('募集人数に達したため、予約できません'),
+              backgroundColor: Colors.orange,
+            ),
+          );
+        }
+        return;
+      }
+
       // 既に予約しているかチェック
       final hasReserved = await _reservationService.hasUserReserved(
         user.uid,
@@ -505,6 +519,18 @@ class _ExperimentDetailScreenState extends State<ExperimentDetailScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('ログインが必要です'),
+            backgroundColor: Colors.orange,
+          ),
+        );
+        return;
+      }
+
+      // 募集人数上限チェック
+      if (widget.experiment.maxParticipants != null &&
+          widget.experiment.participants.length >= widget.experiment.maxParticipants!) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('募集人数に達したため、参加できません'),
             backgroundColor: Colors.orange,
           ),
         );
@@ -1182,47 +1208,92 @@ class _ExperimentDetailScreenState extends State<ExperimentDetailScreen> {
                 !widget.isMyExperiment &&
                 (_auth.currentUser == null || widget.experiment.creatorId != _auth.currentUser!.uid)) ...[
               const SizedBox(height: 16),
-              Card(
-                child: Column(
-                  children: [
-                    ListTile(
-                      leading: const Icon(
-                        Icons.calendar_month,
-                        color: Color(0xFF8E1728),
-                      ),
-                      title: const Text(
-                        '予約日時を選択',
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
+              // 募集人数上限チェック
+              if (widget.experiment.maxParticipants != null &&
+                  widget.experiment.participants.length >= widget.experiment.maxParticipants!)
+                Card(
+                  color: Colors.grey.shade200,
+                  child: Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.block,
+                          color: Colors.grey.shade600,
+                          size: 24,
                         ),
-                      ),
-                      subtitle: const Text('カレンダーから希望の日時を選んでください'),
-                      trailing: IconButton(
-                        icon: Icon(
-                          _showCalendar
-                            ? Icons.keyboard_arrow_up
-                            : Icons.keyboard_arrow_down,
+                        const SizedBox(width: 12),
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              '募集終了',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.grey.shade700,
+                              ),
+                            ),
+                            Text(
+                              '募集人数に達しました（${widget.experiment.participants.length}/${widget.experiment.maxParticipants}名）',
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: Colors.grey.shade600,
+                              ),
+                            ),
+                          ],
                         ),
-                        onPressed: () {
+                      ],
+                    ),
+                  ),
+                )
+              else
+                Card(
+                  child: Column(
+                    children: [
+                      ListTile(
+                        leading: const Icon(
+                          Icons.calendar_month,
+                          color: Color(0xFF8E1728),
+                        ),
+                        title: const Text(
+                          '予約日時を選択',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        subtitle: Text(
+                          widget.experiment.maxParticipants != null
+                            ? 'カレンダーから希望の日時を選んでください（残り${widget.experiment.maxParticipants! - widget.experiment.participants.length}名）'
+                            : 'カレンダーから希望の日時を選んでください',
+                        ),
+                        trailing: IconButton(
+                          icon: Icon(
+                            _showCalendar
+                              ? Icons.keyboard_arrow_up
+                              : Icons.keyboard_arrow_down,
+                          ),
+                          onPressed: () {
+                            setState(() {
+                              _showCalendar = !_showCalendar;
+                            });
+                          },
+                        ),
+                        onTap: () {
                           setState(() {
                             _showCalendar = !_showCalendar;
                           });
                         },
                       ),
-                      onTap: () {
-                        setState(() {
-                          _showCalendar = !_showCalendar;
-                        });
-                      },
-                    ),
-                    if (_showCalendar)
-                      ExperimentCalendarView(
-                        experiment: widget.experiment,
-                        onSlotSelected: _handleSlotSelection,
-                      ),
-                  ],
+                      if (_showCalendar)
+                        ExperimentCalendarView(
+                          experiment: widget.experiment,
+                          onSlotSelected: _handleSlotSelection,
+                        ),
+                    ],
+                  ),
                 ),
-              ),
             ],
 
             // 予約状態の表示
@@ -1297,42 +1368,74 @@ class _ExperimentDetailScreenState extends State<ExperimentDetailScreen> {
             if (!widget.isMyExperiment && 
                 _currentUserReservation == null &&
                 !widget.experiment.allowFlexibleSchedule &&
-                (_auth.currentUser == null || widget.experiment.creatorId != _auth.currentUser!.uid)) // 自分の実験でない場合のみ
-              SizedBox(
-                width: double.infinity,
-                height: 48,
-                child: ElevatedButton.icon(
-                  onPressed: _isParticipating || _isLoading
-                    ? null // 既に参加している、読み込み中の場合は無効化
-                    : () => _handleDirectApplication(),
-                  icon: _isLoading
-                    ? const SizedBox(
-                        width: 20,
-                        height: 20,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : Icon(
-                        _isParticipating
-                          ? Icons.check_circle
-                          : widget.experiment.type == ExperimentType.survey
-                              ? Icons.assignment
-                              : Icons.send,
-                      ),
-                  label: Text(
-                    _isParticipating
-                      ? '参加予定'
-                      : widget.experiment.type == ExperimentType.survey
-                          ? '今すぐ参加'
-                          : '参加申請する',
+                (_auth.currentUser == null || widget.experiment.creatorId != _auth.currentUser!.uid)) ...[// 自分の実験でない場合のみ
+              // 募集人数上限チェック
+              if (widget.experiment.maxParticipants != null &&
+                  widget.experiment.participants.length >= widget.experiment.maxParticipants!) ...[
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade200,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Colors.grey.shade400),
                   ),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: _isParticipating ? Colors.grey : null,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        Icons.block,
+                        color: Colors.grey.shade600,
+                        size: 20,
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        '募集人数に達しました（${widget.experiment.participants.length}/${widget.experiment.maxParticipants}名）',
+                        style: TextStyle(
+                          color: Colors.grey.shade600,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ] else
+                SizedBox(
+                  width: double.infinity,
+                  height: 48,
+                  child: ElevatedButton.icon(
+                    onPressed: _isParticipating || _isLoading
+                      ? null // 既に参加している、読み込み中の場合は無効化
+                      : () => _handleDirectApplication(),
+                    icon: _isLoading
+                      ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : Icon(
+                          _isParticipating
+                            ? Icons.check_circle
+                            : widget.experiment.type == ExperimentType.survey
+                                ? Icons.assignment
+                                : Icons.send,
+                        ),
+                    label: Text(
+                      _isParticipating
+                        ? '参加予定'
+                        : widget.experiment.type == ExperimentType.survey
+                            ? '今すぐ参加'
+                            : '参加申請する',
+                    ),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: _isParticipating ? Colors.grey : null,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
                     ),
                   ),
                 ),
-              ),
+            ],
             const SizedBox(height: 16),
           ],
         ),

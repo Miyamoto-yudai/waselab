@@ -67,6 +67,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
         content: const SingleChildScrollView(
           child: Text(
             'わせラボ利用規約\n\n'
+            '【重要事項】\n'
+            '本アプリケーション「わせラボ」は、早稲田大学の公式アプリケーションではなく、'
+            '学生有志により開発・運営されている非公式サービスです。\n\n'
             '第1条（利用規約の適用）\n'
             '本利用規約は、早稲田大学実験協力プラットフォーム「わせラボ」の利用に関する条件を定めるものです。\n\n'
             '第2条（利用資格）\n'
@@ -77,7 +80,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
             '・実験の妨害行為\n'
             '・その他運営が不適切と判断する行為\n\n'
             '第4条（個人情報の取扱い）\n'
-            'プライバシーポリシーに従って適切に管理いたします。',
+            'プライバシーポリシーに従って適切に管理いたします。\n\n'
+            '第5条（免責事項）\n'
+            '本サービスは有志により提供されており、早稲田大学は本サービスに関する一切の責任を負いません。',
           ),
         ),
         actions: [
@@ -365,7 +370,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         color: Color(0xFF8E1728),
                       ),
                       children: const [
-                        Text('早稲田大学実験協力プラットフォーム\n\n© 2024 WaseLab Team'),
+                        Text(
+                          '早稲田大学実験協力プラットフォーム\n\n'
+                          '【重要】\n'
+                          'このアプリは早稲田大学の公式アプリではありません。\n'
+                          '学生有志により開発・運営されています。\n\n'
+                          '© 2024 WaseLab Team',
+                          style: TextStyle(fontSize: 13),
+                        ),
                       ],
                     );
                   },
