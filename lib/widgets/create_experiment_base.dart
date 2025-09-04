@@ -629,47 +629,6 @@ class _CreateExperimentBaseState extends State<CreateExperimentBase> {
             '実験の基本情報を入力してください',
             style: Theme.of(context).textTheme.titleMedium,
           ),
-          const SizedBox(height: 16),
-          
-          // 相互評価の重要性を示すバナー
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: Colors.amber.withValues(alpha: 0.15),
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: Colors.amber.withValues(alpha: 0.5)),
-            ),
-            child: Row(
-              children: [
-                Icon(Icons.warning_amber_rounded, color: Colors.amber[700], size: 20),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        '相互評価について',
-                        style: TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.amber[800],
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        '実験終了後は参加者と相互評価を行ってください。双方の評価により実験の完了が確認されます。',
-                        style: TextStyle(
-                          fontSize: 11,
-                          color: Colors.amber[700],
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
           const SizedBox(height: 24),
           
           TextFormField(

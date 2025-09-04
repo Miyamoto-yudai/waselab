@@ -3,6 +3,8 @@ import 'home_screen.dart';
 import 'my_page_screen.dart';
 import 'messages_screen.dart';
 import 'settings_screen.dart';
+import 'notification_screen.dart';
+import 'history_screen.dart';
 import '../services/message_service.dart';
 import '../services/auth_service.dart';
 import '../services/experiment_service.dart';
@@ -32,6 +34,8 @@ class _NavigationScreenState extends State<NavigationScreen> {
     _screens = [
       const HomeScreen(),
       const MessagesScreen(),
+      const NotificationScreen(),
+      const HistoryScreen(),
       MyPageScreen(key: UniqueKey()), // UniqueKeyで再構築を強制
     ];
     _loadUnreadCount();
@@ -126,14 +130,17 @@ class _NavigationScreenState extends State<NavigationScreen> {
           onDestinationSelected: (index) {
             setState(() {
               _selectedIndex = index;
-              if (index == 2) {
+              if (index == 4) {
                 // マイページに遷移したら画面を再構築して最新状態を表示
-                _screens[2] = MyPageScreen(key: UniqueKey());
+                _screens[4] = MyPageScreen(key: UniqueKey());
                 _loadPendingEvaluations(); // 評価状態を更新
               }
             });
             if (index == 1) {
               _loadUnreadCount();
+            } else if (index == 3) {
+              // 履歴画面に遷移したら再構築して最新状態を表示
+              _screens[3] = const HistoryScreen();
             }
           },
           backgroundColor: Colors.white,
@@ -157,19 +164,29 @@ class _NavigationScreenState extends State<NavigationScreen> {
               ),
               label: 'メッセージ',
             ),
+            const NavigationDestination(
+              icon: Icon(Icons.notifications_outlined),
+              selectedIcon: Icon(Icons.notifications, color: Color(0xFF8E1728)),
+              label: '通知',
+            ),
             NavigationDestination(
               icon: Badge(
                 label: Text('$_pendingEvaluations'),
                 backgroundColor: Colors.orange,
                 isLabelVisible: _pendingEvaluations > 0,
-                child: const Icon(Icons.person_outline),
+                child: const Icon(Icons.history_outlined),
               ),
               selectedIcon: Badge(
                 label: Text('$_pendingEvaluations'),
                 backgroundColor: Colors.orange,
                 isLabelVisible: _pendingEvaluations > 0,
-                child: const Icon(Icons.person, color: Color(0xFF8E1728)),
+                child: const Icon(Icons.history, color: Color(0xFF8E1728)),
               ),
+              label: '履歴',
+            ),
+            const NavigationDestination(
+              icon: Icon(Icons.person_outline),
+              selectedIcon: Icon(Icons.person, color: Color(0xFF8E1728)),
               label: 'マイページ',
             ),
           ],
@@ -184,14 +201,17 @@ class _NavigationScreenState extends State<NavigationScreen> {
               onDestinationSelected: (index) {
                 setState(() {
                   _selectedIndex = index;
-                  if (index == 2) {
+                  if (index == 4) {
                     // マイページに遷移したら画面を再構築
-                    _screens[2] = MyPageScreen(key: UniqueKey());
+                    _screens[4] = MyPageScreen(key: UniqueKey());
                     _loadPendingEvaluations(); // 評価状態を更新
                   }
                 });
                 if (index == 1) {
                   _loadUnreadCount();
+                } else if (index == 3) {
+                  // 履歴画面に遷移したら再構築して最新状態を表示
+                  _screens[3] = const HistoryScreen();
                 }
               },
               backgroundColor: Colors.white,
@@ -216,20 +236,30 @@ class _NavigationScreenState extends State<NavigationScreen> {
                   ),
                   label: const Text('メッセージ'),
                 ),
+                const NavigationRailDestination(
+                  icon: Icon(Icons.notifications_outlined),
+                  selectedIcon: Icon(Icons.notifications, color: Color(0xFF8E1728)),
+                  label: Text('通知'),
+                ),
                 NavigationRailDestination(
                   icon: Badge(
                     label: Text('$_pendingEvaluations'),
                     backgroundColor: Colors.orange,
                     isLabelVisible: _pendingEvaluations > 0,
-                    child: const Icon(Icons.person_outline),
+                    child: const Icon(Icons.history_outlined),
                   ),
                   selectedIcon: Badge(
                     label: Text('$_pendingEvaluations'),
                     backgroundColor: Colors.orange,
                     isLabelVisible: _pendingEvaluations > 0,
-                    child: const Icon(Icons.person, color: Color(0xFF8E1728)),
+                    child: const Icon(Icons.history, color: Color(0xFF8E1728)),
                   ),
-                  label: const Text('マイページ'),
+                  label: const Text('履歴'),
+                ),
+                const NavigationRailDestination(
+                  icon: Icon(Icons.person_outline),
+                  selectedIcon: Icon(Icons.person, color: Color(0xFF8E1728)),
+                  label: Text('マイページ'),
                 ),
               ],
             ),
