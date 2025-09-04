@@ -86,8 +86,8 @@ class _ExperimentManagementScreenState extends State<ExperimentManagementScreen>
   // 2. 進行中: 実験期間中
   // 3. 評価待ち/完了: 参加者ごとに個別管理
 
-  /// 未評価の参加者数を取得
-  int _getUnevaluatedParticipantCount() {
+  /// 評価可能な参加者数を取得（参加者が実験者を評価済みで、実験者が参加者を未評価の場合）
+  int _getEvaluatableParticipantCount() {
     int count = 0;
     final experimentData = _experiment.toFirestore();
     final participantEvals = experimentData['participantEvaluations'] as Map<String, dynamic>? ?? {};
@@ -95,8 +95,10 @@ class _ExperimentManagementScreenState extends State<ExperimentManagementScreen>
     for (final participantId in _experiment.participants) {
       final userEval = participantEvals[participantId] as Map<String, dynamic>? ?? {};
       final creatorToParticipant = userEval['creatorEvaluated'] ?? false;
+      final participantToCreator = userEval['participantEvaluated'] ?? false;
       
-      if (!creatorToParticipant) {
+      // 参加者が実験者を評価済みで、実験者がまだ参加者を評価していない場合のみカウント
+      if (participantToCreator && !creatorToParticipant) {
         count++;
       }
     }
@@ -264,7 +266,7 @@ class _ExperimentManagementScreenState extends State<ExperimentManagementScreen>
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   const Text('参加者'),
-                  if (_getUnevaluatedParticipantCount() > 0) ...[
+                  if (_getEvaluatableParticipantCount() > 0) ...[
                     const SizedBox(width: 4),
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
@@ -273,7 +275,7 @@ class _ExperimentManagementScreenState extends State<ExperimentManagementScreen>
                         borderRadius: BorderRadius.circular(10),
                       ),
                       child: Text(
-                        '${_getUnevaluatedParticipantCount()}',
+                        '${_getEvaluatableParticipantCount()}',
                         style: const TextStyle(
                           color: Colors.white,
                           fontSize: 12,
@@ -748,7 +750,8 @@ class _ExperimentManagementScreenState extends State<ExperimentManagementScreen>
                             label: const Text('メッセージ'),
                           ),
                         ),
-                        if (!creatorToParticipant) ...[
+                        // 参加者が実験者を評価済みで、実験者がまだ参加者を評価していない場合のみ評価ボタンを表示
+                        if (participantToCreator && !creatorToParticipant) ...[
                           const SizedBox(width: 8),
                           Expanded(
                             child: ElevatedButton.icon(
