@@ -5,7 +5,10 @@ enum AvatarDesignCategory {
   geometric,
   tech,
   initial,
-  emoji;
+  emoji,
+  kaomoji,
+  nature,
+  artistic;
 
   String get label {
     switch (this) {
@@ -18,7 +21,13 @@ enum AvatarDesignCategory {
       case AvatarDesignCategory.initial:
         return 'イニシャル';
       case AvatarDesignCategory.emoji:
-        return 'その他';
+        return '絵文字';
+      case AvatarDesignCategory.kaomoji:
+        return '顔文字';
+      case AvatarDesignCategory.nature:
+        return '自然';
+      case AvatarDesignCategory.artistic:
+        return 'アート';
     }
   }
 
@@ -33,7 +42,13 @@ enum AvatarDesignCategory {
       case AvatarDesignCategory.initial:
         return Icons.abc;
       case AvatarDesignCategory.emoji:
-        return Icons.more_horiz;
+        return Icons.emoji_emotions;
+      case AvatarDesignCategory.kaomoji:
+        return Icons.face;
+      case AvatarDesignCategory.nature:
+        return Icons.local_florist;
+      case AvatarDesignCategory.artistic:
+        return Icons.palette;
     }
   }
 }
@@ -316,6 +331,343 @@ class AvatarDesigns {
       category: AvatarDesignCategory.emoji,
       builder: (size) => Icon(Icons.local_fire_department_outlined, color: Colors.white, size: size),
       price: 15,
+    ),
+    
+    // 絵文字カテゴリー
+    AvatarDesign(
+      id: 'smile_emoji',
+      name: 'スマイル',
+      category: AvatarDesignCategory.emoji,
+      builder: (size) => Text('😊', style: TextStyle(fontSize: size * 0.8)),
+      price: 3,
+    ),
+    AvatarDesign(
+      id: 'cool_emoji',
+      name: 'クール',
+      category: AvatarDesignCategory.emoji,
+      builder: (size) => Text('😎', style: TextStyle(fontSize: size * 0.8)),
+      price: 5,
+    ),
+    AvatarDesign(
+      id: 'rocket_emoji',
+      name: 'ロケット',
+      category: AvatarDesignCategory.emoji,
+      builder: (size) => Text('🚀', style: TextStyle(fontSize: size * 0.8)),
+      price: 8,
+    ),
+    AvatarDesign(
+      id: 'sparkles_emoji',
+      name: 'キラキラ',
+      category: AvatarDesignCategory.emoji,
+      builder: (size) => Text('✨', style: TextStyle(fontSize: size * 0.8)),
+      price: 6,
+    ),
+    AvatarDesign(
+      id: 'fire_emoji',
+      name: '炎',
+      category: AvatarDesignCategory.emoji,
+      builder: (size) => Text('🔥', style: TextStyle(fontSize: size * 0.8)),
+      price: 7,
+    ),
+    AvatarDesign(
+      id: 'rainbow_emoji',
+      name: '虹',
+      category: AvatarDesignCategory.emoji,
+      builder: (size) => Text('🌈', style: TextStyle(fontSize: size * 0.8)),
+      price: 10,
+    ),
+    AvatarDesign(
+      id: 'star_emoji',
+      name: '星',
+      category: AvatarDesignCategory.emoji,
+      builder: (size) => Text('⭐', style: TextStyle(fontSize: size * 0.8)),
+      price: 4,
+    ),
+    AvatarDesign(
+      id: 'lightning_emoji',
+      name: '稲妻',
+      category: AvatarDesignCategory.emoji,
+      builder: (size) => Text('⚡', style: TextStyle(fontSize: size * 0.8)),
+      price: 8,
+    ),
+    AvatarDesign(
+      id: 'gem_emoji',
+      name: 'ダイヤ',
+      category: AvatarDesignCategory.emoji,
+      builder: (size) => Text('💎', style: TextStyle(fontSize: size * 0.8)),
+      price: 20,
+      isPremium: true,
+    ),
+    
+    // 顔文字カテゴリー
+    AvatarDesign(
+      id: 'happy_kaomoji',
+      name: 'ハッピー',
+      category: AvatarDesignCategory.kaomoji,
+      builder: (size) => Text(
+        '(◕‿◕)',
+        style: TextStyle(
+          fontSize: size * 0.4,
+          fontWeight: FontWeight.bold,
+          color: Colors.white,
+        ),
+      ),
+      price: 3,
+    ),
+    AvatarDesign(
+      id: 'excited_kaomoji',
+      name: 'ワクワク',
+      category: AvatarDesignCategory.kaomoji,
+      builder: (size) => Text(
+        '٩(◕‿◕)۶',
+        style: TextStyle(
+          fontSize: size * 0.35,
+          fontWeight: FontWeight.bold,
+          color: Colors.white,
+        ),
+      ),
+      price: 5,
+    ),
+    AvatarDesign(
+      id: 'cool_kaomoji',
+      name: 'クール',
+      category: AvatarDesignCategory.kaomoji,
+      builder: (size) => Text(
+        '(⌐■_■)',
+        style: TextStyle(
+          fontSize: size * 0.35,
+          fontWeight: FontWeight.bold,
+          color: Colors.white,
+        ),
+      ),
+      price: 6,
+    ),
+    AvatarDesign(
+      id: 'kawaii_kaomoji',
+      name: 'カワイイ',
+      category: AvatarDesignCategory.kaomoji,
+      builder: (size) => Text(
+        '(´｡• ᵕ •｡`)',
+        style: TextStyle(
+          fontSize: size * 0.3,
+          fontWeight: FontWeight.bold,
+          color: Colors.white,
+        ),
+      ),
+      price: 4,
+    ),
+    AvatarDesign(
+      id: 'wink_kaomoji',
+      name: 'ウインク',
+      category: AvatarDesignCategory.kaomoji,
+      builder: (size) => Text(
+        '(･ω<)',
+        style: TextStyle(
+          fontSize: size * 0.4,
+          fontWeight: FontWeight.bold,
+          color: Colors.white,
+        ),
+      ),
+      price: 3,
+    ),
+    AvatarDesign(
+      id: 'star_kaomoji',
+      name: 'キラキラ',
+      category: AvatarDesignCategory.kaomoji,
+      builder: (size) => Text(
+        '✧◝(⁰▿⁰)◜✧',
+        style: TextStyle(
+          fontSize: size * 0.28,
+          fontWeight: FontWeight.bold,
+          color: Colors.white,
+        ),
+      ),
+      price: 8,
+    ),
+    AvatarDesign(
+      id: 'love_kaomoji',
+      name: 'ラブ',
+      category: AvatarDesignCategory.kaomoji,
+      builder: (size) => Text(
+        '♡(˶ᵔ ᵕ ᵔ˶)',
+        style: TextStyle(
+          fontSize: size * 0.32,
+          fontWeight: FontWeight.bold,
+          color: Colors.white,
+        ),
+      ),
+      price: 7,
+    ),
+    AvatarDesign(
+      id: 'peace_kaomoji',
+      name: 'ピース',
+      category: AvatarDesignCategory.kaomoji,
+      builder: (size) => Text(
+        '✌(ﾟ∀ﾟ)✌',
+        style: TextStyle(
+          fontSize: size * 0.35,
+          fontWeight: FontWeight.bold,
+          color: Colors.white,
+        ),
+      ),
+      price: 5,
+    ),
+    AvatarDesign(
+      id: 'magic_kaomoji',
+      name: 'マジック',
+      category: AvatarDesignCategory.kaomoji,
+      builder: (size) => Text(
+        '(∩^o^)⊃━☆',
+        style: TextStyle(
+          fontSize: size * 0.3,
+          fontWeight: FontWeight.bold,
+          color: Colors.white,
+        ),
+      ),
+      price: 10,
+    ),
+    
+    // 自然カテゴリー
+    AvatarDesign(
+      id: 'flower',
+      name: 'フラワー',
+      category: AvatarDesignCategory.nature,
+      builder: (size) => Icon(Icons.local_florist, color: Colors.white, size: size * 0.9),
+      price: 5,
+    ),
+    AvatarDesign(
+      id: 'sun',
+      name: '太陽',
+      category: AvatarDesignCategory.nature,
+      builder: (size) => Icon(Icons.wb_sunny, color: Colors.white, size: size * 0.9),
+      price: 4,
+    ),
+    AvatarDesign(
+      id: 'moon',
+      name: '月',
+      category: AvatarDesignCategory.nature,
+      builder: (size) => Icon(Icons.nightlight_round, color: Colors.white, size: size * 0.9),
+      price: 6,
+    ),
+    AvatarDesign(
+      id: 'cloud',
+      name: 'クラウド',
+      category: AvatarDesignCategory.nature,
+      builder: (size) => Icon(Icons.cloud_outlined, color: Colors.white, size: size * 0.9),
+      price: 3,
+    ),
+    AvatarDesign(
+      id: 'water',
+      name: '水滴',
+      category: AvatarDesignCategory.nature,
+      builder: (size) => Icon(Icons.water_drop, color: Colors.white, size: size * 0.9),
+      price: 4,
+    ),
+    AvatarDesign(
+      id: 'leaf',
+      name: 'リーフ',
+      category: AvatarDesignCategory.nature,
+      builder: (size) => Icon(Icons.eco, color: Colors.white, size: size * 0.9),
+      price: 5,
+    ),
+    AvatarDesign(
+      id: 'butterfly',
+      name: 'バタフライ',
+      category: AvatarDesignCategory.nature,
+      builder: (size) => Text('🦋', style: TextStyle(fontSize: size * 0.8)),
+      price: 8,
+    ),
+    AvatarDesign(
+      id: 'rainbow',
+      name: 'レインボー',
+      category: AvatarDesignCategory.nature,
+      builder: (size) => Text('🌈', style: TextStyle(fontSize: size * 0.8)),
+      price: 10,
+    ),
+    
+    // アートカテゴリー
+    AvatarDesign(
+      id: 'brush',
+      name: 'ブラシ',
+      category: AvatarDesignCategory.artistic,
+      builder: (size) => Icon(Icons.brush, color: Colors.white, size: size * 0.9),
+      price: 5,
+    ),
+    AvatarDesign(
+      id: 'palette',
+      name: 'パレット',
+      category: AvatarDesignCategory.artistic,
+      builder: (size) => Icon(Icons.palette, color: Colors.white, size: size * 0.9),
+      price: 6,
+    ),
+    AvatarDesign(
+      id: 'music',
+      name: 'ミュージック',
+      category: AvatarDesignCategory.artistic,
+      builder: (size) => Icon(Icons.music_note, color: Colors.white, size: size * 0.9),
+      price: 5,
+    ),
+    AvatarDesign(
+      id: 'camera',
+      name: 'カメラ',
+      category: AvatarDesignCategory.artistic,
+      builder: (size) => Icon(Icons.camera_alt, color: Colors.white, size: size * 0.9),
+      price: 6,
+    ),
+    AvatarDesign(
+      id: 'theater',
+      name: 'シアター',
+      category: AvatarDesignCategory.artistic,
+      builder: (size) => Icon(Icons.theater_comedy, color: Colors.white, size: size * 0.9),
+      price: 7,
+    ),
+    AvatarDesign(
+      id: 'sparkle',
+      name: 'スパークル',
+      category: AvatarDesignCategory.artistic,
+      builder: (size) => Icon(Icons.auto_awesome, color: Colors.white, size: size * 0.9),
+      price: 8,
+    ),
+    AvatarDesign(
+      id: 'gradient',
+      name: 'グラデーション',
+      category: AvatarDesignCategory.artistic,
+      builder: (size) => Container(
+        width: size,
+        height: size,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              Colors.white.withValues(alpha: 0.8),
+              Colors.white.withValues(alpha: 0.4),
+            ],
+          ),
+        ),
+        child: Icon(Icons.gradient, color: Colors.white, size: size * 0.6),
+      ),
+      price: 15,
+      isPremium: true,
+    ),
+    AvatarDesign(
+      id: 'abstract',
+      name: 'アブストラクト',
+      category: AvatarDesignCategory.artistic,
+      builder: (size) => Stack(
+        alignment: Alignment.center,
+        children: [
+          Transform.rotate(
+            angle: 0.5,
+            child: Icon(Icons.square_outlined, color: Colors.white.withValues(alpha: 0.5), size: size * 0.7),
+          ),
+          Icon(Icons.circle_outlined, color: Colors.white.withValues(alpha: 0.7), size: size * 0.6),
+          Icon(Icons.change_history, color: Colors.white, size: size * 0.4),
+        ],
+      ),
+      price: 20,
+      isPremium: true,
     ),
   ];
   

@@ -32,7 +32,7 @@ class _IconChangeScreenState extends State<IconChangeScreen>
     super.initState();
     _mainTabController = TabController(length: 3, vsync: this);
     _frameTabController = TabController(length: 5, vsync: this);
-    _designTabController = TabController(length: 5, vsync: this);
+    _designTabController = TabController(length: 8, vsync: this);
     _colorTabController = TabController(length: 4, vsync: this);
     _loadUserData();
   }
@@ -658,6 +658,18 @@ class _IconChangeScreenState extends State<IconChangeScreen>
                       icon: Icon(AvatarDesignCategory.emoji.icon, size: 20),
                       text: AvatarDesignCategory.emoji.label,
                     ),
+                    Tab(
+                      icon: Icon(AvatarDesignCategory.kaomoji.icon, size: 20),
+                      text: AvatarDesignCategory.kaomoji.label,
+                    ),
+                    Tab(
+                      icon: Icon(AvatarDesignCategory.nature.icon, size: 20),
+                      text: AvatarDesignCategory.nature.label,
+                    ),
+                    Tab(
+                      icon: Icon(AvatarDesignCategory.artistic.icon, size: 20),
+                      text: AvatarDesignCategory.artistic.label,
+                    ),
                   ],
                 ),
               ),
@@ -670,6 +682,9 @@ class _IconChangeScreenState extends State<IconChangeScreen>
                     _buildDesignGrid(AvatarDesignCategory.tech),
                     _buildDesignGrid(AvatarDesignCategory.initial),
                     _buildDesignGrid(AvatarDesignCategory.emoji),
+                    _buildDesignGrid(AvatarDesignCategory.kaomoji),
+                    _buildDesignGrid(AvatarDesignCategory.nature),
+                    _buildDesignGrid(AvatarDesignCategory.artistic),
                   ],
                 ),
               ),
