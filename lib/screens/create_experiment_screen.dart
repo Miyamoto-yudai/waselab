@@ -47,7 +47,8 @@ class CreateExperimentScreen extends StatelessWidget {
       'duration': data['duration'],
       'maxParticipants': data['maxParticipants'],
       'requirements': data['requirements'],
-      'timeSlots': data['timeSlots'],
+      'timeSlots': data['timeSlots'] ?? [],
+      'dateTimeSlots': data['dateTimeSlots'] ?? [],
       'simultaneousCapacity': data['simultaneousCapacity'],
       'fixedExperimentDate': data['fixedExperimentDate'] != null
         ? Timestamp.fromDate(data['fixedExperimentDate'])
@@ -57,65 +58,113 @@ class CreateExperimentScreen extends StatelessWidget {
     });
 
     // タイムスロットから実験スロットを生成
-    if (data['allowFlexibleSchedule'] == true && data['timeSlots'] != null) {
+    if (data['allowFlexibleSchedule'] == true) {
       final List<ExperimentSlot> slots = [];
-      final timeSlots = data['timeSlots'] as List<Map<String, dynamic>>;
-      final startDate = data['experimentPeriodStart'] as DateTime?;
-      final endDate = data['experimentPeriodEnd'] as DateTime?;
-      final simultaneousCapacity = data['simultaneousCapacity'] as int? ?? 1;
+      // dateTimeSlotsを使用（新しい日付ベースのスロット）
+      final dateTimeSlots = data['dateTimeSlots'] as List<dynamic>?;
       
-      debugPrint('Creating slots - allowFlexible: ${data['allowFlexibleSchedule']}, timeSlots: ${timeSlots.length}');
-      debugPrint('Period: $startDate to $endDate');
-      debugPrint('TimeSlots data: $timeSlots');
-      
-      if (startDate != null && endDate != null && timeSlots.isNotEmpty) {
-        // 実験期間内の各日付に対してスロットを生成
-        DateTime currentDate = startDate;
-        while (!currentDate.isAfter(endDate)) {
-          // Flutterのweekday: 月=1, 火=2, ..., 土=6, 日=7
-          // TimeSlotのweekday: 月=1, 火=2, ..., 土=6, 日=7
-          final weekday = currentDate.weekday;
+      if (dateTimeSlots != null && dateTimeSlots.isNotEmpty) {
+        debugPrint('Creating slots from dateTimeSlots: ${dateTimeSlots.length}');
+        
+        for (final slotData in dateTimeSlots) {
+          final slot = slotData as Map<String, dynamic>;
+          final date = DateTime.parse(slot['date'] as String);
+          final startHour = slot['startHour'] as int;
+          final startMinute = slot['startMinute'] as int;
+          final endHour = slot['endHour'] as int;
+          final endMinute = slot['endMinute'] as int;
+          final maxCapacity = slot['maxCapacity'] as int? ?? 1;
           
-          // その曜日のタイムスロットを取得
-          final daySlots = timeSlots.where((slot) => slot['weekday'] == weekday).toList();
+          final slotStartTime = DateTime(
+            date.year,
+            date.month,
+            date.day,
+            startHour,
+            startMinute,
+          );
           
-          debugPrint('Date: $currentDate, weekday: $weekday, found slots: ${daySlots.length}');
+          final slotEndTime = DateTime(
+            date.year,
+            date.month,
+            date.day,
+            endHour,
+            endMinute,
+          );
           
-          for (final slot in daySlots) {
-            final startHour = slot['startHour'] as int;
-            final startMinute = slot['startMinute'] as int;
-            final endHour = slot['endHour'] as int;
-            final endMinute = slot['endMinute'] as int;
+          slots.add(ExperimentSlot(
+            id: '',
+            experimentId: docRef.id,
+            startTime: slotStartTime,
+            endTime: slotEndTime,
+            maxParticipants: maxCapacity,
+            currentParticipants: 0,
+            isAvailable: true,
+          ));
+        }
+      } else if (data['timeSlots'] != null) {
+        // 旧形式のタイムスロット（曜日ベース）のフォールバック
+        final timeSlots = data['timeSlots'] as List<dynamic>;
+        final startDate = data['experimentPeriodStart'] as DateTime?;
+        final endDate = data['experimentPeriodEnd'] as DateTime?;
+        final simultaneousCapacity = data['simultaneousCapacity'] as int? ?? 1;
+        
+        debugPrint('Creating slots - allowFlexible: ${data['allowFlexibleSchedule']}, timeSlots: ${timeSlots.length}');
+        debugPrint('Period: $startDate to $endDate');
+        debugPrint('TimeSlots data: $timeSlots');
+        
+        if (startDate != null && endDate != null && timeSlots.isNotEmpty) {
+          // 実験期間内の各日付に対してスロットを生成
+          DateTime currentDate = startDate;
+          while (!currentDate.isAfter(endDate)) {
+            // Flutterのweekday: 月=1, 火=2, ..., 土=6, 日=7
+            // TimeSlotのweekday: 月=1, 火=2, ..., 土=6, 日=7
+            final weekday = currentDate.weekday;
             
-            final slotStartTime = DateTime(
-              currentDate.year,
-              currentDate.month,
-              currentDate.day,
-              startHour,
-              startMinute,
-            );
+            // その曜日のタイムスロットを取得
+            final daySlots = timeSlots.where((s) {
+              final slot = s as Map<String, dynamic>;
+              return slot['weekday'] == weekday;
+            }).toList();
             
-            final slotEndTime = DateTime(
-              currentDate.year,
-              currentDate.month,
-              currentDate.day,
-              endHour,
-              endMinute,
-            );
+            debugPrint('Date: $currentDate, weekday: $weekday, found slots: ${daySlots.length}');
             
-            // スロットを作成
-            slots.add(ExperimentSlot(
-              id: '', // IDは後で自動生成される
-              experimentId: docRef.id,
-              startTime: slotStartTime,
-              endTime: slotEndTime,
-              maxParticipants: simultaneousCapacity,
-              currentParticipants: 0,
-              isAvailable: true,
-            ));
+            for (final slotData in daySlots) {
+              final slot = slotData as Map<String, dynamic>;
+              final startHour = slot['startHour'] as int;
+              final startMinute = slot['startMinute'] as int;
+              final endHour = slot['endHour'] as int;
+              final endMinute = slot['endMinute'] as int;
+              
+              final slotStartTime = DateTime(
+                currentDate.year,
+                currentDate.month,
+                currentDate.day,
+                startHour,
+                startMinute,
+              );
+              
+              final slotEndTime = DateTime(
+                currentDate.year,
+                currentDate.month,
+                currentDate.day,
+                endHour,
+                endMinute,
+              );
+              
+              // スロットを作成
+              slots.add(ExperimentSlot(
+                id: '', // IDは後で自動生成される
+                experimentId: docRef.id,
+                startTime: slotStartTime,
+                endTime: slotEndTime,
+                maxParticipants: simultaneousCapacity,
+                currentParticipants: 0,
+                isAvailable: true,
+              ));
+            }
+            
+            currentDate = currentDate.add(const Duration(days: 1));
           }
-          
-          currentDate = currentDate.add(const Duration(days: 1));
         }
       }
       

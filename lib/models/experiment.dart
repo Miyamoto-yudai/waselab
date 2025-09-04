@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'time_slot.dart';
+import 'date_time_slot.dart';
 
 /// 実験種別
 enum ExperimentType {
@@ -51,7 +52,8 @@ class Experiment {
   final int? maxParticipants;   // 最大参加者数
   final List<String> requirements; // 参加条件
   final List<String> participants; // 参加者IDリスト
-  final List<TimeSlot> timeSlots; // 利用可能な時間枠リスト
+  final List<TimeSlot> timeSlots; // 利用可能な時間枠リスト（曜日ベース、互換性のため保持）
+  final List<DateTimeSlot> dateTimeSlots; // 日付ベースの時間枠リスト
   final int simultaneousCapacity; // 同時実験可能人数（デフォルト1）
   final DateTime? fixedExperimentDate; // 固定日時の場合の実施日
   final Map<String, int>? fixedExperimentTime; // 固定日時の場合の実施時刻
@@ -89,6 +91,7 @@ class Experiment {
     this.requirements = const [],
     this.participants = const [],
     this.timeSlots = const [],
+    this.dateTimeSlots = const [],
     this.simultaneousCapacity = 1,
     this.fixedExperimentDate,
     this.fixedExperimentTime,
@@ -133,6 +136,9 @@ class Experiment {
       participants: List<String>.from(data['participants'] ?? []),
       timeSlots: (data['timeSlots'] as List<dynamic>?)
           ?.map((slot) => TimeSlot.fromJson(slot as Map<String, dynamic>))
+          .toList() ?? [],
+      dateTimeSlots: (data['dateTimeSlots'] as List<dynamic>?)
+          ?.map((slot) => DateTimeSlot.fromJson(slot as Map<String, dynamic>))
           .toList() ?? [],
       simultaneousCapacity: data['simultaneousCapacity'] ?? 1,
       fixedExperimentDate: (data['fixedExperimentDate'] as Timestamp?)?.toDate(),
@@ -190,6 +196,7 @@ class Experiment {
       'requirements': requirements,
       'participants': participants,
       'timeSlots': timeSlots.map((slot) => slot.toJson()).toList(),
+      'dateTimeSlots': dateTimeSlots.map((slot) => slot.toJson()).toList(),
       'simultaneousCapacity': simultaneousCapacity,
       'fixedExperimentDate': fixedExperimentDate != null
         ? Timestamp.fromDate(fixedExperimentDate!)

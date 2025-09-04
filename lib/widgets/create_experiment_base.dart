@@ -1,9 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../models/experiment.dart';
-import '../models/time_slot.dart';
+import '../models/date_time_slot.dart';
 import 'experiment_card.dart';
-import 'time_slot_editor.dart';
 import 'time_slot_calendar_editor.dart';
 
 /// 実験作成画面の共通ベースウィジェット
@@ -51,8 +50,7 @@ class _CreateExperimentBaseState extends State<CreateExperimentBase> {
   TimeOfDay? _fixedExperimentTime; // 固定日時の場合の実施時刻
   final List<String> _requirements = [];
   final _requirementController = TextEditingController();
-  List<TimeSlot> _timeSlots = [];
-  Map<DateTime, List<TimeSlot>> _dateTimeSlots = {};
+  Map<DateTime, List<DateTimeSlot>> _dateTimeSlots = {};
   int _simultaneousCapacity = 1;
   
   bool _isLoading = false;
@@ -205,7 +203,8 @@ class _CreateExperimentBaseState extends State<CreateExperimentBase> {
       duration: int.tryParse(_durationController.text),
       maxParticipants: int.tryParse(_maxParticipantsController.text),
       requirements: _requirements,
-      timeSlots: _timeSlots,
+      timeSlots: [], // 曜日ベースは使用しない
+      dateTimeSlots: _dateTimeSlots.values.expand((slots) => slots).toList(),
       simultaneousCapacity: _simultaneousCapacity,
       fixedExperimentDate: _fixedExperimentDate,
       fixedExperimentTime: _fixedExperimentTime != null
@@ -238,7 +237,14 @@ class _CreateExperimentBaseState extends State<CreateExperimentBase> {
       'duration': int.tryParse(_durationController.text),
       'maxParticipants': int.tryParse(_maxParticipantsController.text),
       'requirements': _requirements,
-      'timeSlots': _timeSlots.map((slot) => slot.toJson()).toList(),
+      'timeSlots': [], // 曜日ベースは使用しない
+      'dateTimeSlots': _dateTimeSlots.isNotEmpty 
+        ? List<Map<String, dynamic>>.from(
+            _dateTimeSlots.entries.expand((entry) => 
+              entry.value.map((slot) => slot.toJson())
+            )
+          )
+        : <Map<String, dynamic>>[],
       'simultaneousCapacity': _simultaneousCapacity,
       'fixedExperimentDate': _fixedExperimentDate,
       'fixedExperimentTime': _fixedExperimentTime != null 
@@ -321,9 +327,8 @@ class _CreateExperimentBaseState extends State<CreateExperimentBase> {
           return true;
         }
         if (_allowFlexibleSchedule) {
-          return _experimentPeriodStart != null &&
-                 _experimentPeriodEnd != null &&
-                 _timeSlots.isNotEmpty;
+          // 時間枠が設定されているかチェック
+          return _dateTimeSlots.isNotEmpty;
         }
         return true;
       case 3: // 募集要項
@@ -370,11 +375,8 @@ class _CreateExperimentBaseState extends State<CreateExperimentBase> {
         }
         // アンケート以外の場合のみ日程調整をチェック
         if (_selectedType != ExperimentType.survey && _allowFlexibleSchedule) {
-          if (_experimentPeriodStart == null || _experimentPeriodEnd == null) {
-            return '実施期間を選択してください';
-          }
-          if (_timeSlots.isEmpty) {
-            return '時間枠を設定してください';
+          if (_dateTimeSlots.isEmpty) {
+            return '時間枠を設定してください（カレンダーで日付を選択後「＋」ボタンまたは自動割当を使用）';
           }
         }
         break;
@@ -1076,9 +1078,9 @@ class _CreateExperimentBaseState extends State<CreateExperimentBase> {
           ],
           const SizedBox(height: 16),
           
-          // カレンダーベースの実施期間と時間枠設定
+          // カレンダーベースの時間枠設定（期間選択なしで直接設定）
           if (_allowFlexibleSchedule) ...[
-            const Text('実施期間と時間枠の設定', style: TextStyle(fontWeight: FontWeight.bold)),
+            const Text('予約可能な日時の設定', style: TextStyle(fontWeight: FontWeight.bold)),
             const SizedBox(height: 16),
             Container(
               padding: const EdgeInsets.all(12),
@@ -1093,7 +1095,7 @@ class _CreateExperimentBaseState extends State<CreateExperimentBase> {
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
-                      'カレンダー上で実施期間を選択し、各日付に時間枠を設定してください',
+                      'カレンダー上で日付をタップして、各日に時間枠を設定してください。\n「自動割当」ボタンを使用すると、期間を指定して一括で時間枠を設定できます。',
                       style: TextStyle(
                         fontSize: 12,
                         color: Colors.blue.shade700,
@@ -1105,19 +1107,16 @@ class _CreateExperimentBaseState extends State<CreateExperimentBase> {
             ),
             const SizedBox(height: 16),
             TimeSlotCalendarEditor(
-              initialStartDate: _experimentPeriodStart,
-              initialEndDate: _experimentPeriodEnd,
               dateTimeSlots: _dateTimeSlots,
               experimentDuration: int.tryParse(_durationController.text),
-              onChanged: (startDate, endDate, dateSlots) {
+              onChanged: (dateSlots) {
                 setState(() {
-                  _experimentPeriodStart = startDate;
-                  _experimentPeriodEnd = endDate;
                   _dateTimeSlots = dateSlots;
-                  // 日付ベースの時間枠を曜日ベースに変換（互換性のため）
-                  _timeSlots = [];
-                  for (var slots in dateSlots.values) {
-                    _timeSlots.addAll(slots);
+                  // 期間を自動計算
+                  if (dateSlots.isNotEmpty) {
+                    final dates = dateSlots.keys.toList()..sort();
+                    _experimentPeriodStart = dates.first;
+                    _experimentPeriodEnd = dates.last;
                   }
                 });
               },

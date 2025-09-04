@@ -3,6 +3,7 @@ import 'package:table_calendar/table_calendar.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import '../models/experiment.dart';
 import '../models/time_slot.dart';
+import '../models/date_time_slot.dart';
 
 /// 実験予約カレンダービューの共通ベースウィジェット
 class ExperimentCalendarViewBase extends StatefulWidget {
@@ -40,6 +41,7 @@ class _ExperimentCalendarViewBaseState extends State<ExperimentCalendarViewBase>
   
   // 選択した日の時間枠のTimeSlotオブジェクトを保持
   List<TimeSlot> _selectedDayTimeSlots = [];
+  List<DateTimeSlot> _selectedDateTimeSlots = [];
 
   @override
   void initState() {
@@ -102,7 +104,29 @@ class _ExperimentCalendarViewBaseState extends State<ExperimentCalendarViewBase>
   List<TimeSlot> _getTimeSlotsForDay(DateTime? day) {
     if (day == null) return [];
     
-    // 実験に時間枠が設定されている場合
+    // 日付ベースの時間枠が設定されている場合
+    if (widget.experiment.dateTimeSlots.isNotEmpty) {
+      final dateKey = DateTime(day.year, day.month, day.day);
+      _selectedDateTimeSlots = widget.experiment.dateTimeSlots
+          .where((slot) {
+            final slotDate = DateTime(slot.date.year, slot.date.month, slot.date.day);
+            return slotDate.isAtSameMomentAs(dateKey);
+          })
+          .toList();
+      
+      // DateTimeSlotをTimeSlotに変換（互換性のため）
+      if (_selectedDateTimeSlots.isNotEmpty) {
+        return _selectedDateTimeSlots.map((dateSlot) => TimeSlot(
+          weekday: day.weekday,
+          startTime: dateSlot.startTime,
+          endTime: dateSlot.endTime,
+          maxCapacity: dateSlot.maxCapacity,
+          isAvailable: dateSlot.isAvailable,
+        )).toList();
+      }
+    }
+    
+    // 従来の曜日ベースの時間枠が設定されている場合（互換性のため）
     if (widget.experiment.timeSlots.isNotEmpty) {
       // 該当する曜日の時間枠を取得（月曜日=1, 日曜日=7）
       final weekdaySlots = widget.experiment.timeSlots
@@ -138,6 +162,17 @@ class _ExperimentCalendarViewBaseState extends State<ExperimentCalendarViewBase>
 
   /// イベントがある日かどうか（予約可能な日）
   List<String> _getEventsForDay(DateTime day) {
+    // 日付ベースの時間枠がある場合
+    if (widget.experiment.dateTimeSlots.isNotEmpty) {
+      final dateKey = DateTime(day.year, day.month, day.day);
+      final hasSlots = widget.experiment.dateTimeSlots.any((slot) {
+        final slotDate = DateTime(slot.date.year, slot.date.month, slot.date.day);
+        return slotDate.isAtSameMomentAs(dateKey);
+      });
+      return hasSlots ? ['available'] : [];
+    }
+    
+    // 従来の曜日ベースの処理（互換性のため）
     final weekday = _getWeekday(day);
     if (weekday == '土曜日' || weekday == '日曜日') {
       return [];
@@ -248,7 +283,10 @@ class _ExperimentCalendarViewBaseState extends State<ExperimentCalendarViewBase>
             calendarBuilders: CalendarBuilders(
               dowBuilder: (context, day) {
                 final weekdays = ['日', '月', '火', '水', '木', '金', '土'];
-                final weekday = weekdays[day.weekday % 7];
+                // day.weekday: 1=月曜日, 7=日曜日
+                // 日曜日を0番目にするための変換
+                final index = day.weekday == 7 ? 0 : day.weekday;
+                final weekday = weekdays[index];
                 final isWeekend = day.weekday == DateTime.saturday || 
                                  day.weekday == DateTime.sunday;
                 
