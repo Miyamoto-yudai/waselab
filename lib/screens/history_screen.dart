@@ -865,43 +865,6 @@ class _HistoryScreenState extends State<HistoryScreen> with TickerProviderStateM
                         ),
                       ),
                     ),
-                  // キャンセルボタン（予約がある実験で、キャンセル可能な場合）
-                  if (isParticipant && !isMyExperiment && _canCancelReservation(experiment))
-                    Container(
-                      margin: const EdgeInsets.only(right: 4, top: 4),
-                      child: Material(
-                        color: Colors.red.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(20),
-                        child: InkWell(
-                          onTap: () {
-                            _showCancelConfirmDialog(experiment);
-                          },
-                          borderRadius: BorderRadius.circular(20),
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: const [
-                                Icon(
-                                  Icons.cancel,
-                                  color: Colors.red,
-                                  size: 14,
-                                ),
-                                SizedBox(width: 4),
-                                Text(
-                                  'キャンセル',
-                                  style: TextStyle(
-                                    color: Colors.red,
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
                 ],
               ),
               const SizedBox(width: 4),

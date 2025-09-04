@@ -4,6 +4,7 @@ import '../models/app_user.dart';
 import '../services/auth_service.dart';
 import '../services/experiment_service.dart';
 import '../widgets/custom_circle_avatar.dart';
+import '../models/avatar_design.dart';
 import '../screens/evaluation_history_screen.dart';
 
 class UserDetailDialog extends StatefulWidget {
@@ -268,14 +269,19 @@ class _UserDetailDialogState extends State<UserDetailDialog> {
                   frameId: _user?.selectedFrame,
                   radius: 30,
                   backgroundColor: const Color(0xFF8E1728),
-                  child: Text(
-                    widget.userName.isNotEmpty ? widget.userName[0] : '?',
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
+                  designBuilder: _user?.selectedDesign != null && _user?.selectedDesign != 'default'
+                      ? AvatarDesigns.getById(_user!.selectedDesign!).builder
+                      : null,
+                  child: _user?.selectedDesign == null || _user?.selectedDesign == 'default'
+                      ? Text(
+                          widget.userName.isNotEmpty ? widget.userName[0] : '?',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 24,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        )
+                      : null,
                 ),
                 const SizedBox(width: 16),
                 Expanded(

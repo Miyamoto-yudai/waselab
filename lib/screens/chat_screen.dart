@@ -6,6 +6,7 @@ import '../models/message.dart';
 import '../models/app_user.dart';
 import '../widgets/custom_circle_avatar.dart';
 import '../widgets/user_detail_dialog.dart';
+import '../models/avatar_design.dart';
 
 class ChatScreen extends StatefulWidget {
   final String? conversationId;
@@ -344,94 +345,154 @@ class _ChatScreenState extends State<ChatScreen> {
 
                 return ListView.builder(
                   controller: _scrollController,
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 16),
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
                   itemCount: messages.length,
                   itemBuilder: (context, index) {
                     final message = messages[index];
                     final isMe = message.senderId == _currentUserId;
+                    
+                    // 前のメッセージと同じ送信者かどうかをチェック（連続メッセージの判定）
+                    final bool showAvatar = index == 0 || 
+                        messages[index - 1].senderId != message.senderId ||
+                        message.createdAt.difference(messages[index - 1].createdAt).inMinutes > 3;
+                    
+                    // 次のメッセージが同じ送信者かどうかをチェック（角丸の調整用）
+                    final bool isLastInGroup = index == messages.length - 1 ||
+                        messages[index + 1].senderId != message.senderId ||
+                        messages[index + 1].createdAt.difference(message.createdAt).inMinutes > 3;
 
-                    return Align(
-                      alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
-                      child: Container(
-                        margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
-                        child: Row(
-                          mainAxisAlignment: isMe ? MainAxisAlignment.end : MainAxisAlignment.start,
-                          crossAxisAlignment: CrossAxisAlignment.end,
-                          children: [
-                            if (!isMe) ...[
-                              CustomCircleAvatar(
-                                frameId: _otherUser?.selectedFrame,
-                                radius: 16,
-                                backgroundColor: const Color(0xFF8E1728),
-                                child: Text(
-                                  widget.otherUserName.isNotEmpty ? widget.otherUserName[0].toUpperCase() : '?',
-                                  style: const TextStyle(color: Colors.white, fontSize: 12),
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                            ],
+                    return Container(
+                      margin: EdgeInsets.only(
+                        top: showAvatar ? 8 : 2,
+                        bottom: isLastInGroup ? 4 : 2,
+                        left: isMe ? 48 : 0,
+                        right: isMe ? 0 : 48,
+                      ),
+                      child: Row(
+                        mainAxisAlignment: isMe ? MainAxisAlignment.end : MainAxisAlignment.start,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // 相手のアバター（左側）
+                          if (!isMe) ...[
                             Container(
-                              constraints: BoxConstraints(
-                                maxWidth: MediaQuery.of(context).size.width * 0.65,
-                              ),
-                              child: Column(
-                                crossAxisAlignment:
-                                    isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
-                                children: [
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 16,
-                                      vertical: 10,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      color: isMe
-                                          ? const Color(0xFF8E1728)
-                                          : Colors.grey[200],
-                                      borderRadius: BorderRadius.only(
-                                        topLeft: const Radius.circular(16),
-                                        topRight: const Radius.circular(16),
-                                        bottomLeft: Radius.circular(isMe ? 16 : 4),
-                                        bottomRight: Radius.circular(isMe ? 4 : 16),
-                                      ),
-                                    ),
+                              width: 36,
+                              margin: const EdgeInsets.only(left: 4, right: 8),
+                              child: showAvatar
+                                  ? CustomCircleAvatar(
+                                      frameId: _otherUser?.selectedFrame,
+                                      radius: 18,
+                                      backgroundColor: const Color(0xFF8E1728),
+                                      designBuilder: _otherUser?.selectedDesign != null && _otherUser?.selectedDesign != 'default'
+                                          ? AvatarDesigns.getById(_otherUser!.selectedDesign!).builder
+                                          : null,
+                                      child: _otherUser?.selectedDesign == null || _otherUser?.selectedDesign == 'default'
+                                          ? Text(
+                                              widget.otherUserName.isNotEmpty 
+                                                ? widget.otherUserName[0].toUpperCase() 
+                                                : '?',
+                                              style: const TextStyle(color: Colors.white, fontSize: 14),
+                                            )
+                                          : null,
+                                    )
+                                  : null,
+                            ),
+                          ],
+                          // メッセージバブル
+                          Flexible(
+                            child: Column(
+                              crossAxisAlignment: isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+                              children: [
+                                // 送信者名（相手のメッセージで、グループの最初の場合のみ）
+                                if (!isMe && showAvatar)
+                                  Padding(
+                                    padding: const EdgeInsets.only(left: 12, bottom: 2),
                                     child: Text(
-                                      message.content,
+                                      widget.otherUserName,
                                       style: TextStyle(
-                                        color: isMe ? Colors.white : Colors.black87,
-                                        fontSize: 15,
+                                        fontSize: 12,
+                                        color: Colors.grey[600],
+                                        fontWeight: FontWeight.w500,
                                       ),
                                     ),
                                   ),
-                                  const SizedBox(height: 4),
+                                // メッセージ本体
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 14,
+                                    vertical: 8,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: isMe
+                                        ? const Color(0xFF8E1728)
+                                        : Colors.white,
+                                    border: isMe ? null : Border.all(
+                                      color: Colors.grey[300]!,
+                                      width: 1,
+                                    ),
+                                    borderRadius: BorderRadius.only(
+                                      topLeft: Radius.circular(!isMe && showAvatar ? 4 : 16),
+                                      topRight: Radius.circular(isMe && showAvatar ? 4 : 16),
+                                      bottomLeft: Radius.circular(!isMe && isLastInGroup ? 16 : 4),
+                                      bottomRight: Radius.circular(isMe && isLastInGroup ? 16 : 4),
+                                    ),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: Colors.black.withValues(alpha: 0.05),
+                                        blurRadius: 2,
+                                        offset: const Offset(0, 1),
+                                      ),
+                                    ],
+                                  ),
+                                  child: Text(
+                                    message.content,
+                                    style: TextStyle(
+                                      color: isMe ? Colors.white : Colors.black87,
+                                      fontSize: 15,
+                                      height: 1.3,
+                                    ),
+                                  ),
+                                ),
+                                // 時刻（グループの最後のメッセージのみ）
+                                if (isLastInGroup)
                                   Padding(
-                                    padding: const EdgeInsets.symmetric(horizontal: 4),
+                                    padding: const EdgeInsets.only(top: 2, left: 12, right: 12),
                                     child: Text(
                                       _formatTime(message.createdAt),
                                       style: TextStyle(
-                                        fontSize: 11,
-                                        color: Colors.grey[600],
+                                        fontSize: 10,
+                                        color: Colors.grey[500],
                                       ),
                                     ),
                                   ),
-                                ],
-                              ),
+                              ],
                             ),
-                            if (isMe) ...[
-                              const SizedBox(width: 8),
-                              CustomCircleAvatar(
-                                frameId: _currentAppUser?.selectedFrame,
-                                radius: 16,
-                                backgroundColor: const Color(0xFF8E1728),
-                                child: Text(
-                                  _currentUserName != null && _currentUserName!.isNotEmpty 
-                                    ? _currentUserName![0].toUpperCase() 
-                                    : '?',
-                                  style: const TextStyle(color: Colors.white, fontSize: 12),
-                                ),
-                              ),
-                            ],
+                          ),
+                          // 自分のアバター（右側）
+                          if (isMe) ...[
+                            Container(
+                              width: 36,
+                              margin: const EdgeInsets.only(left: 8, right: 4),
+                              child: showAvatar
+                                  ? CustomCircleAvatar(
+                                      frameId: _currentAppUser?.selectedFrame,
+                                      radius: 18,
+                                      backgroundColor: const Color(0xFF8E1728),
+                                      designBuilder: _currentAppUser?.selectedDesign != null && _currentAppUser?.selectedDesign != 'default'
+                                          ? AvatarDesigns.getById(_currentAppUser!.selectedDesign!).builder
+                                          : null,
+                                      child: _currentAppUser?.selectedDesign == null || _currentAppUser?.selectedDesign == 'default'
+                                          ? Text(
+                                              _currentUserName != null && _currentUserName!.isNotEmpty 
+                                                ? _currentUserName![0].toUpperCase() 
+                                                : '?',
+                                              style: const TextStyle(color: Colors.white, fontSize: 14),
+                                            )
+                                          : null,
+                                    )
+                                  : null,
+                            ),
                           ],
-                        ),
+                        ],
                       ),
                     );
                   },

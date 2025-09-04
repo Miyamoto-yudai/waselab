@@ -5,7 +5,8 @@ import '../models/app_user.dart';
 import '../widgets/custom_circle_avatar.dart';
 import 'login_screen.dart';
 import 'evaluation_history_screen.dart';
-import 'frame_shop_screen.dart';
+import 'icon_change_screen.dart';
+import '../models/avatar_design.dart';
 
 class MyPageScreen extends StatefulWidget {
   const MyPageScreen({super.key});
@@ -200,10 +201,14 @@ class _MyPageScreenState extends State<MyPageScreen> {
                               frameId: _currentUser!.selectedFrame,
                               radius: 50,
                               backgroundColor: const Color(0xFF8E1728),
-                              backgroundImage: _currentUser!.photoUrl,
-                              child: _currentUser!.photoUrl == null
+                              designBuilder: _currentUser!.selectedDesign != null && _currentUser!.selectedDesign != 'default'
+                                  ? AvatarDesigns.getById(_currentUser!.selectedDesign!).builder
+                                  : null,
+                              child: _currentUser!.selectedDesign == null || _currentUser!.selectedDesign == 'default'
                                   ? Text(
-                                      _currentUser!.name[0].toUpperCase(),
+                                      _currentUser!.name.isNotEmpty 
+                                        ? _currentUser!.name[0].toUpperCase() 
+                                        : '?',
                                       style: const TextStyle(
                                         fontSize: 36,
                                         color: Colors.white,
@@ -226,7 +231,7 @@ class _MyPageScreenState extends State<MyPageScreen> {
                                     Navigator.push(
                                       context,
                                       MaterialPageRoute(
-                                        builder: (context) => const FrameShopScreen(),
+                                        builder: (context) => const IconChangeScreen(),
                                       ),
                                     ).then((_) => _loadUserData());
                                   },

@@ -10,6 +10,7 @@ class CustomCircleAvatar extends StatefulWidget {
   final Color? backgroundColor;
   final double radius;
   final String? heroTag;
+  final Widget Function(double size)? designBuilder;
 
   const CustomCircleAvatar({
     super.key,
@@ -19,6 +20,7 @@ class CustomCircleAvatar extends StatefulWidget {
     this.backgroundColor,
     this.radius = 20,
     this.heroTag,
+    this.designBuilder,
   });
 
   @override
@@ -81,13 +83,20 @@ class _CustomCircleAvatarState extends State<CustomCircleAvatar>
   Widget build(BuildContext context) {
     final frame = AvatarFrames.getById(widget.frameId ?? '');
     
+    Widget avatarContent;
+    if (widget.designBuilder != null) {
+      avatarContent = widget.designBuilder!(widget.radius * 1.2);
+    } else {
+      avatarContent = widget.child ?? Container();
+    }
+    
     Widget avatar = CircleAvatar(
       radius: widget.radius,
       backgroundColor: widget.backgroundColor,
       backgroundImage: widget.backgroundImage != null
           ? NetworkImage(widget.backgroundImage!)
           : null,
-      child: widget.child,
+      child: widget.designBuilder != null ? avatarContent : widget.child,
     );
 
     if (widget.heroTag != null) {

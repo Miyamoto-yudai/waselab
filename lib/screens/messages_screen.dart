@@ -5,6 +5,7 @@ import '../services/user_service.dart';
 import '../models/conversation.dart';
 import '../models/app_user.dart';
 import '../widgets/custom_circle_avatar.dart';
+import '../models/avatar_design.dart';
 import 'chat_screen.dart';
 import 'support_chat_screen.dart';
 import 'user_selection_screen.dart';
@@ -182,14 +183,20 @@ class _MessagesScreenState extends State<MessagesScreen> {
                     future: _userService.getUserById(otherUserId),
                     builder: (context, userSnapshot) {
                       if (userSnapshot.hasData && userSnapshot.data != null) {
+                        final userData = userSnapshot.data!;
                         return CustomCircleAvatar(
-                          frameId: userSnapshot.data!.selectedFrame,
+                          frameId: userData.selectedFrame,
                           radius: 20,
                           backgroundColor: const Color(0xFF8E1728),
-                          child: Text(
-                            otherUserName.isNotEmpty ? otherUserName[0].toUpperCase() : '?',
-                            style: const TextStyle(color: Colors.white),
-                          ),
+                          designBuilder: userData.selectedDesign != null && userData.selectedDesign != 'default'
+                              ? AvatarDesigns.getById(userData.selectedDesign!).builder
+                              : null,
+                          child: userData.selectedDesign == null || userData.selectedDesign == 'default'
+                              ? Text(
+                                  otherUserName.isNotEmpty ? otherUserName[0].toUpperCase() : '?',
+                                  style: const TextStyle(color: Colors.white),
+                                )
+                              : null,
                         );
                       } else {
                         return CustomCircleAvatar(

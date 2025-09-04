@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import '../models/experiment.dart';
+import '../models/app_user.dart';
+import '../services/user_service.dart';
 import '../screens/experiment_detail_screen.dart';
 import '../screens/experiment_detail_screen_demo.dart';
 
@@ -8,8 +10,9 @@ class ExperimentCard extends StatelessWidget {
   final Experiment experiment;
   final bool isDemo;
   final String? currentUserId;
+  final UserService _userService = UserService();
   
-  const ExperimentCard({
+  ExperimentCard({
     super.key,
     required this.experiment,
     this.isDemo = false,
@@ -300,38 +303,42 @@ class ExperimentCard extends StatelessWidget {
                       maxLines: 1,
                     ),
                   ),
-                  if (experiment.labName != null) ...[
-                    const SizedBox(height: 4),
-                    Row(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.all(3),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF8E1728).withValues(alpha: 0.08),
-                            borderRadius: BorderRadius.circular(6),
-                          ),
-                          child: const Icon(
-                            Icons.school,
-                            size: 12,
-                            color: Color(0xFF8E1728),
-                          ),
+                  const SizedBox(height: 4),
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(3),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF8E1728).withValues(alpha: 0.08),
+                          borderRadius: BorderRadius.circular(6),
                         ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            experiment.labName!,
-                            style: const TextStyle(
-                              fontSize: 9,
-                              fontWeight: FontWeight.w600,
-                              color: Color(0xFF8E1728),
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
+                        child: const Icon(
+                          Icons.school,
+                          size: 12,
+                          color: Color(0xFF8E1728),
                         ),
-                      ],
-                    ),
-                  ],
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: FutureBuilder<AppUser?>(
+                          future: _userService.getUserById(experiment.creatorId),
+                          builder: (context, snapshot) {
+                            final creatorName = snapshot.data?.name ?? '読み込み中...';
+                            return Text(
+                              '${experiment.labName ?? "研究室名未設定"} / $creatorName',
+                              style: const TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w600,
+                                color: Color(0xFF8E1728),
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            );
+                          },
+                        ),
+                      ),
+                    ],
+                  ),
                 ],
               ),
               

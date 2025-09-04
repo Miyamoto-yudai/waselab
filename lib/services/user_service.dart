@@ -262,4 +262,53 @@ class UserService {
       'selectedFrame': null,
     });
   }
+
+  /// デザインを解放（購入）
+  Future<void> unlockDesign({
+    required String userId,
+    required String designId,
+    required int cost,
+  }) async {
+    final userDoc = await _firestore.collection('users').doc(userId).get();
+    
+    if (!userDoc.exists) {
+      throw Exception('ユーザーが見つかりません');
+    }
+    
+    final userData = userDoc.data() as Map<String, dynamic>;
+    final currentPoints = userData['points'] ?? 0;
+    
+    if (currentPoints < cost) {
+      throw Exception('ポイントが不足しています');
+    }
+    
+    await _firestore.collection('users').doc(userId).update({
+      'points': FieldValue.increment(-cost),
+      'unlockedDesigns': FieldValue.arrayUnion([designId]),
+    });
+  }
+
+  /// デザインを選択（装備）
+  Future<void> selectDesign({
+    required String userId,
+    required String designId,
+  }) async {
+    final userDoc = await _firestore.collection('users').doc(userId).get();
+    
+    if (!userDoc.exists) {
+      throw Exception('ユーザーが見つかりません');
+    }
+    
+    final userData = userDoc.data() as Map<String, dynamic>;
+    final unlockedDesigns = List<String>.from(userData['unlockedDesigns'] ?? ['default']);
+    
+    // デフォルトデザインは常に装備可能
+    if (!unlockedDesigns.contains(designId) && designId != 'default') {
+      throw Exception('このデザインは解放されていません');
+    }
+    
+    await _firestore.collection('users').doc(userId).update({
+      'selectedDesign': designId,
+    });
+  }
 }

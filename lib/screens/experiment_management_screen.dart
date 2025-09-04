@@ -6,6 +6,8 @@ import '../models/app_user.dart';
 import '../services/experiment_service.dart';
 import '../services/user_service.dart';
 import '../services/auth_service.dart';
+import '../widgets/custom_circle_avatar.dart';
+import '../models/avatar_design.dart';
 import 'chat_screen.dart';
 import 'experiment_detail_screen.dart';
 import 'experiment_evaluation_screen.dart';
@@ -662,14 +664,18 @@ class _ExperimentManagementScreenState extends State<ExperimentManagementScreen>
           elevation: 1,
           margin: const EdgeInsets.only(bottom: 8),
           child: ExpansionTile(
-            leading: CircleAvatar(
+            leading: CustomCircleAvatar(
+              frameId: participant.selectedFrame,
+              radius: 20,
               backgroundColor: const Color(0xFF8E1728),
-              backgroundImage: participant.photoUrl != null 
-                  ? NetworkImage(participant.photoUrl!)
+              designBuilder: participant.selectedDesign != null && participant.selectedDesign != 'default'
+                  ? AvatarDesigns.getById(participant.selectedDesign!).builder
                   : null,
-              child: participant.photoUrl == null
+              child: participant.selectedDesign == null || participant.selectedDesign == 'default'
                   ? Text(
-                      participant.name[0].toUpperCase(),
+                      participant.name.isNotEmpty 
+                        ? participant.name[0].toUpperCase() 
+                        : '?',
                       style: const TextStyle(color: Colors.white),
                     )
                   : null,

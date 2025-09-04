@@ -6,9 +6,14 @@ import 'package:url_launcher/url_launcher.dart';
 import '../models/experiment.dart';
 import '../models/experiment_slot.dart';
 import '../models/experiment_reservation.dart';
+import '../models/app_user.dart';
+import '../models/notification.dart';
 import '../services/reservation_service.dart';
 import '../services/experiment_service.dart';
+import '../services/notification_service.dart';
 import '../widgets/experiment_calendar_view.dart';
+import '../widgets/custom_circle_avatar.dart';
+import '../models/avatar_design.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../services/message_service.dart';
 import '../services/auth_service.dart';
@@ -835,15 +840,53 @@ class _ExperimentDetailScreenState extends State<ExperimentDetailScreen> {
                       ),
                     ),
                     const SizedBox(height: 12),
-                    if (_experimenterName != null)
-                      _buildInfoRow(
-                        Icons.person,
-                        '実験者',
-                        _experimenterName!,
-                        const Color(0xFF8E1728),
+                    if (_experimenterName != null) ...[
+                      FutureBuilder<AppUser?>(
+                        future: _userService.getUserById(widget.experiment.creatorId),
+                        builder: (context, snapshot) {
+                          final user = snapshot.data;
+                          return Row(
+                            children: [
+                              CustomCircleAvatar(
+                                frameId: user?.selectedFrame,
+                                radius: 16,
+                                backgroundColor: const Color(0xFF8E1728),
+                                designBuilder: user?.selectedDesign != null && user?.selectedDesign != 'default'
+                                    ? AvatarDesigns.getById(user!.selectedDesign!).builder
+                                    : null,
+                                child: user?.selectedDesign == null || user?.selectedDesign == 'default'
+                                    ? Text(
+                                        user?.name.isNotEmpty == true 
+                                          ? user!.name[0].toUpperCase() 
+                                          : '?',
+                                        style: const TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 12,
+                                        ),
+                                      )
+                                    : null,
+                              ),
+                              const SizedBox(width: 8),
+                              const Text(
+                                '実験者: ',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              Expanded(
+                                child: Text(
+                                  _experimenterName!,
+                                  style: const TextStyle(
+                                    fontSize: 14,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          );
+                        },
                       ),
-                    if (_experimenterName != null)
                       const SizedBox(height: 8),
+                    ],
                     _buildInfoRow(
                       Icons.monetization_on,
                       '報酬',
@@ -1322,7 +1365,7 @@ class _ExperimentDetailScreenState extends State<ExperimentDetailScreen> {
 
             const SizedBox(height: 24),
 
-            // 応募ボタン（予約がない場合、かつ予約制でない場合のみ表示）
+            // 参加ボタンまたはキャンセルボタン（予約がない場合、かつ予約制でない場合のみ表示）
             if (!widget.isMyExperiment && 
                 _currentUserReservation == null &&
                 !widget.experiment.allowFlexibleSchedule &&
@@ -1357,14 +1400,65 @@ class _ExperimentDetailScreenState extends State<ExperimentDetailScreen> {
                     ],
                   ),
                 ),
-              ] else
+              ] else if (_isParticipating && _canCancelParticipation()) ...[
+                // キャンセルボタン（参加予定でキャンセル可能な場合）
                 SizedBox(
                   width: double.infinity,
                   height: 48,
                   child: ElevatedButton.icon(
-                    onPressed: _isParticipating || _isLoading || 
+                    onPressed: _isLoading ? null : _showCancelConfirmDialog,
+                    icon: _isLoading
+                      ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                        )
+                      : const Icon(Icons.cancel),
+                    label: const Text('参加をキャンセル'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.red,
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                  ),
+                ),
+              ] else if (_isParticipating && !_canCancelParticipation()) ...[
+                // 参加予定表示（キャンセル不可）
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                  decoration: BoxDecoration(
+                    color: Colors.green.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Colors.green.withValues(alpha: 0.3)),
+                  ),
+                  child: const Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.check_circle, color: Colors.green),
+                      SizedBox(width: 8),
+                      Text(
+                        '参加予定',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.green,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ] else
+                // 参加ボタン
+                SizedBox(
+                  width: double.infinity,
+                  height: 48,
+                  child: ElevatedButton.icon(
+                    onPressed: _isLoading || 
                         (widget.experiment.consentItems.isNotEmpty && !_detailConsentChecked.every((checked) => checked))
-                      ? null // 既に参加している、読み込み中、または同意項目未チェックの場合は無効化
+                      ? null // 読み込み中、または同意項目未チェックの場合は無効化
                       : () => _handleDirectApplication(),
                     icon: _isLoading
                       ? const SizedBox(
@@ -1373,24 +1467,19 @@ class _ExperimentDetailScreenState extends State<ExperimentDetailScreen> {
                           child: CircularProgressIndicator(strokeWidth: 2),
                         )
                       : Icon(
-                          _isParticipating
-                            ? Icons.check_circle
-                            : widget.experiment.type == ExperimentType.survey
+                          widget.experiment.type == ExperimentType.survey
                                 ? Icons.assignment
                                 : Icons.send,
                         ),
                     label: Text(
-                      _isParticipating
-                        ? '参加予定'
-                        : (widget.experiment.consentItems.isNotEmpty && !_detailConsentChecked.every((checked) => checked))
+                      (widget.experiment.consentItems.isNotEmpty && !_detailConsentChecked.every((checked) => checked))
                             ? 'すべての同意項目にチェックしてください'
                             : widget.experiment.type == ExperimentType.survey
                                 ? '今すぐ参加'
                                 : '参加申請する',
                     ),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: _isParticipating || 
-                          (widget.experiment.consentItems.isNotEmpty && !_detailConsentChecked.every((checked) => checked))
+                      backgroundColor: (widget.experiment.consentItems.isNotEmpty && !_detailConsentChecked.every((checked) => checked))
                           ? Colors.grey 
                           : null,
                       shape: RoundedRectangleBorder(
@@ -1422,6 +1511,219 @@ class _ExperimentDetailScreenState extends State<ExperimentDetailScreen> {
     
     // それ以外の場合（フォールバック）
     return _formatDateTime(widget.experiment.recruitmentStartDate);
+  }
+
+  /// 実験参加がキャンセル可能かどうかを判定（履歴画面と同じ条件）
+  bool _canCancelParticipation() {
+    // 既に評価済みの場合はキャンセル不可
+    final userId = _auth.currentUser?.uid ?? '';
+    if (widget.experiment.hasEvaluated(userId)) {
+      return false;
+    }
+    
+    // 実験が完了している場合はキャンセル不可
+    if (widget.experiment.status == ExperimentStatus.completed) {
+      return false;
+    }
+    
+    // アンケート型は常にキャンセル可能
+    if (widget.experiment.type == ExperimentType.survey) {
+      return true;
+    }
+    
+    // 固定日時の実験の場合
+    if (widget.experiment.fixedExperimentDate != null) {
+      final now = DateTime.now();
+      final experimentDate = widget.experiment.fixedExperimentDate!;
+      
+      // 実験日の1日前までキャンセル可能
+      final cancelDeadline = experimentDate.subtract(const Duration(days: 1));
+      return now.isBefore(cancelDeadline);
+    }
+    
+    // 柔軟なスケジュールの場合
+    if (widget.experiment.allowFlexibleSchedule) {
+      // 予約がある場合は予約のキャンセル可否をチェック
+      if (_currentUserReservation != null) {
+        return _currentUserReservation!.canCancel(widget.experiment, slot: _reservedSlot);
+      }
+      return true; // 予約がない場合はキャンセル可能
+    }
+    
+    // その他の場合はキャンセル可能
+    return true;
+  }
+
+  /// キャンセル確認ダイアログを表示
+  Future<void> _showCancelConfirmDialog() async {
+    final TextEditingController reasonController = TextEditingController();
+    
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Row(
+          children: [
+            Icon(Icons.warning, color: Colors.orange[700]),
+            const SizedBox(width: 8),
+            const Text('予約のキャンセル'),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'この実験の予約をキャンセルしますか？',
+              style: TextStyle(fontSize: 16),
+            ),
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.red.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.red.withValues(alpha: 0.3)),
+              ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Icon(Icons.error_outline, color: Colors.red, size: 20),
+                  const SizedBox(width: 8),
+                  const Expanded(
+                    child: Text(
+                      '重要: キャンセルした場合、あなたのアカウントにBad評価が自動的に記録されます。これは他の実験者からの信頼性に影響する可能性があります。',
+                      style: TextStyle(
+                        color: Colors.red,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w500,
+                        height: 1.4,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: reasonController,
+              maxLines: 3,
+              decoration: InputDecoration(
+                labelText: 'キャンセル理由（任意）',
+                hintText: '急用のため、体調不良など...',
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                contentPadding: const EdgeInsets.all(12),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('戻る'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+            ),
+            child: const Text('キャンセルする（Bad評価が付きます）'),
+          ),
+        ],
+      ),
+    );
+    
+    if (confirmed == true && mounted) {
+      await _cancelParticipation(reasonController.text);
+    }
+    
+    reasonController.dispose();
+  }
+
+  /// 参加をキャンセル
+  Future<void> _cancelParticipation(String reason) async {
+    setState(() => _isLoading = true);
+    
+    try {
+      final user = _auth.currentUser;
+      if (user != null) {
+        // 実験サービスを使って参加キャンセル
+        await _experimentService.cancelParticipation(
+          widget.experiment.id, 
+          user.uid,
+          reason: reason.isNotEmpty ? reason : null,
+        );
+        
+        // キャンセルしたユーザーに自動的にBad評価を付与
+        await _userService.updateUserRatings(
+          userId: user.uid,
+          isGood: false, // Bad評価
+        );
+        
+        // キャンセル通知を送信
+        final notificationService = NotificationService();
+        
+        // 実験者への通知
+        await notificationService.createExperimentCancelledNotification(
+          userId: widget.experiment.creatorId,
+          participantName: _experimenterName ?? user.email ?? '参加者',
+          experimentTitle: widget.experiment.title,
+          experimentId: widget.experiment.id,
+          reason: reason.isNotEmpty ? reason : null,
+        );
+        
+        // キャンセルした本人への通知（Bad評価が付いたことを通知）
+        await notificationService.createNotification(
+          userId: user.uid,
+          type: NotificationType.adminMessage,
+          title: 'キャンセルによるペナルティ',
+          message: '「${widget.experiment.title}」のキャンセルにより、Bad評価が1つ追加されました。今後の実験参加の信頼性に影響する可能性があります。',
+          data: {
+            'experimentId': widget.experiment.id,
+            'penaltyType': 'bad_rating',
+          },
+        );
+      }
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: const [
+                Icon(Icons.warning, color: Colors.white),
+                SizedBox(width: 8),
+                Expanded(
+                  child: Text('参加をキャンセルしました'),
+                ),
+              ],
+            ),
+            backgroundColor: Colors.orange,
+          ),
+        );
+        
+        // 参加状態を更新
+        setState(() {
+          _isParticipating = false;
+        });
+        
+        // 参加状態を再チェック
+        await _checkParticipation();
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('キャンセルに失敗しました: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
   }
 
   /// 予約キャンセル処理

@@ -28,6 +28,8 @@ class AppUser {
   final int points;                 // 保有ポイント（Good評価1つ = 1ポイント）
   final List<String> unlockedFrames; // 解放済みフレームIDリスト
   final String? selectedFrame;      // 選択中のフレームID
+  final List<String> unlockedDesigns; // 解放済みアイコンデザインIDリスト
+  final String? selectedDesign;      // 選択中のアイコンデザインID
 
   AppUser({
     required this.uid,
@@ -55,6 +57,8 @@ class AppUser {
     this.points = 0,
     this.unlockedFrames = const ['none', 'simple'], // デフォルトで2つ解放
     this.selectedFrame,
+    this.unlockedDesigns = const ['default'], // デフォルトアイコンは最初から解放
+    this.selectedDesign = 'default',
   });
 
   /// Firestoreのドキュメントからユーザーを作成
@@ -87,6 +91,8 @@ class AppUser {
       points: data['points'] ?? data['goodCount'] ?? 0, // goodCountをデフォルトポイントとして使用
       unlockedFrames: List<String>.from(data['unlockedFrames'] ?? ['none', 'simple']),
       selectedFrame: data['selectedFrame'],
+      unlockedDesigns: List<String>.from(data['unlockedDesigns'] ?? ['default']),
+      selectedDesign: data['selectedDesign'] ?? 'default',
     );
   }
 
@@ -122,6 +128,8 @@ class AppUser {
       'points': points,
       'unlockedFrames': unlockedFrames,
       'selectedFrame': selectedFrame,
+      'unlockedDesigns': unlockedDesigns,
+      'selectedDesign': selectedDesign,
     };
   }
 

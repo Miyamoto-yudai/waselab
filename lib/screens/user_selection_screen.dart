@@ -3,6 +3,7 @@ import '../services/user_service.dart';
 import '../services/auth_service.dart';
 import '../models/app_user.dart';
 import '../widgets/custom_circle_avatar.dart';
+import '../models/avatar_design.dart';
 import 'chat_screen.dart';
 
 class UserSelectionScreen extends StatefulWidget {
@@ -227,10 +228,15 @@ class _UserSelectionScreenState extends State<UserSelectionScreen> {
                           frameId: user.selectedFrame,
                           radius: 20,
                           backgroundColor: const Color(0xFF8E1728),
-                          child: Text(
-                            user.name.isNotEmpty ? user.name[0].toUpperCase() : '?',
-                            style: const TextStyle(color: Colors.white),
-                          ),
+                          designBuilder: user.selectedDesign != null && user.selectedDesign != 'default'
+                              ? AvatarDesigns.getById(user.selectedDesign!).builder
+                              : null,
+                          child: user.selectedDesign == null || user.selectedDesign == 'default'
+                              ? Text(
+                                  user.name.isNotEmpty ? user.name[0].toUpperCase() : '?',
+                                  style: const TextStyle(color: Colors.white),
+                                )
+                              : null,
                         ),
                         title: Text(
                           user.name,
