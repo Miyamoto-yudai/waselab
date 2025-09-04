@@ -301,7 +301,7 @@ class _ExperimentCalendarViewState extends State<ExperimentCalendarView> {
                               backgroundColor: const Color(0xFF8E1728),
                               foregroundColor: Colors.white,
                             ),
-                            child: const Text('予約'),
+                            child: const Text('選択'),
                           )
                         : null,
                       onTap: isAvailable 

@@ -463,18 +463,27 @@ class _ExperimentDetailScreenState extends State<ExperimentDetailScreen> {
         slotId: slot.id,
       );
 
+      // 実験への参加履歴を追加
+      final experimentService = ExperimentService();
+      await experimentService.joinExperiment(widget.experiment.id, user.uid);
+
+      // 参加状態を更新
+      setState(() {
+        _isParticipating = true;
+        _showCalendar = false;
+      });
+
+      // 予約情報を再読み込み
+      await _loadUserReservation();
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('予約が完了しました'),
+            content: Text('予約が完了しました。実験終了後は必ず相互評価をお願いします'),
             backgroundColor: Colors.green,
+            duration: Duration(seconds: 4),
           ),
         );
-        
-        // カレンダーを閉じる
-        setState(() {
-          _showCalendar = false;
-        });
       }
     } catch (e) {
       if (mounted) {
@@ -1168,8 +1177,10 @@ class _ExperimentDetailScreenState extends State<ExperimentDetailScreen> {
               ),
             ],
 
-            // 柔軟なスケジュール調整の場合はカレンダー表示
-            if (widget.experiment.allowFlexibleSchedule) ...[
+            // 柔軟なスケジュール調整の場合はカレンダー表示（自分の実験でない場合のみ）
+            if (widget.experiment.allowFlexibleSchedule && 
+                !widget.isMyExperiment &&
+                (_auth.currentUser == null || widget.experiment.creatorId != _auth.currentUser!.uid)) ...[
               const SizedBox(height: 16),
               Card(
                 child: Column(
@@ -1282,32 +1293,18 @@ class _ExperimentDetailScreenState extends State<ExperimentDetailScreen> {
 
             const SizedBox(height: 24),
 
-            // 応募ボタン（予約がない場合のみ表示）
-            if (!widget.isMyExperiment && _currentUserReservation == null) // 自分の実験でなく、予約がない場合のみ表示
+            // 応募ボタン（予約がない場合、かつ予約制でない場合のみ表示）
+            if (!widget.isMyExperiment && 
+                _currentUserReservation == null &&
+                !widget.experiment.allowFlexibleSchedule &&
+                (_auth.currentUser == null || widget.experiment.creatorId != _auth.currentUser!.uid)) // 自分の実験でない場合のみ
               SizedBox(
                 width: double.infinity,
                 height: 48,
                 child: ElevatedButton.icon(
-                  onPressed: _isParticipating || _isLoading || 
-                    (_auth.currentUser != null && widget.experiment.creatorId == _auth.currentUser!.uid)
-                    ? null // 既に参加している、読み込み中、または自分の実験の場合は無効化
-                    : widget.experiment.allowFlexibleSchedule && !_showCalendar
-                      ? () {
-                          setState(() {
-                            _showCalendar = true;
-                          });
-                          // カレンダーセクションまでスクロール
-                          Future.delayed(const Duration(milliseconds: 300), () {
-                            Scrollable.ensureVisible(
-                              context,
-                              duration: const Duration(milliseconds: 500),
-                              curve: Curves.easeInOut,
-                            );
-                          });
-                        }
-                      : !widget.experiment.allowFlexibleSchedule
-                        ? () => _handleDirectApplication()
-                        : null,
+                  onPressed: _isParticipating || _isLoading
+                    ? null // 既に参加している、読み込み中の場合は無効化
+                    : () => _handleDirectApplication(),
                   icon: _isLoading
                     ? const SizedBox(
                         width: 20,
@@ -1317,29 +1314,19 @@ class _ExperimentDetailScreenState extends State<ExperimentDetailScreen> {
                     : Icon(
                         _isParticipating
                           ? Icons.check_circle
-                          : (_auth.currentUser != null && widget.experiment.creatorId == _auth.currentUser!.uid)
-                            ? Icons.block
-                            : widget.experiment.type == ExperimentType.survey
+                          : widget.experiment.type == ExperimentType.survey
                               ? Icons.assignment
-                              : widget.experiment.allowFlexibleSchedule
-                                ? Icons.calendar_today
-                                : Icons.send,
+                              : Icons.send,
                       ),
                   label: Text(
                     _isParticipating
                       ? '参加予定'
-                      : (_auth.currentUser != null && widget.experiment.creatorId == _auth.currentUser!.uid)
-                        ? '自分の実験には参加できません'
-                        : widget.experiment.type == ExperimentType.survey
+                      : widget.experiment.type == ExperimentType.survey
                           ? '今すぐ参加'
-                          : widget.experiment.allowFlexibleSchedule
-                            ? '日時を選択して予約'
-                            : '参加申請する',
+                          : '参加申請する',
                   ),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: _isParticipating || 
-                      (_auth.currentUser != null && widget.experiment.creatorId == _auth.currentUser!.uid)
-                        ? Colors.grey : null,
+                    backgroundColor: _isParticipating ? Colors.grey : null,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(8),
                     ),
@@ -1426,6 +1413,12 @@ class _ExperimentDetailScreenState extends State<ExperimentDetailScreen> {
           reasonController.text.isNotEmpty ? reasonController.text : null,
         );
         
+        // 実験の参加者リストからも削除
+        final user = _auth.currentUser;
+        if (user != null) {
+          await _experimentService.leaveExperiment(widget.experiment.id, user.uid);
+        }
+        
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
@@ -1433,6 +1426,11 @@ class _ExperimentDetailScreenState extends State<ExperimentDetailScreen> {
               backgroundColor: Colors.green,
             ),
           );
+          
+          // 参加状態を更新
+          setState(() {
+            _isParticipating = false;
+          });
           
           // 予約情報を再読み込み
           await _loadUserReservation();
