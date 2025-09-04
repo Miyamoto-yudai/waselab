@@ -5,6 +5,7 @@ import '../models/avatar_design.dart';
 import '../services/user_service.dart';
 import '../services/auth_service.dart';
 import '../widgets/custom_circle_avatar.dart';
+import '../models/avatar_color.dart';
 
 /// アイコン変更画面（フレームとデザインの両方を変更可能）
 class IconChangeScreen extends StatefulWidget {
@@ -24,13 +25,15 @@ class _IconChangeScreenState extends State<IconChangeScreen>
   late TabController _mainTabController;
   late TabController _frameTabController;
   late TabController _designTabController;
+  late TabController _colorTabController;
 
   @override
   void initState() {
     super.initState();
-    _mainTabController = TabController(length: 2, vsync: this);
+    _mainTabController = TabController(length: 3, vsync: this);
     _frameTabController = TabController(length: 5, vsync: this);
     _designTabController = TabController(length: 5, vsync: this);
+    _colorTabController = TabController(length: 4, vsync: this);
     _loadUserData();
   }
 
@@ -39,6 +42,7 @@ class _IconChangeScreenState extends State<IconChangeScreen>
     _mainTabController.dispose();
     _frameTabController.dispose();
     _designTabController.dispose();
+    _colorTabController.dispose();
     super.dispose();
   }
 
@@ -224,6 +228,100 @@ class _IconChangeScreenState extends State<IconChangeScreen>
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('${design.name}を装備しました'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('装備に失敗しました: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  /// カラーを購入
+  Future<void> _purchaseColor(AvatarColor color) async {
+    if (_currentUser == null) return;
+    
+    // ポイント不足チェック
+    if (_currentUser!.points < color.price) {
+      _showInsufficientPointsDialog(color.price, color.name);
+      return;
+    }
+
+    // 購入確認ダイアログ
+    final confirmed = await _showPurchaseConfirmDialog(
+      name: color.name,
+      description: color.tier == ColorTier.premium ? 'プレミアムカラー' : '',
+      price: color.price,
+      previewWidget: CustomCircleAvatar(
+        frameId: _currentUser!.selectedFrame,
+        radius: 40,
+        backgroundColor: color.hasGradient && color.gradientColors != null
+            ? color.gradientColors!.first
+            : color.color,
+        designBuilder: _currentUser!.selectedDesign != null
+            ? AvatarDesigns.getById(_currentUser!.selectedDesign!).builder
+            : null,
+        child: _currentUser!.selectedDesign == null || _currentUser!.selectedDesign == 'default'
+            ? const Icon(Icons.person, color: Colors.white, size: 40)
+            : null,
+      ),
+    );
+    
+    if (!confirmed) return;
+
+    try {
+      setState(() => _isLoading = true);
+      
+      await _userService.unlockColor(
+        userId: _currentUser!.uid,
+        colorId: color.id,
+        cost: color.price,
+      );
+      
+      // ユーザー情報を再読み込み
+      await _loadUserData();
+      
+      if (mounted) {
+        _showPurchaseSuccessDialog(color.name, () => _equipColor(color));
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('購入に失敗しました: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  /// カラーを装備
+  Future<void> _equipColor(AvatarColor color) async {
+    if (_currentUser == null) return;
+
+    try {
+      setState(() => _isLoading = true);
+      
+      await _userService.selectColor(
+        userId: _currentUser!.uid,
+        colorId: color.id,
+      );
+      
+      // ユーザー情報を再読み込み
+      await _loadUserData();
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('${color.name}を装備しました'),
             backgroundColor: Colors.green,
           ),
         );
@@ -464,6 +562,7 @@ class _IconChangeScreenState extends State<IconChangeScreen>
                 tabs: const [
                   Tab(text: 'フレーム'),
                   Tab(text: 'デザイン'),
+                  Tab(text: 'カラー'),
                 ],
               ),
             ],
@@ -561,6 +660,43 @@ class _IconChangeScreenState extends State<IconChangeScreen>
                     _buildDesignGrid(AvatarDesignCategory.emoji),
                     _buildDesignGrid(AvatarDesignCategory.iconDesign),
                     _buildDesignGrid(AvatarDesignCategory.pattern),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          // カラータブ
+          Column(
+            children: [
+              Container(
+                color: Theme.of(context).primaryColor.withValues(alpha: 0.1),
+                child: TabBar(
+                  controller: _colorTabController,
+                  isScrollable: true,
+                  indicatorColor: Theme.of(context).primaryColor,
+                  indicatorWeight: 3,
+                  labelColor: Theme.of(context).primaryColor,
+                  unselectedLabelColor: Colors.grey[600],
+                  labelStyle: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                  ),
+                  tabs: const [
+                    Tab(text: '無料'),
+                    Tab(text: 'ベーシック'),
+                    Tab(text: 'スペシャル'),
+                    Tab(text: 'プレミアム'),
+                  ],
+                ),
+              ),
+              Expanded(
+                child: TabBarView(
+                  controller: _colorTabController,
+                  children: [
+                    _buildColorGrid(ColorTier.free),
+                    _buildColorGrid(ColorTier.basic),
+                    _buildColorGrid(ColorTier.special),
+                    _buildColorGrid(ColorTier.premium),
                   ],
                 ),
               ),
@@ -837,6 +973,143 @@ class _IconChangeScreenState extends State<IconChangeScreen>
                         minimumSize: const Size(0, 28),
                       ),
                       child: Text('${design.price}P', style: const TextStyle(fontSize: 12)),
+                    ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildColorGrid(ColorTier tier) {
+    final colors = AvatarColors.getByTier(tier);
+    
+    return GridView.builder(
+      padding: const EdgeInsets.all(16),
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 3,
+        crossAxisSpacing: 12,
+        mainAxisSpacing: 12,
+        childAspectRatio: 1.0,
+      ),
+      itemCount: colors.length,
+      itemBuilder: (context, index) {
+        final color = colors[index];
+        final isUnlocked = (_currentUser?.unlockedColors.contains(color.id) ?? false) || 
+                          color.id == 'default';
+        final isEquipped = _currentUser?.selectedColor == color.id;
+        
+        return Card(
+          elevation: isEquipped ? 8 : 2,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+            side: isEquipped
+                ? const BorderSide(color: Color(0xFF8E1728), width: 2)
+                : BorderSide.none,
+          ),
+          child: InkWell(
+            borderRadius: BorderRadius.circular(12),
+            onTap: () {
+              if (isUnlocked) {
+                if (!isEquipped) {
+                  _equipColor(color);
+                }
+              } else {
+                _purchaseColor(color);
+              }
+            },
+            child: Padding(
+              padding: const EdgeInsets.all(8),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  // カラープレビュー
+                  Container(
+                    width: 50,
+                    height: 50,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: color.hasGradient && color.gradientColors != null
+                          ? null
+                          : color.color,
+                      gradient: color.hasGradient && color.gradientColors != null
+                          ? LinearGradient(
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                              colors: color.gradientColors!,
+                            )
+                          : null,
+                      boxShadow: [
+                        BoxShadow(
+                          color: (color.hasGradient && color.gradientColors != null
+                              ? color.gradientColors!.first
+                              : color.color).withValues(alpha: 0.3),
+                          blurRadius: 8,
+                          spreadRadius: 2,
+                        ),
+                      ],
+                    ),
+                    child: color.hasShimmer
+                        ? const Icon(
+                            Icons.auto_awesome,
+                            color: Colors.white,
+                            size: 20,
+                          )
+                        : null,
+                  ),
+                  // カラー名
+                  Text(
+                    color.name,
+                    style: const TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                    ),
+                    textAlign: TextAlign.center,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  // 価格/状態
+                  if (isEquipped)
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF8E1728),
+                        borderRadius: BorderRadius.circular(15),
+                      ),
+                      child: const Text(
+                        '装備中',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    )
+                  else if (isUnlocked)
+                    ElevatedButton(
+                      onPressed: () => _equipColor(color),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.green,
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
+                        minimumSize: const Size(0, 24),
+                      ),
+                      child: const Text('装備', style: TextStyle(fontSize: 10)),
+                    )
+                  else
+                    ElevatedButton(
+                      onPressed: _currentUser!.points >= color.price
+                          ? () => _purchaseColor(color)
+                          : null,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: _currentUser!.points >= color.price
+                            ? Colors.amber
+                            : Colors.grey,
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
+                        minimumSize: const Size(0, 24),
+                      ),
+                      child: Text('${color.price}P', style: const TextStyle(fontSize: 10)),
                     ),
                 ],
               ),

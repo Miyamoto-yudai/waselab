@@ -30,6 +30,8 @@ class AppUser {
   final String? selectedFrame;      // 選択中のフレームID
   final List<String> unlockedDesigns; // 解放済みアイコンデザインIDリスト
   final String? selectedDesign;      // 選択中のアイコンデザインID
+  final List<String> unlockedColors; // 解放済みアイコンカラーIDリスト
+  final String? selectedColor;       // 選択中のアイコンカラーID
 
   AppUser({
     required this.uid,
@@ -59,6 +61,8 @@ class AppUser {
     this.selectedFrame,
     this.unlockedDesigns = const ['default'], // デフォルトアイコンは最初から解放
     this.selectedDesign = 'default',
+    this.unlockedColors = const ['default'], // デフォルトカラーは最初から解放
+    this.selectedColor = 'default',
   });
 
   /// Firestoreのドキュメントからユーザーを作成
@@ -93,6 +97,8 @@ class AppUser {
       selectedFrame: data['selectedFrame'],
       unlockedDesigns: List<String>.from(data['unlockedDesigns'] ?? ['default']),
       selectedDesign: data['selectedDesign'] ?? 'default',
+      unlockedColors: List<String>.from(data['unlockedColors'] ?? ['default']),
+      selectedColor: data['selectedColor'] ?? 'default',
     );
   }
 
@@ -130,6 +136,8 @@ class AppUser {
       'selectedFrame': selectedFrame,
       'unlockedDesigns': unlockedDesigns,
       'selectedDesign': selectedDesign,
+      'unlockedColors': unlockedColors,
+      'selectedColor': selectedColor,
     };
   }
 

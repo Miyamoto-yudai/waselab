@@ -311,4 +311,53 @@ class UserService {
       'selectedDesign': designId,
     });
   }
+
+  /// カラーを解放（購入）
+  Future<void> unlockColor({
+    required String userId,
+    required String colorId,
+    required int cost,
+  }) async {
+    final userDoc = await _firestore.collection('users').doc(userId).get();
+    
+    if (!userDoc.exists) {
+      throw Exception('ユーザーが見つかりません');
+    }
+    
+    final userData = userDoc.data() as Map<String, dynamic>;
+    final currentPoints = userData['points'] ?? 0;
+    
+    if (currentPoints < cost) {
+      throw Exception('ポイントが不足しています');
+    }
+    
+    await _firestore.collection('users').doc(userId).update({
+      'points': FieldValue.increment(-cost),
+      'unlockedColors': FieldValue.arrayUnion([colorId]),
+    });
+  }
+
+  /// カラーを選択（装備）
+  Future<void> selectColor({
+    required String userId,
+    required String colorId,
+  }) async {
+    final userDoc = await _firestore.collection('users').doc(userId).get();
+    
+    if (!userDoc.exists) {
+      throw Exception('ユーザーが見つかりません');
+    }
+    
+    final userData = userDoc.data() as Map<String, dynamic>;
+    final unlockedColors = List<String>.from(userData['unlockedColors'] ?? ['default']);
+    
+    // デフォルトカラーは常に装備可能
+    if (!unlockedColors.contains(colorId) && colorId != 'default') {
+      throw Exception('このカラーは解放されていません');
+    }
+    
+    await _firestore.collection('users').doc(userId).update({
+      'selectedColor': colorId,
+    });
+  }
 }

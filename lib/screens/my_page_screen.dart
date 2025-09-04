@@ -7,6 +7,7 @@ import 'login_screen.dart';
 import 'evaluation_history_screen.dart';
 import 'icon_change_screen.dart';
 import '../models/avatar_design.dart';
+import '../models/avatar_color.dart';
 
 class MyPageScreen extends StatefulWidget {
   const MyPageScreen({super.key});
@@ -200,7 +201,9 @@ class _MyPageScreenState extends State<MyPageScreen> {
                             CustomCircleAvatar(
                               frameId: _currentUser!.selectedFrame,
                               radius: 50,
-                              backgroundColor: const Color(0xFF8E1728),
+                              backgroundColor: _currentUser!.selectedColor != null
+                                  ? AvatarColors.getById(_currentUser!.selectedColor!).color
+                                  : const Color(0xFF8E1728),
                               designBuilder: _currentUser!.selectedDesign != null && _currentUser!.selectedDesign != 'default'
                                   ? AvatarDesigns.getById(_currentUser!.selectedDesign!).builder
                                   : null,
