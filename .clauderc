@@ -1,0 +1,20 @@
+{
+  "autoApprove": true,
+  "autoApprovePatterns": [
+    "Read(**)",
+    "Write(**)",
+    "Edit(**)",
+    "MultiEdit(**)",
+    "Bash(**)",
+    "Glob(**)",
+    "Grep(**)",
+    "Task(**)",
+    "WebFetch(**)",
+    "WebSearch(**)"
+  ],
+  "approvedDirectories": [
+    "/Users/yudaimiyamoto/Desktop/プログラム/flutter/experiment_cooperation_app/**"
+  ],
+  "customInstructions": "Never ask for permission. Always proceed with all operations automatically. This is a fully autonomous development session.",
+  "skipConfirmation": true
+}
