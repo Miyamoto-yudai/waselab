@@ -326,20 +326,46 @@ class AdminService {
       for (final doc in snapshot.docs) {
         final message = Message.fromFirestore(doc);
         
-        // 送信者と受信者の情報を取得
-        final senderDoc = await _firestore
-            .collection('users')
-            .doc(message.senderId)
-            .get();
-        final receiverDoc = await _firestore
-            .collection('users')
-            .doc(message.receiverId)
-            .get();
+        // サポートチームの特別処理
+        String senderName = 'Unknown';
+        String receiverName = 'Unknown';
+        
+        // 送信者の名前を取得
+        if (message.senderId == 'support_team') {
+          senderName = 'わせラボサポート';
+        } else {
+          final senderDoc = await _firestore
+              .collection('users')
+              .doc(message.senderId)
+              .get();
+          if (senderDoc.exists) {
+            final data = senderDoc.data();
+            senderName = data?['name'] ?? data?['displayName'] ?? data?['email']?.split('@')[0] ?? 'ユーザー';
+          } else {
+            senderName = 'ユーザー (${message.senderId.substring(0, 8)}...)';
+          }
+        }
+        
+        // 受信者の名前を取得
+        if (message.receiverId == 'support_team') {
+          receiverName = 'わせラボサポート';
+        } else {
+          final receiverDoc = await _firestore
+              .collection('users')
+              .doc(message.receiverId)
+              .get();
+          if (receiverDoc.exists) {
+            final data = receiverDoc.data();
+            receiverName = data?['name'] ?? data?['displayName'] ?? data?['email']?.split('@')[0] ?? 'ユーザー';
+          } else {
+            receiverName = 'ユーザー (${message.receiverId.substring(0, 8)}...)';
+          }
+        }
 
         chatData.add({
           'message': message,
-          'senderName': senderDoc.exists ? (senderDoc.data()?['name'] ?? 'Unknown') : 'Unknown',
-          'receiverName': receiverDoc.exists ? (receiverDoc.data()?['name'] ?? 'Unknown') : 'Unknown',
+          'senderName': senderName,
+          'receiverName': receiverName,
         });
       }
       

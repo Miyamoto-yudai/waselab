@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../services/auth_service.dart';
@@ -33,6 +34,16 @@ class _AdminSupportChatManagementScreenState extends State<AdminSupportChatManag
     super.initState();
     _initializeAdmin();
     _loadSupportConversations();
+    // 10秒ごとにサポート会話を更新
+    Future.delayed(Duration.zero, () {
+      Timer.periodic(const Duration(seconds: 10), (timer) {
+        if (mounted) {
+          _loadSupportConversations();
+        } else {
+          timer.cancel();
+        }
+      });
+    });
   }
 
   Future<void> _initializeAdmin() async {
@@ -73,8 +84,11 @@ class _AdminSupportChatManagementScreenState extends State<AdminSupportChatManag
       final Map<String, List<QueryDocumentSnapshot>> userMessages = {};
       
       for (var doc in messagesAsReceiver.docs) {
-        final senderId = doc.data()['senderId'] as String;
-        if (senderId != 'support_team') {
+        final data = doc.data();
+        final senderId = data['senderId'] as String;
+        debugPrint('Message from $senderId to support_team: ${data['content']}');
+        debugPrint('  ConversationId: ${data['conversationId']}');
+        if (senderId != 'support_team' && senderId.isNotEmpty) {
           userMessages.putIfAbsent(senderId, () => []).add(doc);
         }
       }
@@ -89,8 +103,11 @@ class _AdminSupportChatManagementScreenState extends State<AdminSupportChatManag
       debugPrint('Found conversations with ${userMessages.length} users');
       
       // 各ユーザーの情報を取得
+      debugPrint('Total unique users found: ${userMessages.keys.length}');
+      debugPrint('User IDs: ${userMessages.keys.toList()}');
+      
       for (var userId in userMessages.keys) {
-        debugPrint('Processing user: $userId');
+        debugPrint('=== Processing user: $userId ===');
         
         if (userId.isNotEmpty) {
           // ユーザー情報を取得
@@ -101,14 +118,21 @@ class _AdminSupportChatManagementScreenState extends State<AdminSupportChatManag
           
           if (userDoc.exists) {
             final userData = userDoc.data()!;
+            debugPrint('User document found for $userId');
+            debugPrint('User data: $userData');
+            
             // AppUserにデータを変換
             if (userData['createdAt'] != null && userData['createdAt'] is! Timestamp) {
               userData['createdAt'] = Timestamp.fromDate(DateTime.now());
             }
+            
+            final userName = userData['name'] ?? userData['displayName'] ?? userData['email']?.split('@')[0] ?? 'ユーザー';
+            debugPrint('Resolved user name: $userName');
+            
             _usersCache[userId] = AppUser(
               uid: userId,
               email: userData['email'] ?? '',
-              name: userData['name'] ?? userData['email']?.split('@')[0] ?? 'ユーザー',
+              name: userName,
               isWasedaUser: userData['isWasedaUser'] ?? false,
               canCreateExperiment: userData['canCreateExperiment'] ?? false,
               createdAt: (userData['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
@@ -117,11 +141,15 @@ class _AdminSupportChatManagementScreenState extends State<AdminSupportChatManag
               badCount: userData['badCount'] ?? 0,
             );
           } else {
+            debugPrint('User document NOT found for $userId');
             // ユーザードキュメントが存在しない場合でも表示できるように
+            final fallbackName = userId.length > 8 ? 'ユーザー (ID: ${userId.substring(0, 8)}...)' : 'ユーザー';
+            debugPrint('Using fallback name: $fallbackName');
+            
             _usersCache[userId] = AppUser(
               uid: userId,
               email: '',
-              name: 'ユーザー (ID: ${userId.substring(0, 8)}...)',
+              name: fallbackName,
               isWasedaUser: false,
               canCreateExperiment: false,
               createdAt: DateTime.now(),
@@ -166,10 +194,20 @@ class _AdminSupportChatManagementScreenState extends State<AdminSupportChatManag
           }
         }
       }
+      
+      debugPrint('=== Final _usersCache content ===');
+      debugPrint('Total cached users: ${_usersCache.length}');
+      _usersCache.forEach((id, user) {
+        debugPrint('  User ID: $id, Name: ${user.name}');
+      });
 
-      if (mounted) setState(() {});
+      if (mounted) {
+        debugPrint('Calling setState to update UI');
+        setState(() {});
+      }
     } catch (e) {
       debugPrint('サポート会話の読み込みエラー: $e');
+      debugPrint('Error stack trace: $e');
     }
   }
 
