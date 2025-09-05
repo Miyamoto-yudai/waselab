@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../services/admin_service.dart';
+import '../../utils/create_test_data.dart';
 import 'admin_user_management_screen.dart';
 import 'admin_chat_monitor_screen.dart';
 import 'admin_support_message_screen.dart';
@@ -328,16 +329,86 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
                       children: [
                         Expanded(
                           child: OutlinedButton.icon(
-                            onPressed: () {
-                              // TODO: データベースバックアップ機能
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text('データベースバックアップ機能は実装予定です'),
+                            onPressed: () async {
+                              // テストデータ作成確認ダイアログ
+                              final confirm = await showDialog<bool>(
+                                context: context,
+                                builder: (context) => AlertDialog(
+                                  backgroundColor: Colors.grey[850],
+                                  title: const Text(
+                                    'テストデータ作成',
+                                    style: TextStyle(color: Colors.white),
+                                  ),
+                                  content: const Text(
+                                    '10件のテスト実験データを作成します。\n実験者は「宮本雄大」で設定されます。\n\n続行しますか？',
+                                    style: TextStyle(color: Colors.white70),
+                                  ),
+                                  actions: [
+                                    TextButton(
+                                      onPressed: () => Navigator.pop(context, false),
+                                      child: const Text('キャンセル'),
+                                    ),
+                                    ElevatedButton(
+                                      onPressed: () => Navigator.pop(context, true),
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: Colors.blue,
+                                      ),
+                                      child: const Text('作成する'),
+                                    ),
+                                  ],
                                 ),
                               );
+                              
+                              if (confirm == true) {
+                                // ローディング表示
+                                showDialog(
+                                  context: context,
+                                  barrierDismissible: false,
+                                  builder: (context) => const Center(
+                                    child: Card(
+                                      child: Padding(
+                                        padding: EdgeInsets.all(20),
+                                        child: Column(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            CircularProgressIndicator(),
+                                            SizedBox(height: 16),
+                                            Text('テストデータを作成中...'),
+                                          ],
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                );
+                                
+                                try {
+                                  await TestDataCreator.createTestExperiments();
+                                  
+                                  if (mounted) {
+                                    Navigator.pop(context); // ローディングダイアログを閉じる
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(
+                                        content: Text('テストデータの作成が完了しました！'),
+                                        backgroundColor: Colors.green,
+                                      ),
+                                    );
+                                    _loadStatistics(); // 統計を更新
+                                  }
+                                } catch (e) {
+                                  if (mounted) {
+                                    Navigator.pop(context); // ローディングダイアログを閉じる
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: Text('エラー: $e'),
+                                        backgroundColor: Colors.red,
+                                      ),
+                                    );
+                                  }
+                                }
+                              }
                             },
-                            icon: const Icon(Icons.backup),
-                            label: const Text('バックアップ'),
+                            icon: const Icon(Icons.science),
+                            label: const Text('テストデータ'),
                             style: OutlinedButton.styleFrom(
                               padding: const EdgeInsets.symmetric(vertical: 12),
                             ),
