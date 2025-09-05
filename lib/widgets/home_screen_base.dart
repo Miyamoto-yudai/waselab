@@ -307,10 +307,10 @@ class _HomeScreenBaseState extends State<HomeScreenBase> {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
         decoration: BoxDecoration(
           color: isSelected ? const Color(0xFF8E1728) : Colors.grey.shade200,
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(15),
         ),
         child: Text(
           label,
@@ -488,7 +488,7 @@ class _HomeScreenBaseState extends State<HomeScreenBase> {
           // 検索バー、日付フィルター、種別切り替えボタン、ソート選択
           AnimatedContainer(
             duration: const Duration(milliseconds: 200),
-            height: _isHeaderVisible ? 180 : 0,
+            height: _isHeaderVisible ? 160 : 0,
             child: SingleChildScrollView(
               physics: const NeverScrollableScrollPhysics(),
               child: AnimatedOpacity(
@@ -499,7 +499,7 @@ class _HomeScreenBaseState extends State<HomeScreenBase> {
                     // 参加可能な実験のみ表示ボタン
                     Container(
                       color: Colors.white,
-                      padding: const EdgeInsets.only(left: 16, right: 16, top: 8, bottom: 4),
+                      padding: const EdgeInsets.only(left: 16, right: 16, top: 4, bottom: 2),
                       child: Row(
                         children: [
                           Expanded(
@@ -577,12 +577,12 @@ class _HomeScreenBaseState extends State<HomeScreenBase> {
                     // 検索バー
                     Container(
                       color: Colors.white,
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
                       child: Row(
                         children: [
                           Expanded(
                             child: Container(
-                              height: 44,
+                              height: 40,
                               decoration: BoxDecoration(
                                 color: Colors.grey.shade100,
                                 borderRadius: BorderRadius.circular(22),
@@ -729,24 +729,25 @@ class _HomeScreenBaseState extends State<HomeScreenBase> {
                     // タイプフィルターとソートを同じ行に配置
                     Container(
                       color: Colors.white,
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      padding: const EdgeInsets.only(left: 16, right: 16, top: 4, bottom: 4),
                       child: Row(
                         children: [
                           // タイプフィルター（コンパクト版）
                           Expanded(
-                            child: SingleChildScrollView(
-                              scrollDirection: Axis.horizontal,
-                              child: Row(
+                            child: Container(
+                              height: 30,
+                              child: ListView(
+                                scrollDirection: Axis.horizontal,
                                 children: [
                                   _buildCompactFilterChip('すべて', _selectedType == null, () {
                                     setState(() {
                                       _selectedType = null;
                                     });
                                   }),
-                                  const SizedBox(width: 6),
+                                  const SizedBox(width: 4),
                                   ...ExperimentType.values.map((type) {
                                     return Padding(
-                                      padding: const EdgeInsets.only(right: 6),
+                                      padding: const EdgeInsets.only(right: 4),
                                       child: _buildCompactFilterChip(type.label, _selectedType == type, () {
                                         setState(() {
                                           _selectedType = _selectedType == type ? null : type;
@@ -761,8 +762,8 @@ class _HomeScreenBaseState extends State<HomeScreenBase> {
                           const SizedBox(width: 8),
                           // ソート選択
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 10),
-                            height: 32,
+                            padding: const EdgeInsets.symmetric(horizontal: 8),
+                            height: 30,
                             decoration: BoxDecoration(
                               borderRadius: BorderRadius.circular(14),
                               border: Border.all(color: Colors.grey.shade300),
