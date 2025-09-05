@@ -62,8 +62,9 @@ service cloud.firestore {
       allow create: if isAuthenticated();
       // Allow any authenticated user to update (for joining experiments)
       allow update: if isAuthenticated();
+      // Allow delete if creator or admin
       allow delete: if isAuthenticated() && 
-        request.auth.uid == resource.data.creatorId;
+        (request.auth.uid == resource.data.creatorId || isAdmin());
     }
     
     // Conversations collection - users can only access conversations they're part of
@@ -141,11 +142,11 @@ service cloud.firestore {
       // 認証済みユーザーは読み取り可能
       allow read: if isAuthenticated();
       
-      // 実験作成者のみ作成・更新・削除可能
-      // （実際には実験作成時に自動生成されるため、通常はサービス経由で作成）
+      // 認証済みユーザーは作成・更新可能
       allow create: if isAuthenticated();
       allow update: if isAuthenticated();
-      allow delete: if isAuthenticated();
+      // 認証済みユーザーまたは管理者は削除可能
+      allow delete: if isAuthenticated() || isAdmin();
     }
     
     // Experiment reservations collection - 実験予約

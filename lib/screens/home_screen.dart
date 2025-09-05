@@ -6,6 +6,7 @@ import '../models/app_user.dart';
 import '../services/auth_service.dart';
 import '../services/message_service.dart';
 import '../utils/test_firestore.dart';
+import '../utils/test_firestore_debug.dart';
 import '../widgets/home_screen_base.dart';
 import 'create_experiment_screen.dart';
 import 'login_screen.dart';
@@ -42,6 +43,8 @@ class _HomeScreenState extends State<HomeScreen> {
       // デバッグ用：Firestoreの状態を確認
       if (!kReleaseMode) {
         await TestFirestore.checkExperiments();
+        // 詳細なデバッグ情報を出力
+        await FirestoreDebugger.generateFullReport();
       }
       
       _loadExperiments();

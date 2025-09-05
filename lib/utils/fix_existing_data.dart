@@ -1,0 +1,104 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/foundation.dart';
+
+/// 既存の実験データを修正するユーティリティ
+class ExistingDataFixer {
+  static final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  
+  /// requirements フィールドが文字列になっているデータを配列に変換
+  static Future<int> fixRequirementsField() async {
+    try {
+      debugPrint('===== requirements フィールドの修正開始 =====');
+      
+      final snapshot = await _firestore.collection('experiments').get();
+      int fixedCount = 0;
+      
+      for (final doc in snapshot.docs) {
+        final data = doc.data();
+        final requirements = data['requirements'];
+        
+        // requirementsが文字列の場合、配列に変換
+        if (requirements is String) {
+          debugPrint('修正対象: ${doc.id} - ${data['title']}');
+          
+          // 改行で分割して配列に変換
+          final requirementsList = requirements
+              .split('\n')
+              .map((s) => s.trim())
+              .where((s) => s.isNotEmpty)
+              .toList();
+          
+          // Firestoreを更新
+          await doc.reference.update({
+            'requirements': requirementsList,
+          });
+          
+          fixedCount++;
+          debugPrint('  → 修正完了: $requirementsList');
+        }
+      }
+      
+      debugPrint('===== 修正完了: $fixedCount件 =====');
+      return fixedCount;
+    } catch (e) {
+      debugPrint('エラー: $e');
+      throw e;
+    }
+  }
+  
+  /// すべての実験データのフィールドを検証
+  static Future<void> validateAllExperiments() async {
+    try {
+      debugPrint('===== 実験データの検証 =====');
+      
+      final snapshot = await _firestore.collection('experiments').get();
+      int validCount = 0;
+      int invalidCount = 0;
+      
+      for (final doc in snapshot.docs) {
+        final data = doc.data();
+        bool isValid = true;
+        List<String> issues = [];
+        
+        // requirements のチェック
+        if (data['requirements'] != null && data['requirements'] is! List) {
+          issues.add('requirements が配列ではない');
+          isValid = false;
+        }
+        
+        // creatorId のチェック
+        if (data['creatorId'] == null || data['creatorId'].toString().isEmpty) {
+          issues.add('creatorId が空');
+          isValid = false;
+        }
+        
+        // 必須フィールドのチェック
+        final requiredFields = ['title', 'description', 'createdAt'];
+        for (final field in requiredFields) {
+          if (data[field] == null) {
+            issues.add('$field が null');
+            isValid = false;
+          }
+        }
+        
+        if (isValid) {
+          validCount++;
+          debugPrint('✅ ${data['title']} (${doc.id})');
+        } else {
+          invalidCount++;
+          debugPrint('❌ ${data['title']} (${doc.id})');
+          for (final issue in issues) {
+            debugPrint('   - $issue');
+          }
+        }
+      }
+      
+      debugPrint('\n===== 検証結果 =====');
+      debugPrint('有効: $validCount件');
+      debugPrint('無効: $invalidCount件');
+      debugPrint('===================');
+    } catch (e) {
+      debugPrint('エラー: $e');
+    }
+  }
+}

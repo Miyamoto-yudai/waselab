@@ -1,9 +1,21 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class TestDataCreator {
   /// 3件のサンプル実験データを作成
   static Future<void> createSampleExperiments() async {
     final firestore = FirebaseFirestore.instance;
+    final currentUser = FirebaseAuth.instance.currentUser;
+    
+    // ログインユーザーがいない場合はエラー
+    if (currentUser == null) {
+      throw Exception('ログインが必要です');
+    }
+    
+    final creatorId = currentUser.uid;
+    final creatorEmail = currentUser.email ?? 'unknown@example.com';
+    
+    print('テストデータ作成: creatorId=$creatorId, email=$creatorEmail');
     
     // 最初の3件のみを使用
     final sampleExperiments = [
@@ -53,13 +65,52 @@ class TestDataCreator {
       final experimentStart = recruitmentStart.add(const Duration(days: 14));
       final experimentEnd = experimentStart.add(const Duration(days: 30));
       
+      // 予約候補日時の生成（dateTimeSlots）
+      final List<Map<String, dynamic>> dateTimeSlots = [];
+      for (int day = 0; day < 10; day++) { // 10日分のスロットを生成
+        final slotDate = experimentStart.add(Duration(days: day));
+        // 平日のみスロットを追加
+        if (slotDate.weekday <= 5) {
+          // 午前スロット (10:00-11:00)
+          dateTimeSlots.add({
+            'date': slotDate.toIso8601String(),
+            'startHour': 10,
+            'startMinute': 0,
+            'endHour': 11,
+            'endMinute': 0,
+            'maxCapacity': 2,
+            'isAvailable': true,
+          });
+          // 午後スロット (14:00-15:00)
+          dateTimeSlots.add({
+            'date': slotDate.toIso8601String(),
+            'startHour': 14,
+            'startMinute': 0,
+            'endHour': 15,
+            'endMinute': 0,
+            'maxCapacity': 2,
+            'isAvailable': true,
+          });
+          // 夕方スロット (16:00-17:00)
+          dateTimeSlots.add({
+            'date': slotDate.toIso8601String(),
+            'startHour': 16,
+            'startMinute': 0,
+            'endHour': 17,
+            'endMinute': 0,
+            'maxCapacity': 1,
+            'isAvailable': true,
+          });
+        }
+      }
+      
       // Firestoreにデータを追加（Timestampを使用）
       await firestore.collection('experiments').add({
         'title': exp['title'],
         'description': exp['description'],
         'requirements': exp['requirements'] is String 
-          ? exp['requirements'] 
-          : exp['requirements'].toString(), // requirementsを文字列として保存
+          ? (exp['requirements'] as String).split('\n').map((s) => s.trim()).where((s) => s.isNotEmpty).toList()
+          : List<String>.from(exp['requirements'] as List), // requirementsを配列として保存
         'duration': exp['duration'],
         'reward': exp['reward'],
         'location': exp['location'],
@@ -80,11 +131,12 @@ class TestDataCreator {
         'experimentEnd': Timestamp.fromDate(experimentEnd),
         'experimentPeriodStart': Timestamp.fromDate(experimentStart), // 重複フィールド（互換性のため）
         'experimentPeriodEnd': Timestamp.fromDate(experimentEnd),
+        'dateTimeSlots': dateTimeSlots, // 予約候補日時を追加
         'createdAt': Timestamp.fromDate(now),
         'updatedAt': Timestamp.fromDate(now),
-        'creatorId': 'yudai5287@ruri.waseda.jp', // creatorIdフィールドを使用
-        'researcherName': '宮本雄大',
-        'researcherEmail': 'yudai5287@ruri.waseda.jp',
+        'creatorId': creatorId, // 現在のユーザーIDを使用
+        'researcherName': 'テスト研究者',
+        'researcherEmail': creatorEmail,
       });
       
       print('サンプル実験データを作成しました: ${exp['title']}');
@@ -96,6 +148,17 @@ class TestDataCreator {
   /// 30件のテスト実験データを作成
   static Future<void> createTestExperiments() async {
     final firestore = FirebaseFirestore.instance;
+    final currentUser = FirebaseAuth.instance.currentUser;
+    
+    // ログインユーザーがいない場合はエラー
+    if (currentUser == null) {
+      throw Exception('ログインが必要です');
+    }
+    
+    final creatorId = currentUser.uid;
+    final creatorEmail = currentUser.email ?? 'unknown@example.com';
+    
+    print('テストデータ作成: creatorId=$creatorId, email=$creatorEmail');
     
     // テスト実験データのリスト
     final experiments = [
@@ -422,6 +485,55 @@ class TestDataCreator {
         final experimentStart = recruitmentEnd.add(const Duration(days: 5));
         final experimentEnd = experimentStart.add(const Duration(days: 30));
         
+        // 予約候補日時の生成（dateTimeSlots）
+        final List<Map<String, dynamic>> dateTimeSlots = [];
+        for (int day = 0; day < 14; day++) { // 14日分のスロットを生成
+          final slotDate = experimentStart.add(Duration(days: day));
+          // 平日のみスロットを追加
+          if (slotDate.weekday <= 5) {
+            // 朝スロット (9:00-10:30)
+            dateTimeSlots.add({
+              'date': slotDate.toIso8601String(),
+              'startHour': 9,
+              'startMinute': 0,
+              'endHour': 10,
+              'endMinute': 30,
+              'maxCapacity': 3,
+              'isAvailable': true,
+            });
+            // 午前スロット (11:00-12:30)
+            dateTimeSlots.add({
+              'date': slotDate.toIso8601String(),
+              'startHour': 11,
+              'startMinute': 0,
+              'endHour': 12,
+              'endMinute': 30,
+              'maxCapacity': 2,
+              'isAvailable': true,
+            });
+            // 午後スロット (13:30-15:00)
+            dateTimeSlots.add({
+              'date': slotDate.toIso8601String(),
+              'startHour': 13,
+              'startMinute': 30,
+              'endHour': 15,
+              'endMinute': 0,
+              'maxCapacity': 2,
+              'isAvailable': true,
+            });
+            // 夕方スロット (15:30-17:00)
+            dateTimeSlots.add({
+              'date': slotDate.toIso8601String(),
+              'startHour': 15,
+              'startMinute': 30,
+              'endHour': 17,
+              'endMinute': 0,
+              'maxCapacity': 2,
+              'isAvailable': true,
+            });
+          }
+        }
+        
         // タイムスロットを生成（平日の午後）
         final Map<String, dynamic> timeSlots = {};
         for (int day = 0; day < 30; day++) {
@@ -441,8 +553,8 @@ class TestDataCreator {
           'title': exp['title'],
           'description': exp['description'],
           'requirements': exp['requirements'] is String 
-            ? exp['requirements'] 
-            : exp['requirements'].toString(), // requirementsを文字列として保存
+            ? (exp['requirements'] as String).split('\n').map((s) => s.trim()).where((s) => s.isNotEmpty).toList()
+            : List<String>.from(exp['requirements'] as List), // requirementsを配列として保存
           'duration': exp['duration'],
           'reward': exp['reward'],
           'location': exp['location'],
@@ -460,9 +572,10 @@ class TestDataCreator {
           'experimentEnd': Timestamp.fromDate(experimentEnd),
           'experimentPeriodStart': Timestamp.fromDate(experimentStart), // 実験開始日
           'experimentPeriodEnd': Timestamp.fromDate(experimentEnd), // 実験終了日
+          'dateTimeSlots': dateTimeSlots, // 予約候補日時を追加
           'timeSlots': timeSlots,
-          'creatorId': 'yudai5287@ruri.waseda.jp', // creatorIdフィールドを使用
-          'creatorName': '宮本雄大',
+          'creatorId': creatorId, // 現在のユーザーIDを使用
+          'creatorName': 'テスト研究者',
           'labName': '早稲田大学 ${exp['category']}研究室', // 研究室名
           'createdAt': Timestamp.fromDate(now),
           'updatedAt': Timestamp.fromDate(now),
@@ -472,7 +585,7 @@ class TestDataCreator {
           'allowFlexibleSchedule': true, // 柔軟なスケジュール対応
           'tags': ['早稲田大学', '実験', exp['category'].toString()],
           'imageUrl': '',
-          'contactEmail': 'yudai5287@ruri.waseda.jp',
+          'contactEmail': creatorEmail,
           'ethicsApproval': '早稲田大学倫理委員会承認済み（承認番号: 2024-TEST-${(i + 1).toString().padLeft(3, '0')}）',
           'notes': 'テスト用データです。実際の実験ではありません。',
         };

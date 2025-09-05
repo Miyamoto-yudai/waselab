@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import '../../services/admin_service.dart';
 import '../../utils/create_test_data.dart';
+import '../../utils/create_test_data_fixed.dart';
+import '../test_debug_screen.dart';
 import 'admin_user_management_screen.dart';
 import 'admin_chat_monitor_screen.dart';
 import 'admin_support_message_screen.dart';
@@ -126,6 +128,16 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
         backgroundColor: Colors.black,
         title: const Text('管理者ダッシュボード'),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.bug_report),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const TestDebugScreen()),
+              );
+            },
+            tooltip: 'デバッグツール',
+          ),
           IconButton(
             icon: const Icon(Icons.refresh),
             onPressed: _loadStatistics,
@@ -421,7 +433,8 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
                                 
                                 try {
                                   if (option == 'sample') {
-                                    await TestDataCreator.createSampleExperiments();
+                                    // 修正版を使用（正確に3件のみ作成）
+                                    await TestDataCreatorFixed.createExactThreeExperiments();
                                   } else {
                                     await TestDataCreator.createTestExperiments();
                                   }

@@ -134,7 +134,11 @@ class Experiment {
       labName: data['labName'],
       duration: data['duration'],
       maxParticipants: data['maxParticipants'],
-      requirements: List<String>.from(data['requirements'] ?? []),
+      requirements: data['requirements'] != null
+        ? (data['requirements'] is String 
+            ? [data['requirements'] as String]  // 文字列の場合は配列に変換
+            : List<String>.from(data['requirements'] as List))
+        : [],
       participants: List<String>.from(data['participants'] ?? []),
       timeSlots: (data['timeSlots'] as List<dynamic>?)
           ?.map((slot) => TimeSlot.fromJson(slot as Map<String, dynamic>))
