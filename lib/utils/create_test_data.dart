@@ -53,11 +53,13 @@ class TestDataCreator {
       final experimentStart = recruitmentStart.add(const Duration(days: 14));
       final experimentEnd = experimentStart.add(const Duration(days: 30));
       
-      // Firestoreにデータを追加
+      // Firestoreにデータを追加（Timestampを使用）
       await firestore.collection('experiments').add({
         'title': exp['title'],
         'description': exp['description'],
-        'requirements': exp['requirements'],
+        'requirements': exp['requirements'] is String 
+          ? exp['requirements'] 
+          : exp['requirements'].toString(), // requirementsを文字列として保存
         'duration': exp['duration'],
         'reward': exp['reward'],
         'location': exp['location'],
@@ -70,17 +72,17 @@ class TestDataCreator {
         'isPaid': (exp['reward'] as int) > 0, // 有償かどうか
         'allowFlexibleSchedule': true, // 柔軟なスケジュール対応
         'status': 'recruiting',
-        'recruitmentStart': recruitmentStart,
-        'recruitmentEnd': recruitmentEnd,
-        'recruitmentStartDate': recruitmentStart, // 重複フィールド（互換性のため）
-        'recruitmentEndDate': recruitmentEnd,
-        'experimentStart': experimentStart,
-        'experimentEnd': experimentEnd,
-        'experimentPeriodStart': experimentStart, // 重複フィールド（互換性のため）
-        'experimentPeriodEnd': experimentEnd,
-        'createdAt': now,
-        'updatedAt': now,
-        'researcherId': 'yudai5287@ruri.waseda.jp',
+        'recruitmentStart': Timestamp.fromDate(recruitmentStart),
+        'recruitmentEnd': Timestamp.fromDate(recruitmentEnd),
+        'recruitmentStartDate': Timestamp.fromDate(recruitmentStart), // 重複フィールド（互換性のため）
+        'recruitmentEndDate': Timestamp.fromDate(recruitmentEnd),
+        'experimentStart': Timestamp.fromDate(experimentStart),
+        'experimentEnd': Timestamp.fromDate(experimentEnd),
+        'experimentPeriodStart': Timestamp.fromDate(experimentStart), // 重複フィールド（互換性のため）
+        'experimentPeriodEnd': Timestamp.fromDate(experimentEnd),
+        'createdAt': Timestamp.fromDate(now),
+        'updatedAt': Timestamp.fromDate(now),
+        'creatorId': 'yudai5287@ruri.waseda.jp', // creatorIdフィールドを使用
         'researcherName': '宮本雄大',
         'researcherEmail': 'yudai5287@ruri.waseda.jp',
       });
@@ -438,7 +440,9 @@ class TestDataCreator {
         final experimentData = {
           'title': exp['title'],
           'description': exp['description'],
-          'requirements': exp['requirements'],
+          'requirements': exp['requirements'] is String 
+            ? exp['requirements'] 
+            : exp['requirements'].toString(), // requirementsを文字列として保存
           'duration': exp['duration'],
           'reward': exp['reward'],
           'location': exp['location'],
@@ -448,20 +452,20 @@ class TestDataCreator {
           'maxParticipants': exp['participantCount'], // 最大参加者数
           'participants': [], // 参加者リスト（空配列で初期化）
           'type': exp['isOnline'] == true ? 'online' : 'onsite', // 実験タイプ
-          'recruitmentStart': recruitmentStart,
-          'recruitmentEnd': recruitmentEnd,
-          'recruitmentStartDate': recruitmentStart, // 募集開始日も追加
-          'recruitmentEndDate': recruitmentEnd, // 募集終了日も追加
-          'experimentStart': experimentStart,
-          'experimentEnd': experimentEnd,
-          'experimentPeriodStart': experimentStart, // 実験開始日
-          'experimentPeriodEnd': experimentEnd, // 実験終了日
+          'recruitmentStart': Timestamp.fromDate(recruitmentStart),
+          'recruitmentEnd': Timestamp.fromDate(recruitmentEnd),
+          'recruitmentStartDate': Timestamp.fromDate(recruitmentStart), // 募集開始日も追加
+          'recruitmentEndDate': Timestamp.fromDate(recruitmentEnd), // 募集終了日も追加
+          'experimentStart': Timestamp.fromDate(experimentStart),
+          'experimentEnd': Timestamp.fromDate(experimentEnd),
+          'experimentPeriodStart': Timestamp.fromDate(experimentStart), // 実験開始日
+          'experimentPeriodEnd': Timestamp.fromDate(experimentEnd), // 実験終了日
           'timeSlots': timeSlots,
-          'createdBy': 'yudai5287@ruri.waseda.jp',
+          'creatorId': 'yudai5287@ruri.waseda.jp', // creatorIdフィールドを使用
           'creatorName': '宮本雄大',
           'labName': '早稲田大学 ${exp['category']}研究室', // 研究室名
-          'createdAt': now,
-          'updatedAt': now,
+          'createdAt': Timestamp.fromDate(now),
+          'updatedAt': Timestamp.fromDate(now),
           'status': 'recruiting',
           'isOnline': exp['isOnline'] ?? false,
           'isPaid': (exp['reward'] as int) > 0, // 有償かどうか
