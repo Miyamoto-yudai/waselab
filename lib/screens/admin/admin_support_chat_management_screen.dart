@@ -32,12 +32,15 @@ class _AdminSupportChatManagementScreenState extends State<AdminSupportChatManag
   @override
   void initState() {
     super.initState();
+    debugPrint('===== AdminSupportChatManagementScreen initState =====');
     _initializeAdmin();
+    debugPrint('Calling _loadSupportConversations from initState...');
     _loadSupportConversations();
     // 10秒ごとにサポート会話を更新
     Future.delayed(Duration.zero, () {
       Timer.periodic(const Duration(seconds: 10), (timer) {
         if (mounted) {
+          debugPrint('Periodic reload of support conversations...');
           _loadSupportConversations();
         } else {
           timer.cancel();
@@ -56,6 +59,7 @@ class _AdminSupportChatManagementScreenState extends State<AdminSupportChatManag
   }
 
   Future<void> _loadSupportConversations() async {
+    debugPrint('===== START _loadSupportConversations =====');
     try {
       _unreadCounts.clear();
       _lastMessages.clear();
@@ -64,18 +68,46 @@ class _AdminSupportChatManagementScreenState extends State<AdminSupportChatManag
       // メッセージコレクションから直接support_team関連のメッセージを取得
       debugPrint('Loading support messages directly from messages collection...');
       
-      // support_teamが受信者または送信者のメッセージを取得
-      final messagesAsReceiver = await FirebaseFirestore.instance
-          .collection('messages')
-          .where('receiverId', isEqualTo: 'support_team')
-          .orderBy('createdAt', descending: true)
-          .get();
+      QuerySnapshot messagesAsReceiver;
+      QuerySnapshot messagesAsSender;
       
-      final messagesAsSender = await FirebaseFirestore.instance
-          .collection('messages')
-          .where('senderId', isEqualTo: 'support_team')
-          .orderBy('createdAt', descending: true)
-          .get();
+      try {
+        // support_teamが受信者のメッセージを取得
+        debugPrint('Querying messages where receiverId == support_team...');
+        messagesAsReceiver = await FirebaseFirestore.instance
+            .collection('messages')
+            .where('receiverId', isEqualTo: 'support_team')
+            .orderBy('createdAt', descending: true)
+            .get();
+        debugPrint('Query 1 successful: ${messagesAsReceiver.docs.length} docs');
+      } catch (e) {
+        debugPrint('ERROR querying receiverId: $e');
+        // インデックスエラーの場合、orderByなしで試す
+        messagesAsReceiver = await FirebaseFirestore.instance
+            .collection('messages')
+            .where('receiverId', isEqualTo: 'support_team')
+            .get();
+        debugPrint('Fallback query 1: ${messagesAsReceiver.docs.length} docs');
+      }
+      
+      try {
+        // support_teamが送信者のメッセージを取得
+        debugPrint('Querying messages where senderId == support_team...');
+        messagesAsSender = await FirebaseFirestore.instance
+            .collection('messages')
+            .where('senderId', isEqualTo: 'support_team')
+            .orderBy('createdAt', descending: true)
+            .get();
+        debugPrint('Query 2 successful: ${messagesAsSender.docs.length} docs');
+      } catch (e) {
+        debugPrint('ERROR querying senderId: $e');
+        // インデックスエラーの場合、orderByなしで試す
+        messagesAsSender = await FirebaseFirestore.instance
+            .collection('messages')
+            .where('senderId', isEqualTo: 'support_team')
+            .get();
+        debugPrint('Fallback query 2: ${messagesAsSender.docs.length} docs');
+      }
       
       debugPrint('Found ${messagesAsReceiver.docs.length} messages to support_team');
       debugPrint('Found ${messagesAsSender.docs.length} messages from support_team');
@@ -84,8 +116,8 @@ class _AdminSupportChatManagementScreenState extends State<AdminSupportChatManag
       final Map<String, List<QueryDocumentSnapshot>> userMessages = {};
       
       for (var doc in messagesAsReceiver.docs) {
-        final data = doc.data();
-        final senderId = data['senderId'] as String;
+        final data = doc.data() as Map<String, dynamic>;
+        final senderId = data['senderId'] as String? ?? '';
         debugPrint('Message from $senderId to support_team: ${data['content']}');
         debugPrint('  ConversationId: ${data['conversationId']}');
         if (senderId != 'support_team' && senderId.isNotEmpty) {
@@ -94,7 +126,8 @@ class _AdminSupportChatManagementScreenState extends State<AdminSupportChatManag
       }
       
       for (var doc in messagesAsSender.docs) {
-        final receiverId = doc.data()['receiverId'] as String;
+        final data = doc.data() as Map<String, dynamic>;
+        final receiverId = data['receiverId'] as String? ?? '';
         if (receiverId != 'support_team') {
           userMessages.putIfAbsent(receiverId, () => []).add(doc);
         }

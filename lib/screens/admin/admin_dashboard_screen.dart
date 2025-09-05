@@ -4,7 +4,7 @@ import 'admin_user_management_screen.dart';
 import 'admin_chat_monitor_screen.dart';
 import 'admin_support_message_screen.dart';
 import 'admin_announcement_screen.dart';
-import 'admin_support_chat_management_screen.dart';
+import 'admin_support_chat_management_screen_v2.dart';
 import '../login_screen.dart';
 
 /// 管理者ダッシュボード画面
@@ -240,7 +240,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                         Navigator.push(
                           context,
                           MaterialPageRoute(
-                            builder: (context) => const AdminSupportChatManagementScreen(),
+                            builder: (context) => const AdminSupportChatManagementScreenV2(),
                           ),
                         );
                       },
