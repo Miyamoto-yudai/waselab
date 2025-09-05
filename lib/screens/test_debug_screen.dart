@@ -96,7 +96,7 @@ class _TestDebugScreenState extends State<TestDebugScreen> {
           ),
           TextButton(
             onPressed: () => Navigator.pop(context, 'diverse'),
-            child: const Text('多様(10件)'),
+            child: const Text('多様(30件)'),
           ),
         ],
       ),
@@ -118,9 +118,9 @@ class _TestDebugScreenState extends State<TestDebugScreen> {
           _debugOutput += '各実験に予約スロットも作成されました。\n';
         });
       } else {
-        await TestDataCreatorV2.createDiverseExperiments(count: 10);
+        await TestDataCreatorV2.createDiverseExperiments(count: 30);
         setState(() {
-          _debugOutput = '10件の多様なテストデータを作成しました！\n';
+          _debugOutput = '30件の多様なテストデータを作成しました！\n';
           _debugOutput += '各実験に予約スロットも作成されました。\n';
         });
       }

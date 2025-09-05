@@ -10,6 +10,13 @@ class TestDataCreatorV2 {
   /// 実験タイプのリスト
   static final List<String> experimentTypes = ['online', 'onsite', 'survey'];
   
+  /// 実験タイプの分配比率
+  static final Map<String, double> typeDistribution = {
+    'survey': 0.30,  // 30%
+    'online': 0.35,  // 35%
+    'onsite': 0.35,  // 35%
+  };
+  
   /// 場所のリスト
   static final List<Map<String, String>> locations = [
     {'name': '早稲田大学 早稲田キャンパス', 'building': '3号館', 'room': '301実験室'},
@@ -59,10 +66,42 @@ class TestDataCreatorV2 {
       'duration': [30, 45, 60],
       'reward': [1000, 1200, 1500],
     },
+    {
+      'title': '{topic}に関するアンケート調査',
+      'topic': ['購買行動', '食生活', '運動習慣', 'メディア利用', '睡眠パターン'],
+      'duration': [10, 15, 20],
+      'reward': [500, 500, 1000],
+    },
+    {
+      'title': '{method}を用いた{effect}の検証',
+      'method': ['ゲーミフィケーション', 'マインドフルネス', 'フィードバック', 'ピアラーニング', 'AI支援'],
+      'effect': ['学習効果', 'モチベーション向上', 'ストレス軽減', 'パフォーマンス改善', '創造性向上'],
+      'duration': [40, 50, 60],
+      'reward': [1200, 1500, 2000],
+    },
+    {
+      'title': '{device}デバイスの{aspect}評価実験',
+      'device': ['ウェアラブル', 'スマート家電', 'IoT', 'ヘルスケア', 'フィットネス'],
+      'aspect': ['使いやすさ', '精度', '快適性', 'デザイン', '機能性'],
+      'duration': [30, 40, 50],
+      'reward': [1000, 1200, 1500],
+    },
+    {
+      'title': 'オンライン{activity}の効果測定',
+      'activity': ['会議', '授業', 'ワークショップ', 'カウンセリング', 'トレーニング'],
+      'duration': [60, 90, 120],
+      'reward': [1500, 2000, 3000],
+    },
+    {
+      'title': '{field}分野における意識調査',
+      'field': ['環境問題', 'ジェンダー', 'キャリア', 'テクノロジー', '健康意識'],
+      'duration': [15, 20, 25],
+      'reward': [500, 500, 1000],
+    },
   ];
   
   /// 多様な実験データを作成
-  static Future<void> createDiverseExperiments({int count = 10}) async {
+  static Future<void> createDiverseExperiments({int count = 30}) async {
     final currentUser = FirebaseAuth.instance.currentUser;
     if (currentUser == null) {
       throw Exception('ログインが必要です');
@@ -74,10 +113,42 @@ class TestDataCreatorV2 {
     
     print('多様な実験データを$count件作成開始...');
     
+    // タイプ別の作成数を計算
+    final surveyCount = (count * typeDistribution['survey']!).round();
+    final onlineCount = (count * typeDistribution['online']!).round();
+    final onsiteCount = count - surveyCount - onlineCount;
+    
+    print('内訳: アンケート=$surveyCount件, オンライン=$onlineCount件, 対面=$onsiteCount件');
+    
+    // タイプ別のリストを作成
+    final List<String> typeSequence = [];
+    typeSequence.addAll(List.filled(surveyCount, 'survey'));
+    typeSequence.addAll(List.filled(onlineCount, 'online'));
+    typeSequence.addAll(List.filled(onsiteCount, 'onsite'));
+    typeSequence.shuffle(_random);
+    
     for (int i = 0; i < count; i++) {
       try {
-        // ランダムにテンプレートを選択
-        final template = experimentTemplates[_random.nextInt(experimentTemplates.length)];
+        // 実験タイプを順番に取得
+        final experimentType = typeSequence[i];
+        final isOnline = experimentType == 'online';
+        final isSurvey = experimentType == 'survey';
+        
+        // アンケート調査の場合は特定のテンプレートを優先
+        List<Map<String, dynamic>> availableTemplates = experimentTemplates;
+        if (isSurvey) {
+          // アンケート調査向けのテンプレート（タイトルに「調査」が含まれるもの）
+          availableTemplates = experimentTemplates.where((t) => 
+            t['title'].toString().contains('調査') || 
+            t['title'].toString().contains('アンケート')
+          ).toList();
+          if (availableTemplates.isEmpty) {
+            availableTemplates = experimentTemplates;
+          }
+        }
+        
+        // テンプレートを選択
+        final template = availableTemplates[_random.nextInt(availableTemplates.length)];
         
         // タイトルを生成
         String title = template['title'] as String;
@@ -88,11 +159,6 @@ class TestDataCreatorV2 {
             title = title.replaceAll('{$key}', selected);
           }
         }
-        
-        // 実験タイプをランダムに選択
-        final experimentType = experimentTypes[_random.nextInt(experimentTypes.length)];
-        final isOnline = experimentType == 'online';
-        final isSurvey = experimentType == 'survey';
         
         // 場所を選択（オンラインの場合は固定）
         final locationData = isOnline 
