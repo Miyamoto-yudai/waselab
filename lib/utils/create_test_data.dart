@@ -1,6 +1,97 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 class TestDataCreator {
+  /// 3件のサンプル実験データを作成
+  static Future<void> createSampleExperiments() async {
+    final firestore = FirebaseFirestore.instance;
+    
+    // 最初の3件のみを使用
+    final sampleExperiments = [
+      {
+        'title': '記憶力と学習効果に関する認知心理学実験',
+        'description': '単語リストを用いた記憶力測定実験です。異なる学習方法が記憶の保持にどのような影響を与えるかを調査します。実験は約60分程度で、休憩を挟みながら進行します。',
+        'requirements': '・日本語を母語とする方\n・正常な視力（矯正視力可）\n・18歳以上30歳以下の学生',
+        'duration': 60,
+        'reward': 1500,
+        'location': '早稲田大学 戸山キャンパス 33号館 認知心理学実験室',
+        'category': '心理学',
+        'participantCount': 30,
+      },
+      {
+        'title': '音声認識システムの精度評価実験',
+        'description': '新しく開発した音声認識AIの性能評価を行います。様々な文章を読み上げていただき、認識精度を測定します。騒音環境と静音環境での比較も行います。',
+        'requirements': '・日本語ネイティブスピーカー\n・発声に問題がない方\n・約90分の実験時間を確保できる方',
+        'duration': 90,
+        'reward': 2000,
+        'location': '早稲田大学 西早稲田キャンパス 63号館 音響実験室',
+        'category': '工学',
+        'participantCount': 25,
+      },
+      {
+        'title': 'VR空間における空間認知能力の測定',
+        'description': 'VRヘッドセットを使用した空間認知能力の測定実験です。仮想空間内でのナビゲーションタスクを行っていただきます。VR酔いしやすい方はご遠慮ください。',
+        'requirements': '・VR体験に抵抗がない方\n・3D酔いしにくい方\n・視力0.7以上（矯正可）',
+        'duration': 45,
+        'reward': 1200,
+        'location': '早稲田大学 西早稲田キャンパス 55号館 VR実験室',
+        'category': '工学',
+        'participantCount': 20,
+      },
+    ];
+    
+    // 基準日（今日）
+    final now = DateTime.now();
+    
+    for (int i = 0; i < sampleExperiments.length; i++) {
+      final exp = sampleExperiments[i];
+      
+      // 募集期間を長めに設定（1ヶ月半）
+      final recruitmentStart = now.add(Duration(days: i * 2));
+      final recruitmentEnd = recruitmentStart.add(const Duration(days: 45));
+      
+      // 実験期間（募集開始から2週間後から1ヶ月間）
+      final experimentStart = recruitmentStart.add(const Duration(days: 14));
+      final experimentEnd = experimentStart.add(const Duration(days: 30));
+      
+      // Firestoreにデータを追加
+      await firestore.collection('experiments').add({
+        'title': exp['title'],
+        'description': exp['description'],
+        'requirements': exp['requirements'],
+        'duration': exp['duration'],
+        'reward': exp['reward'],
+        'location': exp['location'],
+        'category': exp['category'],
+        'participantCount': exp['participantCount'],
+        'maxParticipants': exp['participantCount'], // 最大参加者数
+        'participants': [], // 参加者リスト（空配列で初期化）
+        'type': 'onsite', // 実験タイプ（すべて対面）
+        'labName': '早稲田大学 ${exp['category']}研究室', // 研究室名
+        'isPaid': (exp['reward'] as int) > 0, // 有償かどうか
+        'allowFlexibleSchedule': true, // 柔軟なスケジュール対応
+        'status': 'recruiting',
+        'recruitmentStart': recruitmentStart,
+        'recruitmentEnd': recruitmentEnd,
+        'recruitmentStartDate': recruitmentStart, // 重複フィールド（互換性のため）
+        'recruitmentEndDate': recruitmentEnd,
+        'experimentStart': experimentStart,
+        'experimentEnd': experimentEnd,
+        'experimentPeriodStart': experimentStart, // 重複フィールド（互換性のため）
+        'experimentPeriodEnd': experimentEnd,
+        'createdAt': now,
+        'updatedAt': now,
+        'researcherId': 'yudai5287@ruri.waseda.jp',
+        'researcherName': '宮本雄大',
+        'researcherEmail': 'yudai5287@ruri.waseda.jp',
+      });
+      
+      print('サンプル実験データを作成しました: ${exp['title']}');
+    }
+    
+    print('3件のサンプル実験データの作成が完了しました');
+  }
+  
+  /// 30件のテスト実験データを作成
   static Future<void> createTestExperiments() async {
     final firestore = FirebaseFirestore.instance;
     

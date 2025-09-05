@@ -331,7 +331,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
                           child: OutlinedButton.icon(
                             onPressed: () async {
                               // テストデータ作成確認ダイアログ
-                              final confirm = await showDialog<bool>(
+                              final option = await showDialog<String>(
                                 context: context,
                                 builder: (context) => AlertDialog(
                                   backgroundColor: Colors.grey[850],
@@ -339,41 +339,79 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
                                     'テストデータ作成',
                                     style: TextStyle(color: Colors.white),
                                   ),
-                                  content: const Text(
-                                    '30件のテスト実験データを作成します。\n実験者は「宮本雄大」で設定されます。\n様々な実験形式（オンライン、複数日程、VR等）が含まれます。\n\n続行しますか？',
-                                    style: TextStyle(color: Colors.white70),
+                                  content: Column(
+                                    mainAxisSize: MainAxisSize.min,
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: const [
+                                      Text(
+                                        '作成するテストデータを選択してください：',
+                                        style: TextStyle(color: Colors.white),
+                                      ),
+                                      SizedBox(height: 16),
+                                      Text(
+                                        '• サンプル（3件）',
+                                        style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                                      ),
+                                      Text(
+                                        '  基本的な実験データ',
+                                        style: TextStyle(color: Colors.white70, fontSize: 12),
+                                      ),
+                                      SizedBox(height: 8),
+                                      Text(
+                                        '• フル（30件）',
+                                        style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                                      ),
+                                      Text(
+                                        '  多様な実験形式のデータ',
+                                        style: TextStyle(color: Colors.white70, fontSize: 12),
+                                      ),
+                                      SizedBox(height: 16),
+                                      Text(
+                                        '実験者は「宮本雄大」で設定されます。',
+                                        style: TextStyle(color: Colors.white60, fontSize: 11),
+                                      ),
+                                    ],
                                   ),
                                   actions: [
                                     TextButton(
-                                      onPressed: () => Navigator.pop(context, false),
+                                      onPressed: () => Navigator.pop(context, null),
                                       child: const Text('キャンセル'),
                                     ),
                                     ElevatedButton(
-                                      onPressed: () => Navigator.pop(context, true),
+                                      onPressed: () => Navigator.pop(context, 'sample'),
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: Colors.green,
+                                      ),
+                                      child: const Text('3件作成'),
+                                    ),
+                                    ElevatedButton(
+                                      onPressed: () => Navigator.pop(context, 'full'),
                                       style: ElevatedButton.styleFrom(
                                         backgroundColor: Colors.blue,
                                       ),
-                                      child: const Text('作成する'),
+                                      child: const Text('30件作成'),
                                     ),
                                   ],
                                 ),
                               );
                               
-                              if (confirm == true) {
+                              if (option != null) {
                                 // ローディング表示
                                 showDialog(
                                   context: context,
                                   barrierDismissible: false,
-                                  builder: (context) => const Center(
+                                  builder: (context) => Center(
                                     child: Card(
                                       child: Padding(
-                                        padding: EdgeInsets.all(20),
+                                        padding: const EdgeInsets.all(20),
                                         child: Column(
                                           mainAxisSize: MainAxisSize.min,
                                           children: [
-                                            CircularProgressIndicator(),
-                                            SizedBox(height: 16),
-                                            Text('テストデータを作成中...'),
+                                            const CircularProgressIndicator(),
+                                            const SizedBox(height: 16),
+                                            Text(option == 'sample' 
+                                              ? '3件のテストデータを作成中...'
+                                              : '30件のテストデータを作成中...'),
                                           ],
                                         ),
                                       ),
@@ -382,13 +420,19 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
                                 );
                                 
                                 try {
-                                  await TestDataCreator.createTestExperiments();
+                                  if (option == 'sample') {
+                                    await TestDataCreator.createSampleExperiments();
+                                  } else {
+                                    await TestDataCreator.createTestExperiments();
+                                  }
                                   
                                   if (mounted) {
                                     Navigator.pop(context); // ローディングダイアログを閉じる
                                     ScaffoldMessenger.of(context).showSnackBar(
-                                      const SnackBar(
-                                        content: Text('テストデータの作成が完了しました！'),
+                                      SnackBar(
+                                        content: Text(option == 'sample'
+                                          ? '3件のサンプルデータを作成しました！'
+                                          : '30件のテストデータを作成しました！'),
                                         backgroundColor: Colors.green,
                                       ),
                                     );
