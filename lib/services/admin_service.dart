@@ -18,6 +18,16 @@ class AdminService {
   Admin? _currentAdmin;
   Admin? get currentAdmin => _currentAdmin;
 
+  /// 未読のサポートメッセージ数を取得
+  Stream<int> getUnreadSupportMessageCount() {
+    return _firestore
+        .collection('messages')
+        .where('receiverId', isEqualTo: 'support_team')
+        .where('isRead', isEqualTo: false)
+        .snapshots()
+        .map((snapshot) => snapshot.docs.length);
+  }
+
   /// 管理者ログイン
   Future<String?> signInAsAdmin({
     required String email,

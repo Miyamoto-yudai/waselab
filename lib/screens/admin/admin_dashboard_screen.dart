@@ -15,15 +15,52 @@ class AdminDashboardScreen extends StatefulWidget {
   State<AdminDashboardScreen> createState() => _AdminDashboardScreenState();
 }
 
-class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
+class _AdminDashboardScreenState extends State<AdminDashboardScreen> with SingleTickerProviderStateMixin {
   final AdminService _adminService = AdminService();
   Map<String, dynamic> _statistics = {};
   bool _isLoading = true;
+  int _unreadSupportMessages = 0;
+  late AnimationController _animationController;
+  late Animation<double> _pulseAnimation;
 
   @override
   void initState() {
     super.initState();
+    _animationController = AnimationController(
+      duration: const Duration(seconds: 1),
+      vsync: this,
+    );
+    _pulseAnimation = Tween<double>(
+      begin: 1.0,
+      end: 1.2,
+    ).animate(CurvedAnimation(
+      parent: _animationController,
+      curve: Curves.easeInOut,
+    ));
     _loadStatistics();
+    _listenToUnreadMessages();
+  }
+  
+  @override
+  void dispose() {
+    _animationController.dispose();
+    super.dispose();
+  }
+  
+  void _listenToUnreadMessages() {
+    _adminService.getUnreadSupportMessageCount().listen((count) {
+      if (mounted) {
+        setState(() {
+          _unreadSupportMessages = count;
+        });
+        // 新着メッセージがある場合はアニメーションを開始
+        if (count > 0) {
+          _animationController.repeat(reverse: true);
+        } else {
+          _animationController.stop();
+        }
+      }
+    });
   }
 
   Future<void> _loadStatistics() async {
@@ -236,6 +273,8 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                       subtitle: 'ユーザーからのお問い合わせ対応',
                       icon: Icons.support_agent,
                       color: Colors.teal,
+                      hasNotification: _unreadSupportMessages > 0,
+                      notificationCount: _unreadSupportMessages,
                       onTap: () {
                         Navigator.push(
                           context,
@@ -428,18 +467,31 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                 ),
               ),
               if (hasNotification)
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: Colors.red,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Text(
-                    notificationCount.toString(),
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 12,
-                      fontWeight: FontWeight.bold,
+                AnimatedBuilder(
+                  animation: _pulseAnimation,
+                  builder: (context, child) => Transform.scale(
+                    scale: _pulseAnimation.value,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: Colors.red,
+                        borderRadius: BorderRadius.circular(16),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.red.withValues(alpha: 0.3),
+                            blurRadius: 4,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      child: Text(
+                        notificationCount > 99 ? '99+' : notificationCount.toString(),
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
                     ),
                   ),
                 ),
