@@ -36,7 +36,6 @@ class _HomeScreenState extends State<HomeScreen> {
     Future.delayed(Duration.zero, () {
       _loadCurrentUser();
       _loadExperiments();
-      _createSampleData();
       _loadUnreadMessages();
     });
   }
@@ -79,83 +78,6 @@ class _HomeScreenState extends State<HomeScreen> {
           _isLoading = false;
         });
       }
-    }
-  }
-
-  /// サンプルデータの作成（デモ用）
-  Future<void> _createSampleData() async {
-    try {
-      final collection = _firestore.collection('experiments');
-      
-      // 既存のデータがあるか確認
-      final snapshot = await collection.limit(1).get();
-      if (snapshot.docs.isNotEmpty) return;
-
-      // サンプルデータを追加
-      final sampleExperiments = [
-        {
-          'title': '視覚認知実験への参加者募集',
-          'description': '画面に表示される図形を見て、特定のパターンを見つける実験です。所要時間は約30分です。',
-          'reward': 1500,
-          'location': '早稲田大学 戸山キャンパス 33号館',
-          'type': 'onsite',
-          'isPaid': true,
-          'creatorId': 'sample_user_1',
-          'createdAt': FieldValue.serverTimestamp(),
-          'experimentDate': Timestamp.fromDate(DateTime.now().add(const Duration(days: 7))),
-          'endDate': Timestamp.fromDate(DateTime.now().add(const Duration(days: 14))),
-          'labName': '認知科学研究室',
-          'duration': 30,
-          'maxParticipants': 20,
-          'requirements': ['視力矯正後1.0以上', '色覚正常'],
-        },
-        {
-          'title': 'オンラインアンケート調査',
-          'description': '大学生の生活習慣に関するアンケート調査です。スマートフォンからも回答可能です。',
-          'reward': 500,
-          'location': 'オンライン（Zoomリンクを送付）',
-          'type': 'survey',
-          'isPaid': true,
-          'creatorId': 'sample_user_2',
-          'createdAt': FieldValue.serverTimestamp(),
-          'experimentDate': Timestamp.fromDate(DateTime.now().add(const Duration(days: 3))),
-          'endDate': Timestamp.fromDate(DateTime.now().add(const Duration(days: 10))),
-          'labName': '社会心理学研究室',
-          'duration': 15,
-          'maxParticipants': 100,
-          'requirements': ['早稲田大学の学部生'],
-        },
-        {
-          'title': '心理学実験の被験者募集（無償）',
-          'description': '簡単な認知課題を行っていただきます。研究室の卒業論文のデータ収集にご協力ください。',
-          'reward': 0,
-          'location': '早稲田大学 西早稲田キャンパス 51号館',
-          'type': 'onsite',
-          'isPaid': false,
-          'creatorId': 'sample_user_3',
-          'createdAt': FieldValue.serverTimestamp(),
-          'experimentDate': Timestamp.fromDate(DateTime.now().add(const Duration(days: 5))),
-          'endDate': Timestamp.fromDate(DateTime.now().add(const Duration(days: 12))),
-          'labName': '実験心理学研究室',
-          'duration': 45,
-          'maxParticipants': 15,
-          'requirements': ['日本語ネイティブスピーカー'],
-        },
-      ];
-
-      // バッチ書き込み
-      final batch = _firestore.batch();
-      for (final data in sampleExperiments) {
-        final docRef = collection.doc();
-        batch.set(docRef, data);
-      }
-      await batch.commit();
-      
-      debugPrint('サンプルデータを作成しました');
-      // サンプルデータ作成後、再読み込み
-      _loadExperiments();
-    } catch (e) {
-      debugPrint('サンプルデータの作成に失敗: $e');
     }
   }
 
