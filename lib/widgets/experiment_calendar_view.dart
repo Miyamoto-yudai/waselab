@@ -144,7 +144,7 @@ class _ExperimentCalendarViewState extends State<ExperimentCalendarView> {
               return isSameDay(_selectedDay, day);
             },
             eventLoader: _getSlotsForDay,
-            startingDayOfWeek: StartingDayOfWeek.monday,
+            startingDayOfWeek: StartingDayOfWeek.sunday,
             locale: 'ja_JP',
             calendarStyle: const CalendarStyle(
               outsideDaysVisible: false,
