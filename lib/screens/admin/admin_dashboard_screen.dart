@@ -340,7 +340,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
                                     style: TextStyle(color: Colors.white),
                                   ),
                                   content: const Text(
-                                    '10件のテスト実験データを作成します。\n実験者は「宮本雄大」で設定されます。\n\n続行しますか？',
+                                    '30件のテスト実験データを作成します。\n実験者は「宮本雄大」で設定されます。\n様々な実験形式（オンライン、複数日程、VR等）が含まれます。\n\n続行しますか？',
                                     style: TextStyle(color: Colors.white70),
                                   ),
                                   actions: [
