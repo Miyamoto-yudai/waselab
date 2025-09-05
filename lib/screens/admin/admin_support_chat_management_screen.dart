@@ -177,17 +177,37 @@ class _AdminSupportChatManagementScreenState extends State<AdminSupportChatManag
     setState(() {
       _selectedUserId = userId;
       _selectedUserName = userName;
-      // サポートとの会話IDを生成
-      final ids = [userId, 'support_team'];
-      ids.sort();
-      _selectedConversationId = ids.join('_');
     });
 
-    // 選択した会話のメッセージを既読にする
-    if (_selectedConversationId != null) {
-      await _markMessagesAsRead(_selectedConversationId!);
+    // 実際の会話IDを取得または作成
+    try {
+      final conversationId = await _messageService.getOrCreateConversation(
+        userId,
+        'support_team',
+        userName,
+        'わせラボサポート',
+      );
+      
+      setState(() {
+        _selectedConversationId = conversationId;
+      });
+      
+      debugPrint('Selected conversation ID: $conversationId');
+
+      // 選択した会話のメッセージを既読にする
+      await _markMessagesAsRead(conversationId);
       _unreadCounts[userId] = 0;
       if (mounted) setState(() {});
+    } catch (e) {
+      debugPrint('会話ID取得エラー: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('会話の読み込みに失敗しました: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     }
   }
 
@@ -219,14 +239,24 @@ class _AdminSupportChatManagementScreenState extends State<AdminSupportChatManag
       _isSending = true;
     });
 
+    final messageContent = _messageController.text.trim();
+
     try {
-      await _messageService.sendMessage(
+      final conversationId = await _messageService.sendMessage(
         senderId: 'support_team',
         receiverId: _selectedUserId!,
-        content: _messageController.text.trim(),
+        content: messageContent,
         senderName: 'わせラボサポート',
         receiverName: _selectedUserName!,
       );
+      
+      // 会話IDが変更された場合は更新
+      if (_selectedConversationId != conversationId) {
+        debugPrint('Updating conversation ID from $_selectedConversationId to $conversationId');
+        setState(() {
+          _selectedConversationId = conversationId;
+        });
+      }
       
       _messageController.clear();
       _scrollToBottom();
@@ -236,8 +266,8 @@ class _AdminSupportChatManagementScreenState extends State<AdminSupportChatManag
         id: '',
         senderId: 'support_team',
         receiverId: _selectedUserId!,
-        conversationId: _selectedConversationId!,
-        content: _messageController.text.trim(),
+        conversationId: conversationId,
+        content: messageContent,
         createdAt: DateTime.now(),
         isRead: false,
       );
@@ -346,7 +376,7 @@ class _AdminSupportChatManagementScreenState extends State<AdminSupportChatManag
                         ),
                       ),
                       const Spacer(),
-                      if (_unreadCounts.values.any((count) => count > 0))
+                      if (_unreadCounts.values.any((unreadCount) => unreadCount > 0))
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                           decoration: BoxDecoration(

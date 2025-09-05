@@ -84,6 +84,15 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
         receiverName: supportUserName,
       );
       debugPrint('Message sent successfully. Conversation ID: $conversationId');
+      
+      // Update the conversation ID if it's different
+      if (_conversationId != conversationId) {
+        debugPrint('Updating conversation ID from $_conversationId to $conversationId');
+        setState(() {
+          _conversationId = conversationId;
+        });
+      }
+      
       _messageController.clear();
       _scrollToBottom();
     } catch (e) {
@@ -256,6 +265,15 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
             child: StreamBuilder<List<Message>>(
               stream: _messageService.getConversationMessages(_conversationId!),
               builder: (context, snapshot) {
+                debugPrint('=== StreamBuilder Update ===');
+                debugPrint('ConversationID: $_conversationId');
+                debugPrint('Connection state: ${snapshot.connectionState}');
+                debugPrint('Has data: ${snapshot.hasData}');
+                debugPrint('Has error: ${snapshot.hasError}');
+                if (snapshot.hasData) {
+                  debugPrint('Message count: ${snapshot.data?.length}');
+                }
+                
                 if (snapshot.connectionState == ConnectionState.waiting) {
                   return const Center(
                     child: CircularProgressIndicator(
