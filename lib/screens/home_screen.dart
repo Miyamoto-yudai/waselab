@@ -1,9 +1,11 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/experiment.dart';
 import '../models/app_user.dart';
 import '../services/auth_service.dart';
 import '../services/message_service.dart';
+import '../utils/test_firestore.dart';
 import '../widgets/home_screen_base.dart';
 import 'create_experiment_screen.dart';
 import 'login_screen.dart';
@@ -33,10 +35,16 @@ class _HomeScreenState extends State<HomeScreen> {
   void initState() {
     super.initState();
     // 遅延実行で起動を高速化
-    Future.delayed(Duration.zero, () {
+    Future.delayed(Duration.zero, () async {
       _loadCurrentUser();
-      _loadExperiments();
       _loadUnreadMessages();
+      
+      // デバッグ用：Firestoreの状態を確認
+      if (!kReleaseMode) {
+        await TestFirestore.checkExperiments();
+      }
+      
+      _loadExperiments();
     });
   }
 
@@ -57,34 +65,78 @@ class _HomeScreenState extends State<HomeScreen> {
   /// 実験データを読み込み
   Future<void> _loadExperiments() async {
     try {
-      final snapshot = await _firestore
-          .collection('experiments')
-          .orderBy('createdAt', descending: true)
-          .limit(30)
-          .get();
+      debugPrint('実験データ取得開始...');
       
-      debugPrint('実験データ取得: ${snapshot.docs.length}件');
+      // まず、シンプルなクエリで試す（orderByなし）
+      QuerySnapshot snapshot;
+      try {
+        // orderByを使用したクエリを試す
+        snapshot = await _firestore
+            .collection('experiments')
+            .orderBy('createdAt', descending: true)
+            .limit(50)
+            .get();
+        debugPrint('orderByクエリ成功: ${snapshot.docs.length}件');
+      } catch (orderByError) {
+        debugPrint('orderByクエリ失敗: $orderByError');
+        debugPrint('インデックスなしでクエリを実行します...');
+        
+        // orderByなしで全データ取得
+        snapshot = await _firestore
+            .collection('experiments')
+            .limit(50)
+            .get();
+        debugPrint('シンプルクエリ成功: ${snapshot.docs.length}件');
+      }
+      
+      debugPrint('実験データ取得完了: ${snapshot.docs.length}件');
       
       if (mounted) {
         setState(() {
           _experiments = snapshot.docs
               .map((doc) {
-                final exp = Experiment.fromFirestore(doc);
-                debugPrint('実験: ${exp.title}, status: ${exp.status.name}, recruiting: ${exp.status == ExperimentStatus.recruiting}');
-                return exp;
+                try {
+                  final exp = Experiment.fromFirestore(doc);
+                  debugPrint('実験解析成功: ${exp.title}');
+                  debugPrint('  - ID: ${exp.id}');
+                  debugPrint('  - status: ${exp.status.name}');
+                  debugPrint('  - creatorId: ${exp.creatorId}');
+                  debugPrint('  - recruitmentStartDate: ${exp.recruitmentStartDate}');
+                  debugPrint('  - recruitmentEndDate: ${exp.recruitmentEndDate}');
+                  return exp;
+                } catch (parseError) {
+                  debugPrint('実験データ解析エラー (doc.id: ${doc.id}): $parseError');
+                  debugPrint('データ内容: ${doc.data()}');
+                  return null;
+                }
               })
+              .where((exp) => exp != null)
+              .cast<Experiment>()
               .toList();
           _isLoading = false;
         });
         
-        debugPrint('フィルタ前の実験総数: ${_experiments.length}');
+        debugPrint('最終的に解析された実験数: ${_experiments.length}');
+        
+        // createdAtがないデータはソート
+        _experiments.sort((a, b) => b.createdAt.compareTo(a.createdAt));
       }
     } catch (e) {
       debugPrint('実験データの取得エラー: $e');
+      debugPrint('エラースタックトレース: ${StackTrace.current}');
       if (mounted) {
         setState(() {
           _isLoading = false;
+          _experiments = [];
         });
+        
+        // エラーをユーザーに表示
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('実験データの取得に失敗しました: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
       }
     }
   }
