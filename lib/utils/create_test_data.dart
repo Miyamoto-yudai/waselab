@@ -354,17 +354,27 @@ class TestDataCreator {
           'category': exp['category'],
           'participantCount': exp['participantCount'],
           'currentParticipants': 0,
+          'maxParticipants': exp['participantCount'], // 最大参加者数
+          'participants': [], // 参加者リスト（空配列で初期化）
+          'type': exp['isOnline'] == true ? 'online' : 'onsite', // 実験タイプ
           'recruitmentStart': recruitmentStart,
           'recruitmentEnd': recruitmentEnd,
+          'recruitmentStartDate': recruitmentStart, // 募集開始日も追加
+          'recruitmentEndDate': recruitmentEnd, // 募集終了日も追加
           'experimentStart': experimentStart,
           'experimentEnd': experimentEnd,
+          'experimentPeriodStart': experimentStart, // 実験開始日
+          'experimentPeriodEnd': experimentEnd, // 実験終了日
           'timeSlots': timeSlots,
           'createdBy': 'yudai5287@ruri.waseda.jp',
           'creatorName': '宮本雄大',
+          'labName': '早稲田大学 ${exp['category']}研究室', // 研究室名
           'createdAt': now,
           'updatedAt': now,
           'status': 'recruiting',
           'isOnline': exp['isOnline'] ?? false,
+          'isPaid': (exp['reward'] as int) > 0, // 有償かどうか
+          'allowFlexibleSchedule': true, // 柔軟なスケジュール対応
           'tags': ['早稲田大学', '実験', exp['category'].toString()],
           'imageUrl': '',
           'contactEmail': 'yudai5287@ruri.waseda.jp',

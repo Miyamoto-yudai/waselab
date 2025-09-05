@@ -63,13 +63,21 @@ class _HomeScreenState extends State<HomeScreen> {
           .limit(30)
           .get();
       
+      debugPrint('実験データ取得: ${snapshot.docs.length}件');
+      
       if (mounted) {
         setState(() {
           _experiments = snapshot.docs
-              .map((doc) => Experiment.fromFirestore(doc))
+              .map((doc) {
+                final exp = Experiment.fromFirestore(doc);
+                debugPrint('実験: ${exp.title}, status: ${exp.status.name}, recruiting: ${exp.status == ExperimentStatus.recruiting}');
+                return exp;
+              })
               .toList();
           _isLoading = false;
         });
+        
+        debugPrint('フィルタ前の実験総数: ${_experiments.length}');
       }
     } catch (e) {
       debugPrint('実験データの取得エラー: $e');
