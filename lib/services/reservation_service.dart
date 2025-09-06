@@ -2,7 +2,6 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 import '../models/experiment_slot.dart';
 import '../models/experiment_reservation.dart';
-import '../models/notification.dart';
 import 'notification_service.dart';
 
 /// 予約管理サービス

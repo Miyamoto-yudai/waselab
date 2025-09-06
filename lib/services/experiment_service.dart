@@ -1,7 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 import '../models/experiment.dart';
-import '../models/notification.dart';
 import 'user_service.dart';
 import 'notification_service.dart';
 
@@ -84,9 +83,7 @@ class ExperimentService {
       // メモリ上でソート（createdAtがnullの可能性があるため）
       experiments.sort((a, b) {
         if (a.createdAt == null && b.createdAt == null) return 0;
-        if (a.createdAt == null) return 1;
-        if (b.createdAt == null) return -1;
-        return b.createdAt!.compareTo(a.createdAt!);
+        return b.createdAt.compareTo(a.createdAt);
       });
       
       return experiments;
@@ -223,7 +220,7 @@ class ExperimentService {
       }
       
       // エラーメッセージをそのまま伝える
-      throw e;
+      rethrow;
     }
   }
 
@@ -439,7 +436,7 @@ class ExperimentService {
       
     } catch (e) {
       debugPrint('Error canceling participation: $e');
-      throw e;
+      rethrow;
     }
   }
 }

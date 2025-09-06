@@ -53,7 +53,7 @@ class _CreateExperimentBaseState extends State<CreateExperimentBase> {
   final List<String> _consentItems = [];
   final _consentItemController = TextEditingController();
   Map<DateTime, List<DateTimeSlot>> _dateTimeSlots = {};
-  int _simultaneousCapacity = 1;
+  final int _simultaneousCapacity = 1;
   
   bool _isLoading = false;
   bool _showPreview = false;
@@ -822,7 +822,7 @@ class _CreateExperimentBaseState extends State<CreateExperimentBase> {
                 }
               });
             },
-            activeColor: const Color(0xFF8E1728),
+            activeThumbColor: const Color(0xFF8E1728),
           ),
           
           if (_isPaid) ...[
@@ -1082,7 +1082,7 @@ class _CreateExperimentBaseState extends State<CreateExperimentBase> {
                   _allowFlexibleSchedule = value;
                 });
               },
-              activeColor: const Color(0xFF8E1728),
+              activeThumbColor: const Color(0xFF8E1728),
             ),
           ],
           const SizedBox(height: 16),
@@ -1507,13 +1507,13 @@ class _CreateExperimentBaseState extends State<CreateExperimentBase> {
                 _showPreview = value;
               });
             },
-            activeColor: const Color(0xFF8E1728),
+            activeThumbColor: const Color(0xFF8E1728),
           ),
           const SizedBox(height: 16),
           
           if (_showPreview) ...[
             // カードプレビュー
-            Container(
+            SizedBox(
               height: 230,
               child: ExperimentCard(
                 experiment: previewExperiment,

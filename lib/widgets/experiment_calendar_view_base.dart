@@ -466,7 +466,7 @@ class _ExperimentCalendarViewBaseState extends State<ExperimentCalendarViewBase>
                           const SizedBox(width: 4),
                           Text(
                             isAvailable 
-                              ? '${bookedCount}/${timeSlot.maxCapacity}名予約済み (残り$availableSlots枠)'
+                              ? '$bookedCount/${timeSlot.maxCapacity}名予約済み (残り$availableSlots枠)'
                               : '満員 (${timeSlot.maxCapacity}/${timeSlot.maxCapacity}名)',
                             style: TextStyle(
                               color: availabilityColor,

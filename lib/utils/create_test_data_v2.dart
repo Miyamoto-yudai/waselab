@@ -217,7 +217,7 @@ class TestDataCreatorV2 {
           'allowFlexibleSchedule': !isSurvey && _random.nextBool(),
           'maxParticipants': maxParticipants,
           'participants': [],
-          'labName': '早稲田大学 ${category}研究室',
+          'labName': '早稲田大学 $category研究室',
           'status': 'recruiting',
           'recruitmentStartDate': Timestamp.fromDate(recruitmentStart),
           'recruitmentEndDate': Timestamp.fromDate(recruitmentEnd),

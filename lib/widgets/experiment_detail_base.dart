@@ -338,7 +338,7 @@ class _ExperimentDetailBaseState extends State<ExperimentDetailBase> {
                           ),
                           const SizedBox(height: 4),
                           Text(
-                            '参加者数: ${widget.experiment.participants?.length ?? 0}名',
+                            '参加者数: ${widget.experiment.participants.length ?? 0}名',
                             style: TextStyle(
                               color: Colors.grey[700],
                               fontSize: 12,

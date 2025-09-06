@@ -392,7 +392,7 @@ class _HistoryScreenState extends State<HistoryScreen> with TickerProviderStateM
             ),
             const SizedBox(height: 16),
             Text(
-              '${emptyMessage}がありません',
+              '$emptyMessageがありません',
               style: TextStyle(
                 fontSize: 16,
                 color: Colors.grey[600],
@@ -571,7 +571,7 @@ class _HistoryScreenState extends State<HistoryScreen> with TickerProviderStateM
                                 Icon(Icons.people, size: 14, color: Colors.grey[600]),
                                 const SizedBox(width: 4),
                                 Text(
-                                  '参加者: ${experiment.participants?.length ?? 0}名',
+                                  '参加者: ${experiment.participants.length ?? 0}名',
                                   style: TextStyle(fontSize: 12, color: Colors.grey[600]),
                                 ),
                               ],
@@ -630,7 +630,7 @@ class _HistoryScreenState extends State<HistoryScreen> with TickerProviderStateM
               ),
             ),
           );
-        }).toList(),
+        }),
       ],
     );
   }

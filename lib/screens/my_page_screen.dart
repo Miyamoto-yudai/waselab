@@ -192,7 +192,7 @@ class _MyPageScreenState extends State<MyPageScreen> {
                 Card(
                   elevation: 2,
                   child: Padding(
-                    padding: const EdgeInsets.all(16),
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                     child: Column(
                       children: [
                         Stack(
@@ -200,7 +200,7 @@ class _MyPageScreenState extends State<MyPageScreen> {
                           children: [
                             CustomCircleAvatar(
                               frameId: _currentUser!.selectedFrame,
-                              radius: 50,
+                              radius: 35,
                               backgroundColor: _currentUser!.selectedColor != null
                                   ? AvatarColors.getById(_currentUser!.selectedColor!).color
                                   : const Color(0xFF8E1728),
@@ -213,7 +213,7 @@ class _MyPageScreenState extends State<MyPageScreen> {
                                         ? _currentUser!.name[0].toUpperCase() 
                                         : '?',
                                       style: const TextStyle(
-                                        fontSize: 36,
+                                        fontSize: 24,
                                         color: Colors.white,
                                       ),
                                     )
@@ -223,13 +223,15 @@ class _MyPageScreenState extends State<MyPageScreen> {
                               bottom: 0,
                               right: 0,
                               child: Container(
+                                width: 28,
+                                height: 28,
                                 decoration: BoxDecoration(
                                   color: const Color(0xFF8E1728),
                                   shape: BoxShape.circle,
                                   border: Border.all(color: Colors.white, width: 2),
                                 ),
                                 child: IconButton(
-                                  icon: const Icon(Icons.auto_awesome, color: Colors.white, size: 16),
+                                  icon: const Icon(Icons.auto_awesome, color: Colors.white, size: 12),
                                   onPressed: () {
                                     Navigator.push(
                                       context,
@@ -239,13 +241,13 @@ class _MyPageScreenState extends State<MyPageScreen> {
                                     ).then((_) => _loadUserData());
                                   },
                                   tooltip: 'フレームを変更',
-                                  padding: const EdgeInsets.all(4),
+                                  padding: EdgeInsets.zero,
                                 ),
                               ),
                             ),
                           ],
                         ),
-                        const SizedBox(height: 16),
+                        const SizedBox(height: 8),
                         if (_isEditing)
                           Column(
                             children: [
@@ -255,7 +257,7 @@ class _MyPageScreenState extends State<MyPageScreen> {
                                   controller: _nameController,
                                   textAlign: TextAlign.center,
                                   style: const TextStyle(
-                                    fontSize: 24,
+                                    fontSize: 20,
                                     fontWeight: FontWeight.bold,
                                   ),
                                   decoration: InputDecoration(
@@ -315,7 +317,7 @@ class _MyPageScreenState extends State<MyPageScreen> {
                               Text(
                                 _currentUser!.name,
                                 style: const TextStyle(
-                                  fontSize: 24,
+                                  fontSize: 18,
                                   fontWeight: FontWeight.bold,
                                 ),
                               ),
@@ -331,23 +333,23 @@ class _MyPageScreenState extends State<MyPageScreen> {
                               ),
                             ],
                           ),
-                        const SizedBox(height: 8),
+                        const SizedBox(height: 2),
                         Text(
                           _currentUser!.email,
                           style: TextStyle(
-                            fontSize: 16,
+                            fontSize: 12,
                             color: Colors.grey[600],
                           ),
                         ),
-                        const SizedBox(height: 16),
+                        const SizedBox(height: 6),
                         Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
                             if (_currentUser!.isWasedaUser)
                               Container(
                                 padding: const EdgeInsets.symmetric(
-                                  horizontal: 12,
-                                  vertical: 4,
+                                  horizontal: 8,
+                                  vertical: 2,
                                 ),
                                 decoration: BoxDecoration(
                                   color: Colors.blue.withValues(alpha: 0.2),
@@ -356,7 +358,7 @@ class _MyPageScreenState extends State<MyPageScreen> {
                                 child: const Text(
                                   '早稲田大学',
                                   style: TextStyle(
-                                    fontSize: 14,
+                                    fontSize: 12,
                                     fontWeight: FontWeight.bold,
                                     color: Colors.blue,
                                   ),
@@ -365,8 +367,8 @@ class _MyPageScreenState extends State<MyPageScreen> {
                             else
                               Container(
                                 padding: const EdgeInsets.symmetric(
-                                  horizontal: 12,
-                                  vertical: 4,
+                                  horizontal: 8,
+                                  vertical: 2,
                                 ),
                                 decoration: BoxDecoration(
                                   color: Colors.grey.withValues(alpha: 0.2),
@@ -375,17 +377,17 @@ class _MyPageScreenState extends State<MyPageScreen> {
                                 child: const Text(
                                   'Googleアカウント',
                                   style: TextStyle(
-                                    fontSize: 14,
+                                    fontSize: 12,
                                     fontWeight: FontWeight.bold,
                                     color: Colors.grey,
                                   ),
                                 ),
                               ),
-                            const SizedBox(width: 12),
+                            const SizedBox(width: 8),
                             Container(
                               padding: const EdgeInsets.symmetric(
-                                horizontal: 12,
-                                vertical: 4,
+                                horizontal: 8,
+                                vertical: 2,
                               ),
                               decoration: BoxDecoration(
                                 color: const Color(0xFF8E1728).withValues(alpha: 0.2),
@@ -394,7 +396,7 @@ class _MyPageScreenState extends State<MyPageScreen> {
                               child: Text(
                                 '完了実験数: ${_currentUser!.participatedExperiments}',
                                 style: const TextStyle(
-                                  fontSize: 14,
+                                  fontSize: 12,
                                   fontWeight: FontWeight.bold,
                                   color: Color(0xFF8E1728),
                                 ),
@@ -406,23 +408,23 @@ class _MyPageScreenState extends State<MyPageScreen> {
                     ),
                   ),
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 8),
                 // あなたの活動セクション
                 Card(
                   elevation: 2,
                   child: Padding(
-                    padding: const EdgeInsets.all(16),
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         const Text(
                           'あなたの活動',
                           style: TextStyle(
-                            fontSize: 18,
+                            fontSize: 14,
                             fontWeight: FontWeight.bold,
                           ),
                         ),
-                        const SizedBox(height: 16),
+                        const SizedBox(height: 8),
                         Row(
                           children: [
                             Expanded(
@@ -434,7 +436,7 @@ class _MyPageScreenState extends State<MyPageScreen> {
                                 onTap: () {},
                               ),
                             ),
-                            const SizedBox(width: 12),
+                            const SizedBox(width: 8),
                             Expanded(
                               child: _buildActivityCard(
                                 icon: Icons.science,
@@ -450,7 +452,7 @@ class _MyPageScreenState extends State<MyPageScreen> {
                     ),
                   ),
                 ),
-                const SizedBox(height: 24),
+                const SizedBox(height: 8),
                 // 統計情報カード
                 IntrinsicHeight(
                   child: Row(
@@ -473,7 +475,7 @@ class _MyPageScreenState extends State<MyPageScreen> {
                             },
                             borderRadius: BorderRadius.circular(12),
                             child: Padding(
-                              padding: const EdgeInsets.all(16),
+                              padding: const EdgeInsets.all(8),
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
@@ -485,13 +487,13 @@ class _MyPageScreenState extends State<MyPageScreen> {
                                         Icon(
                                           Icons.thumb_up,
                                           color: Colors.green[700],
-                                          size: 20,
+                                          size: 16,
                                         ),
                                         const SizedBox(width: 8),
                                         const Text(
                                           '評価統計',
                                           style: TextStyle(
-                                            fontSize: 16,
+                                            fontSize: 12,
                                             fontWeight: FontWeight.bold,
                                           ),
                                         ),
@@ -504,7 +506,7 @@ class _MyPageScreenState extends State<MyPageScreen> {
                                     ),
                                   ],
                                 ),
-                                const SizedBox(height: 12),
+                                const SizedBox(height: 8),
                                 Row(
                                   mainAxisAlignment: MainAxisAlignment.spaceAround,
                                   children: [
@@ -513,13 +515,13 @@ class _MyPageScreenState extends State<MyPageScreen> {
                                         Icon(
                                           Icons.thumb_up,
                                           color: Colors.green[600],
-                                          size: 28,
+                                          size: 18,
                                         ),
                                         const SizedBox(height: 4),
                                         Text(
                                           '${_currentUser!.goodCount}',
                                           style: TextStyle(
-                                            fontSize: 20,
+                                            fontSize: 14,
                                             fontWeight: FontWeight.bold,
                                             color: Colors.green[700],
                                           ),
@@ -527,7 +529,7 @@ class _MyPageScreenState extends State<MyPageScreen> {
                                         Text(
                                           'Good',
                                           style: TextStyle(
-                                            fontSize: 12,
+                                            fontSize: 10,
                                             color: Colors.grey[600],
                                           ),
                                         ),
@@ -538,13 +540,13 @@ class _MyPageScreenState extends State<MyPageScreen> {
                                         Icon(
                                           Icons.thumb_down,
                                           color: Colors.red[600],
-                                          size: 28,
+                                          size: 18,
                                         ),
                                         const SizedBox(height: 4),
                                         Text(
                                           '${_currentUser!.badCount}',
                                           style: TextStyle(
-                                            fontSize: 20,
+                                            fontSize: 14,
                                             fontWeight: FontWeight.bold,
                                             color: Colors.red[700],
                                           ),
@@ -552,7 +554,7 @@ class _MyPageScreenState extends State<MyPageScreen> {
                                         Text(
                                           'Bad',
                                           style: TextStyle(
-                                            fontSize: 12,
+                                            fontSize: 10,
                                             color: Colors.grey[600],
                                           ),
                                         ),
@@ -560,9 +562,9 @@ class _MyPageScreenState extends State<MyPageScreen> {
                                     ),
                                   ],
                                 ),
-                                const SizedBox(height: 12),
-                                Divider(color: Colors.grey[300]),
-                                const SizedBox(height: 8),
+                                const SizedBox(height: 6),
+                                Divider(color: Colors.grey[300], height: 1),
+                                const SizedBox(height: 4),
                                 Row(
                                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                   children: [
@@ -577,7 +579,7 @@ class _MyPageScreenState extends State<MyPageScreen> {
                                         Text(
                                           '保有ポイント',
                                           style: TextStyle(
-                                            fontSize: 12,
+                                            fontSize: 10,
                                             color: Colors.grey[600],
                                           ),
                                         ),
@@ -586,7 +588,7 @@ class _MyPageScreenState extends State<MyPageScreen> {
                                     Text(
                                       '${_currentUser!.points} P',
                                       style: TextStyle(
-                                        fontSize: 16,
+                                        fontSize: 14,
                                         fontWeight: FontWeight.bold,
                                         color: Colors.amber[700],
                                       ),
@@ -594,12 +596,12 @@ class _MyPageScreenState extends State<MyPageScreen> {
                                   ],
                                 ),
                                 if (_currentUser!.goodCount + _currentUser!.badCount > 0) ...[
-                                  const SizedBox(height: 8),
+                                  const SizedBox(height: 4),
                                   Center(
                                     child: Text(
                                       '評価率: ${((_currentUser!.goodCount / (_currentUser!.goodCount + _currentUser!.badCount)) * 100).toStringAsFixed(1)}%',
                                       style: TextStyle(
-                                        fontSize: 12,
+                                        fontSize: 10,
                                         color: Colors.grey[600],
                                       ),
                                     ),
@@ -610,7 +612,7 @@ class _MyPageScreenState extends State<MyPageScreen> {
                                   child: Text(
                                     '詳細を見る',
                                     style: TextStyle(
-                                      fontSize: 12,
+                                      fontSize: 10,
                                       color: const Color(0xFF8E1728),
                                       fontWeight: FontWeight.w600,
                                     ),
@@ -622,12 +624,12 @@ class _MyPageScreenState extends State<MyPageScreen> {
                         ),
                       ),
                     ),
-                    const SizedBox(width: 16),
+                    const SizedBox(width: 8),
                     Expanded(
                         child: Card(
                           elevation: 2,
                           child: Padding(
-                            padding: const EdgeInsets.all(16),
+                            padding: const EdgeInsets.all(8),
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
@@ -636,26 +638,26 @@ class _MyPageScreenState extends State<MyPageScreen> {
                                     Icon(
                                       Icons.payments,
                                       color: Colors.amber[700],
-                                      size: 20,
+                                      size: 16,
                                     ),
                                     const SizedBox(width: 8),
                                     const Text(
                                       '収益統計',
                                       style: TextStyle(
-                                        fontSize: 16,
+                                        fontSize: 12,
                                         fontWeight: FontWeight.bold,
                                       ),
                                     ),
                                   ],
                                 ),
-                                const SizedBox(height: 12),
+                                const SizedBox(height: 8),
                                 Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     Text(
                                       '総収益',
                                       style: TextStyle(
-                                        fontSize: 12,
+                                        fontSize: 10,
                                         color: Colors.grey[600],
                                       ),
                                     ),
@@ -663,16 +665,16 @@ class _MyPageScreenState extends State<MyPageScreen> {
                                     Text(
                                       '¥${_formatCurrency(_currentUser!.totalEarnings)}',
                                       style: TextStyle(
-                                        fontSize: 20,
+                                        fontSize: 14,
                                         fontWeight: FontWeight.bold,
                                         color: Colors.amber[700],
                                       ),
                                     ),
-                                    const SizedBox(height: 12),
+                                    const SizedBox(height: 8),
                                     Text(
                                       '今月の収益',
                                       style: TextStyle(
-                                        fontSize: 12,
+                                        fontSize: 10,
                                         color: Colors.grey[600],
                                       ),
                                     ),
@@ -680,7 +682,7 @@ class _MyPageScreenState extends State<MyPageScreen> {
                                     Text(
                                       '¥${_formatCurrency(_currentUser!.monthlyEarnings)}',
                                       style: TextStyle(
-                                        fontSize: 18,
+                                        fontSize: 12,
                                         fontWeight: FontWeight.bold,
                                         color: Colors.blue[700],
                                       ),
@@ -692,7 +694,7 @@ class _MyPageScreenState extends State<MyPageScreen> {
                                   child: Text(
                                     '月次レポート',
                                     style: TextStyle(
-                                      fontSize: 12,
+                                      fontSize: 10,
                                       color: const Color(0xFF8E1728),
                                       fontWeight: FontWeight.w600,
                                     ),
@@ -706,11 +708,11 @@ class _MyPageScreenState extends State<MyPageScreen> {
                     ],
                   ),
                 ),
-                const SizedBox(height: 24),
+                const SizedBox(height: 8),
                 Card(
                   elevation: 2,
                   child: Padding(
-                    padding: const EdgeInsets.all(16),
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -795,7 +797,7 @@ class _MyPageScreenState extends State<MyPageScreen> {
                     elevation: 2,
                     color: const Color(0xFF8E1728).withValues(alpha: 0.1),
                     child: const Padding(
-                      padding: EdgeInsets.all(16),
+                      padding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                       child: Row(
                         children: [
                           Icon(
@@ -844,7 +846,7 @@ class _MyPageScreenState extends State<MyPageScreen> {
       onTap: onTap,
       borderRadius: BorderRadius.circular(12),
       child: Container(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         decoration: BoxDecoration(
           color: color.withValues(alpha: 0.1),
           borderRadius: BorderRadius.circular(12),
@@ -858,14 +860,14 @@ class _MyPageScreenState extends State<MyPageScreen> {
           children: [
             Icon(
               icon,
-              size: 32,
+              size: 24,
               color: color,
             ),
             const SizedBox(height: 8),
             Text(
               title,
               style: TextStyle(
-                fontSize: 14,
+                fontSize: 12,
                 fontWeight: FontWeight.w500,
                 color: color,
               ),
@@ -874,7 +876,7 @@ class _MyPageScreenState extends State<MyPageScreen> {
             Text(
               count.toString(),
               style: TextStyle(
-                fontSize: 24,
+                fontSize: 20,
                 fontWeight: FontWeight.bold,
                 color: color,
               ),

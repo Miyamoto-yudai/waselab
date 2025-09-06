@@ -42,7 +42,7 @@ class ExistingDataFixer {
       return fixedCount;
     } catch (e) {
       debugPrint('エラー: $e');
-      throw e;
+      rethrow;
     }
   }
   

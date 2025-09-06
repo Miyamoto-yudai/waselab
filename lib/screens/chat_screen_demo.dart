@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import '../services/demo_auth_service.dart';
-import '../widgets/message_templates.dart';
 import '../models/app_user.dart';
 
 /// デモモード用のチャット画面
@@ -57,13 +56,11 @@ class _ChatScreenDemoState extends State<ChatScreenDemo> {
   void _selectTemplate(String templateType) {
     final templates = _getQuickTemplates();
     final selected = templates.firstWhere((t) => t['type'] == templateType);
-    if (selected != null) {
-      _messageController.text = selected['template'] as String;
-      setState(() {
-        _showTemplates = false;
-      });
+    _messageController.text = selected['template'] as String;
+    setState(() {
+      _showTemplates = false;
+    });
     }
-  }
 
   List<Map<String, dynamic>> _getQuickTemplates() {
     final experiment = widget.experimentTitle ?? '[実験名]';

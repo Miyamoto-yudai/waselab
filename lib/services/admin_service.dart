@@ -432,7 +432,7 @@ class AdminService {
         action: 'send_support_message',
         details: {
           'userId': userId,
-          'messagePreview': message.length > 50 ? message.substring(0, 50) + '...' : message,
+          'messagePreview': message.length > 50 ? '${message.substring(0, 50)}...' : message,
         },
       );
 
@@ -477,7 +477,7 @@ class AdminService {
         action: 'send_announcement',
         details: {
           'title': title,
-          'messagePreview': message.length > 50 ? message.substring(0, 50) + '...' : message,
+          'messagePreview': message.length > 50 ? '${message.substring(0, 50)}...' : message,
         },
       );
 

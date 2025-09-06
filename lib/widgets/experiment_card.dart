@@ -121,9 +121,8 @@ class ExperimentCard extends StatelessWidget {
                         ],
                       ),
                     ),
-                  if (currentUserId != null && 
-                      experiment.participants != null &&
-                      experiment.participants!.contains(currentUserId))
+                  if (currentUserId != null &&
+                      experiment.participants.contains(currentUserId))
                     Container(
                       margin: const EdgeInsets.only(bottom: 6, right: 8),
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),

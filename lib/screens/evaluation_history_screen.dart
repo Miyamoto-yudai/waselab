@@ -35,8 +35,8 @@ class _EvaluationHistoryScreenState extends State<EvaluationHistoryScreen>
   late TabController _tabController;
   List<ExperimentEvaluation> _receivedEvaluations = [];
   List<ExperimentEvaluation> _givenEvaluations = [];
-  Map<String, Experiment?> _experimentCache = {};
-  Map<String, String> _userNameCache = {};
+  final Map<String, Experiment?> _experimentCache = {};
+  final Map<String, String> _userNameCache = {};
   bool _isLoading = true;
   String? _filterType;
   

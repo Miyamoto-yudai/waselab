@@ -352,8 +352,8 @@ class _TimeSlotCalendarEditorState extends State<TimeSlotCalendarEditor> {
               titleCentered: true,
               leftChevronVisible: true,  // 左矢印ボタンは表示
               rightChevronVisible: true, // 右矢印ボタンは表示
-              leftChevronIcon: const Icon(Icons.chevron_left, color: Color(0xFF8E1728)),
-              rightChevronIcon: const Icon(Icons.chevron_right, color: Color(0xFF8E1728)),
+              leftChevronIcon: Icon(Icons.chevron_left, color: Color(0xFF8E1728)),
+              rightChevronIcon: Icon(Icons.chevron_right, color: Color(0xFF8E1728)),
             ),
             
             onDaySelected: (selectedDay, focusedDay) {

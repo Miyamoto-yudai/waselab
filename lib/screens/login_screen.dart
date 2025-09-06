@@ -329,7 +329,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         
                         // 性別選択
                         DropdownButtonFormField<String>(
-                          value: _selectedGender,
+                          initialValue: _selectedGender,
                           decoration: const InputDecoration(
                             labelText: '性別',
                             prefixIcon: Icon(Icons.wc),

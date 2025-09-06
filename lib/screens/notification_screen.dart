@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../models/notification.dart';
-import '../models/experiment.dart';
 import '../services/notification_service.dart';
 import '../services/auth_service.dart';
 import '../services/experiment_service.dart';

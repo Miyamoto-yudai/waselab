@@ -28,7 +28,7 @@ class NotificationService {
       await _firestore.collection(_collection).add(notification.toFirestore());
     } catch (e) {
       print('通知の作成に失敗しました: $e');
-      throw e;
+      rethrow;
     }
   }
 
@@ -71,7 +71,7 @@ class NotificationService {
           .update({'isRead': true});
     } catch (e) {
       print('通知の既読処理に失敗しました: $e');
-      throw e;
+      rethrow;
     }
   }
 
@@ -92,7 +92,7 @@ class NotificationService {
       await batch.commit();
     } catch (e) {
       print('すべての通知の既読処理に失敗しました: $e');
-      throw e;
+      rethrow;
     }
   }
 
@@ -102,7 +102,7 @@ class NotificationService {
       await _firestore.collection(_collection).doc(notificationId).delete();
     } catch (e) {
       print('通知の削除に失敗しました: $e');
-      throw e;
+      rethrow;
     }
   }
 
@@ -278,7 +278,7 @@ class NotificationService {
       await batch.commit();
     } catch (e) {
       print('全体通知の送信に失敗しました: $e');
-      throw e;
+      rethrow;
     }
   }
 }

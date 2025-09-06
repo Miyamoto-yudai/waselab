@@ -112,7 +112,7 @@ class _TimeSlotEditorState extends State<TimeSlotEditor> {
                       }
                     });
                   },
-                  activeColor: const Color(0xFF8E1728),
+                  activeThumbColor: const Color(0xFF8E1728),
                 ),
                 if (_useGlobalCapacity) ...[
                   const SizedBox(height: 8),

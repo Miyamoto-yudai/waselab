@@ -22,7 +22,7 @@ class _HomeScreenState extends State<HomeScreen> {
   AppUser? _currentUser;
 
   // フィルター用の変数
-  ExperimentType? _selectedType = null;  // 選択された種別（null = すべて）
+  ExperimentType? _selectedType;  // 選択された種別（null = すべて）
   bool? _isPaidFilter;
 
   @override
@@ -473,9 +473,7 @@ class _HomeScreenState extends State<HomeScreen> {
   /// 実験カードのウィジェット
   Widget _buildExperimentCard(Experiment experiment) {
     // 締切までの残り日数を計算
-    final daysLeft = experiment.endDate != null 
-      ? experiment.endDate!.difference(DateTime.now()).inDays 
-      : null;
+    final daysLeft = experiment.endDate?.difference(DateTime.now()).inDays;
     
     return Container(
       margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),

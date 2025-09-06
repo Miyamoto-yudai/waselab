@@ -27,10 +27,10 @@ class MessageService {
         .snapshots()
         .map((snapshot) {
           print('Snapshot received: ${snapshot.docs.length} messages');
-          snapshot.docs.forEach((doc) {
+          for (var doc in snapshot.docs) {
             final data = doc.data();
             print('  Message: ${data['content']}, From: ${data['senderId']}, To: ${data['receiverId']}');
-          });
+          }
           return snapshot.docs.map((doc) => Message.fromFirestore(doc)).toList();
         });
   }

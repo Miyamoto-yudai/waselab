@@ -495,6 +495,7 @@ class _HomeScreenBaseState extends State<HomeScreenBase> {
                 duration: const Duration(milliseconds: 200),
                 opacity: _isHeaderVisible ? 1.0 : 0.0,
                 child: Column(
+                  mainAxisSize: MainAxisSize.min,
                   children: [
                     // 参加可能な実験のみ表示ボタン
                     Container(
@@ -659,13 +660,10 @@ class _HomeScreenBaseState extends State<HomeScreenBase> {
                     Container(
                       color: Colors.white,
                       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
-                      child: Align(
-                        alignment: Alignment.centerLeft,
-                        child: SingleChildScrollView(
-                          scrollDirection: Axis.horizontal,
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.start,
-                            children: [
+                      height: 32, // 固定高さを設定
+                      child: ListView(
+                        scrollDirection: Axis.horizontal,
+                        children: [
                               // 日付範囲選択ボタン
                               Container(
                                 margin: const EdgeInsets.only(right: 6),
@@ -722,8 +720,6 @@ class _HomeScreenBaseState extends State<HomeScreenBase> {
                                   ),
                                 ),
                             ],
-                          ),
-                        ),
                       ),
                     ),
                     // タイプフィルターとソートを同じ行に配置
