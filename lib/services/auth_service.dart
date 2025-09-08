@@ -11,12 +11,17 @@ class AuthService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   // Google Sign-Inの初期化
-  // Web向けにはclientIdが必要です（Firebase ConsoleのWeb SDK configurationから取得）
-  final GoogleSignIn _googleSignIn = GoogleSignIn(
-    scopes: ['email', 'profile'],
-    // Web Client IDを設定（Web、Android、iOS全プラットフォーム共通）
-    clientId: '788143974236-jqi4c0558nu50cda3jams444dov43lue.apps.googleusercontent.com',
-  );
+  // プラットフォームごとに適切な設定を使用
+  late final GoogleSignIn _googleSignIn = kIsWeb 
+    ? GoogleSignIn(
+        scopes: ['email', 'profile'],
+        // Web向けのClient ID
+        clientId: '788143974236-jqi4c0558nu50cda3jams444dov43lue.apps.googleusercontent.com',
+      )
+    : GoogleSignIn(
+        scopes: ['email', 'profile'],
+        // iOS/Androidはnative configを使用（GoogleService-Info.plist/google-services.jsonから自動読込）
+      );
 
   /// 現在ログイン中のユーザーを取得
   User? get currentUser => _auth.currentUser;

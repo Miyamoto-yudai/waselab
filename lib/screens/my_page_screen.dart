@@ -6,6 +6,7 @@ import '../widgets/custom_circle_avatar.dart';
 import 'login_screen.dart';
 import 'evaluation_history_screen.dart';
 import 'icon_change_screen.dart';
+import 'monthly_report_screen.dart';
 import '../models/avatar_design.dart';
 import '../models/avatar_color.dart';
 
@@ -628,80 +629,104 @@ class _MyPageScreenState extends State<MyPageScreen> {
                     Expanded(
                         child: Card(
                           elevation: 2,
-                          child: Padding(
-                            padding: const EdgeInsets.all(8),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Row(
-                                  children: [
-                                    Icon(
-                                      Icons.payments,
-                                      color: Colors.amber[700],
-                                      size: 16,
-                                    ),
-                                    const SizedBox(width: 8),
-                                    const Text(
-                                      '収益統計',
-                                      style: TextStyle(
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                const SizedBox(height: 8),
-                                Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      '総収益',
-                                      style: TextStyle(
-                                        fontSize: 10,
-                                        color: Colors.grey[600],
-                                      ),
-                                    ),
-                                    const SizedBox(height: 4),
-                                    Text(
-                                      '¥${_formatCurrency(_currentUser!.totalEarnings)}',
-                                      style: TextStyle(
-                                        fontSize: 14,
-                                        fontWeight: FontWeight.bold,
-                                        color: Colors.amber[700],
-                                      ),
-                                    ),
-                                    const SizedBox(height: 8),
-                                    Text(
-                                      '今月の収益',
-                                      style: TextStyle(
-                                        fontSize: 10,
-                                        color: Colors.grey[600],
-                                      ),
-                                    ),
-                                    const SizedBox(height: 4),
-                                    Text(
-                                      '¥${_formatCurrency(_currentUser!.monthlyEarnings)}',
-                                      style: TextStyle(
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.bold,
-                                        color: Colors.blue[700],
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                const Spacer(),
-                                Center(
-                                  child: Text(
-                                    '月次レポート',
-                                    style: TextStyle(
-                                      fontSize: 10,
-                                      color: const Color(0xFF8E1728),
-                                      fontWeight: FontWeight.w600,
-                                    ),
+                          child: InkWell(
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => MonthlyReportScreen(
+                                    userId: _currentUser!.uid,
+                                    userName: _currentUser!.name,
                                   ),
                                 ),
-                              ],
-                          ),
+                              );
+                            },
+                            borderRadius: BorderRadius.circular(12),
+                            child: Padding(
+                              padding: const EdgeInsets.all(8),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      Row(
+                                        children: [
+                                          Icon(
+                                            Icons.payments,
+                                            color: Colors.amber[700],
+                                            size: 16,
+                                          ),
+                                          const SizedBox(width: 8),
+                                          const Text(
+                                            '収益統計',
+                                            style: TextStyle(
+                                              fontSize: 12,
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                      Icon(
+                                        Icons.arrow_forward_ios,
+                                        size: 14,
+                                        color: Colors.grey[500],
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 8),
+                                  Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        '総収益',
+                                        style: TextStyle(
+                                          fontSize: 10,
+                                          color: Colors.grey[600],
+                                        ),
+                                      ),
+                                      const SizedBox(height: 4),
+                                      Text(
+                                        '¥${_formatCurrency(_currentUser!.totalEarnings)}',
+                                        style: TextStyle(
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.bold,
+                                          color: Colors.amber[700],
+                                        ),
+                                      ),
+                                      const SizedBox(height: 8),
+                                      Text(
+                                        '今月の収益',
+                                        style: TextStyle(
+                                          fontSize: 10,
+                                          color: Colors.grey[600],
+                                        ),
+                                      ),
+                                      const SizedBox(height: 4),
+                                      Text(
+                                        '¥${_formatCurrency(_currentUser!.monthlyEarnings)}',
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.bold,
+                                          color: Colors.blue[700],
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  const Spacer(),
+                                  Center(
+                                    child: Text(
+                                      '月次レポート',
+                                      style: TextStyle(
+                                        fontSize: 10,
+                                        color: const Color(0xFF8E1728),
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
                           ),
                         ),
                       ),

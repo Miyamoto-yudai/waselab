@@ -680,14 +680,14 @@ class _ExperimentManagementScreenState extends State<ExperimentManagementScreen>
                     )
                   : null,
             ),
-            title: Row(
+            title: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Expanded(
-                  child: Text(
-                    participant.name,
-                    style: const TextStyle(fontWeight: FontWeight.bold),
-                  ),
+                Text(
+                  participant.name,
+                  style: const TextStyle(fontWeight: FontWeight.bold),
                 ),
+                const SizedBox(height: 4),
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(
@@ -713,17 +713,26 @@ class _ExperimentManagementScreenState extends State<ExperimentManagementScreen>
                 ),
               ],
             ),
-            subtitle: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const SizedBox(height: 4),
-                Text(participant.email, style: TextStyle(fontSize: 13, color: Colors.grey[700])),
-                if (participant.department?.isNotEmpty ?? false)
+            subtitle: Padding(
+              padding: const EdgeInsets.only(top: 8),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
                   Text(
-                    '${participant.department} ${participant.grade ?? ""}',
-                    style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                    participant.email,
+                    style: TextStyle(fontSize: 13, color: Colors.grey[700]),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
-              ],
+                  if (participant.department?.isNotEmpty ?? false)
+                    Text(
+                      '${participant.department} ${participant.grade ?? ""}',
+                      style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                ],
+              ),
             ),
             children: [
               Padding(
@@ -780,9 +789,13 @@ class _ExperimentManagementScreenState extends State<ExperimentManagementScreen>
                       ],
                     ),
                     const SizedBox(height: 16),
-                    Row(
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      alignment: WrapAlignment.center,
                       children: [
-                        Expanded(
+                        SizedBox(
+                          width: MediaQuery.of(context).size.width < 400 ? double.infinity : 150,
                           child: OutlinedButton.icon(
                             onPressed: () {
                               Navigator.push(
@@ -800,9 +813,9 @@ class _ExperimentManagementScreenState extends State<ExperimentManagementScreen>
                           ),
                         ),
                         // 実験者がまだ参加者を評価していない場合、かつ（実施日時を迎えている OR 参加者が既に評価済み）の場合に評価ボタンを表示
-                        if (!creatorToParticipant && (isExperimentStarted || participantToCreator)) ...[
-                          const SizedBox(width: 8),
-                          Expanded(
+                        if (!creatorToParticipant && (isExperimentStarted || participantToCreator))
+                          SizedBox(
+                            width: MediaQuery.of(context).size.width < 400 ? double.infinity : 150,
                             child: ElevatedButton.icon(
                               onPressed: () {
                                 Navigator.push(
@@ -827,7 +840,6 @@ class _ExperimentManagementScreenState extends State<ExperimentManagementScreen>
                               ),
                             ),
                           ),
-                        ],
                       ],
                     ),
                   ],

@@ -386,17 +386,25 @@ class _HomeScreenBaseState extends State<HomeScreenBase> {
 
   @override
   Widget build(BuildContext context) {
+    // iPhoneのセーフエリアを考慮
+    final mediaQuery = MediaQuery.of(context);
+    final isSmallScreen = mediaQuery.size.width < 600;
+    final safeAreaTop = mediaQuery.padding.top;
+    
     return Scaffold(
       body: Column(
         children: [
           // アプリバー部分（スクロールで隠れる）
           AnimatedContainer(
             duration: const Duration(milliseconds: 200),
-            height: _isHeaderVisible ? 70 : 0,
+            height: _isHeaderVisible ? (isSmallScreen ? 70 + safeAreaTop : 70) : 0,
             child: AppBar(
-              toolbarHeight: 70,
+              toolbarHeight: isSmallScreen ? 70 + safeAreaTop : 70,
               titleSpacing: 0,
               centerTitle: false,
+              flexibleSpace: SafeArea(
+                child: Container(),
+              ),
               leading: Container(
                 margin: const EdgeInsets.only(left: 16),
                 width: 40,
@@ -488,7 +496,7 @@ class _HomeScreenBaseState extends State<HomeScreenBase> {
           // 検索バー、日付フィルター、種別切り替えボタン、ソート選択
           AnimatedContainer(
             duration: const Duration(milliseconds: 200),
-            height: _isHeaderVisible ? 160 : 0,
+            height: _isHeaderVisible ? (isSmallScreen ? 180 : 160) : 0,
             child: SingleChildScrollView(
               physics: const NeverScrollableScrollPhysics(),
               child: AnimatedOpacity(
@@ -500,7 +508,12 @@ class _HomeScreenBaseState extends State<HomeScreenBase> {
                     // 参加可能な実験のみ表示ボタン
                     Container(
                       color: Colors.white,
-                      padding: const EdgeInsets.only(left: 16, right: 16, top: 4, bottom: 2),
+                      padding: EdgeInsets.only(
+                        left: 16, 
+                        right: 16, 
+                        top: isSmallScreen ? 8 : 4, 
+                        bottom: isSmallScreen ? 4 : 2
+                      ),
                       child: Row(
                         children: [
                           Expanded(
@@ -730,7 +743,7 @@ class _HomeScreenBaseState extends State<HomeScreenBase> {
                         children: [
                           // タイプフィルター（コンパクト版）
                           Expanded(
-                            child: Container(
+                            child: SizedBox(
                               height: 30,
                               child: ListView(
                                 scrollDirection: Axis.horizontal,

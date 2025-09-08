@@ -523,15 +523,20 @@ class _HistoryScreenState extends State<HistoryScreen> with TickerProviderStateM
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Row(
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Expanded(
-                                child: Text(
-                                  experiment.title,
-                                  style: const TextStyle(fontWeight: FontWeight.bold),
-                                ),
+                              Text(
+                                experiment.title,
+                                style: const TextStyle(fontWeight: FontWeight.bold),
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
                               ),
-                              _buildStatusBadge(experiment, isMyExperiment),
+                              const SizedBox(height: 4),
+                              Align(
+                                alignment: Alignment.centerLeft,
+                                child: _buildStatusBadge(experiment, isMyExperiment),
+                              ),
                             ],
                           ),
                           const SizedBox(height: 4),
@@ -545,36 +550,50 @@ class _HistoryScreenState extends State<HistoryScreen> with TickerProviderStateM
                             ),
                           ),
                           const SizedBox(height: 8),
-                          Row(
+                          Wrap(
+                            spacing: 12,
+                            runSpacing: 4,
                             children: [
-                              Icon(Icons.calendar_today, size: 14, color: Colors.grey[600]),
-                              const SizedBox(width: 4),
-                              Text(
-                                experiment.experimentDate != null
-                                  ? DateFormat('yyyy/MM/dd').format(experiment.experimentDate!)
-                                  : '日程未定',
-                                style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                              Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(Icons.calendar_today, size: 14, color: Colors.grey[600]),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    experiment.experimentDate != null
+                                      ? DateFormat('yyyy/MM/dd').format(experiment.experimentDate!)
+                                      : '日程未定',
+                                    style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                                  ),
+                                ],
                               ),
-                              const SizedBox(width: 16),
-                              Icon(Icons.payments, size: 14, color: Colors.grey[600]),
-                              const SizedBox(width: 4),
-                              Text(
-                                experiment.isPaid ? '¥${experiment.reward}' : '無償',
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  color: experiment.isPaid ? Colors.green[700] : Colors.grey[600],
-                                  fontWeight: experiment.isPaid ? FontWeight.bold : FontWeight.normal,
-                                ),
+                              Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(Icons.payments, size: 14, color: Colors.grey[600]),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    experiment.isPaid ? '¥${experiment.reward}' : '無償',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: experiment.isPaid ? Colors.green[700] : Colors.grey[600],
+                                      fontWeight: experiment.isPaid ? FontWeight.bold : FontWeight.normal,
+                                    ),
+                                  ),
+                                ],
                               ),
-                              if (isMyExperiment) ...[
-                                const SizedBox(width: 16),
-                                Icon(Icons.people, size: 14, color: Colors.grey[600]),
-                                const SizedBox(width: 4),
-                                Text(
-                                  '参加者: ${experiment.participants.length ?? 0}名',
-                                  style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                              if (isMyExperiment)
+                                Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(Icons.people, size: 14, color: Colors.grey[600]),
+                                    const SizedBox(width: 4),
+                                    Text(
+                                      '参加者: ${experiment.participants.length ?? 0}名',
+                                      style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                                    ),
+                                  ],
                                 ),
-                              ],
                             ],
                           ),
                         ],
@@ -673,38 +692,32 @@ class _HistoryScreenState extends State<HistoryScreen> with TickerProviderStateM
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Row(
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Expanded(
-                          child: Row(
-                            children: [
-                              Flexible(
-                                child: Text(
-                                  experiment.title,
-                                  style: const TextStyle(fontWeight: FontWeight.bold),
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ),
-                              if (experiment.type == ExperimentType.survey && 
-                                  isParticipant && 
-                                  !isMyExperiment) ...[
-                                const SizedBox(width: 4),
-                                Container(
-                                  padding: const EdgeInsets.all(4),
-                                  decoration: BoxDecoration(
-                                    color: Colors.purple.withValues(alpha: 0.1),
-                                    borderRadius: BorderRadius.circular(8),
-                                  ),
-                                  child: Icon(
-                                    experiment.surveyUrl != null ? Icons.link : Icons.chat,
-                                    size: 16,
-                                    color: Colors.purple,
-                                  ),
-                                ),
-                              ],
-                            ],
-                          ),
+                        Text(
+                          experiment.title,
+                          style: const TextStyle(fontWeight: FontWeight.bold),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
                         ),
+                        if (experiment.type == ExperimentType.survey && 
+                            isParticipant && 
+                            !isMyExperiment) ...[
+                          const SizedBox(height: 4),
+                          Container(
+                            padding: const EdgeInsets.all(4),
+                            decoration: BoxDecoration(
+                              color: Colors.purple.withValues(alpha: 0.1),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Icon(
+                              experiment.surveyUrl != null ? Icons.link : Icons.chat,
+                              size: 16,
+                              color: Colors.purple,
+                            ),
+                          ),
+                        ],
                       ],
                     ),
                     const SizedBox(height: 4),
@@ -715,29 +728,39 @@ class _HistoryScreenState extends State<HistoryScreen> with TickerProviderStateM
                       style: TextStyle(fontSize: 13, color: Colors.grey[600]),
                     ),
                     const SizedBox(height: 4),
-                    Row(
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 4,
                       children: [
-                        if (experiment.isPaid) ...[
-                          Icon(Icons.monetization_on, size: 14, color: Colors.grey[600]),
-                          const SizedBox(width: 4),
-                          Text(
-                            '¥${experiment.reward}',
-                            style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                        if (experiment.isPaid)
+                          Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.monetization_on, size: 14, color: Colors.grey[600]),
+                              const SizedBox(width: 4),
+                              Text(
+                                '¥${experiment.reward}',
+                                style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                              ),
+                            ],
                           ),
-                          const SizedBox(width: 12),
-                        ],
-                        if (experiment.location.isNotEmpty) ...[
-                          Icon(Icons.location_on, size: 14, color: Colors.grey[600]),
-                          const SizedBox(width: 4),
-                          Flexible(
-                            child: Text(
-                              experiment.location,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: TextStyle(fontSize: 12, color: Colors.grey[600]),
-                            ),
+                        if (experiment.location.isNotEmpty)
+                          Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.location_on, size: 14, color: Colors.grey[600]),
+                              const SizedBox(width: 4),
+                              ConstrainedBox(
+                                constraints: const BoxConstraints(maxWidth: 150),
+                                child: Text(
+                                  experiment.location,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                                ),
+                              ),
+                            ],
                           ),
-                        ],
                       ],
                     ),
                   ],

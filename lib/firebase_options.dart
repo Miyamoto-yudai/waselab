@@ -55,21 +55,23 @@ class DefaultFirebaseOptions {
   // iOS設定
   static const FirebaseOptions ios = FirebaseOptions(
     apiKey: 'AIzaSyClIA2_3fHJuHoOKY5AVG1OXdpIyJTkqy0',
-    appId: '1:788143974236:ios:05d9fcc433f53e6f000399',
+    appId: '1:788143974236:ios:9859b91f3880f3df000399',
     messagingSenderId: '788143974236',
     projectId: 'waselab-30308',
-    iosBundleId: 'com.example.experimentCooperationApp',
+    iosBundleId: 'com.yudaimiyamoto.experimentCooperationApp',
     storageBucket: 'waselab-30308.firebasestorage.app',
+    iosClientId: '788143974236-5m4bv0dspcbl2bquevs6ssgh088413rh.apps.googleusercontent.com',
   );
 
   // macOS設定
   static const FirebaseOptions macos = FirebaseOptions(
     apiKey: 'AIzaSyClIA2_3fHJuHoOKY5AVG1OXdpIyJTkqy0',
-    appId: '1:788143974236:ios:05d9fcc433f53e6f000399',
+    appId: '1:788143974236:ios:9859b91f3880f3df000399',
     messagingSenderId: '788143974236',
     projectId: 'waselab-30308',
-    iosBundleId: 'com.example.experimentCooperationApp',
+    iosBundleId: 'com.yudaimiyamoto.experimentCooperationApp',
     storageBucket: 'waselab-30308.firebasestorage.app',
+    iosClientId: '788143974236-5m4bv0dspcbl2bquevs6ssgh088413rh.apps.googleusercontent.com',
   );
 
   // Windows設定
