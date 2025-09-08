@@ -587,7 +587,7 @@ class _MyPageScreenState extends State<MyPageScreen> {
                                       ],
                                     ),
                                     Text(
-                                      '${_currentUser!.points} P',
+                                      '${_currentUser!.points.toInt()} P',
                                       style: TextStyle(
                                         fontSize: 14,
                                         fontWeight: FontWeight.bold,

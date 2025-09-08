@@ -736,14 +736,16 @@ class _IconChangeScreenState extends State<IconChangeScreen>
 
   Widget _buildFrameGrid(FrameTier tier) {
     final frames = AvatarFrames.getByTier(tier);
+    final screenWidth = MediaQuery.of(context).size.width;
+    final crossAxisCount = screenWidth < 400 ? 2 : (screenWidth < 600 ? 3 : 4);
     
     return GridView.builder(
       padding: const EdgeInsets.all(16),
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 2,
-        crossAxisSpacing: 16,
-        mainAxisSpacing: 16,
-        childAspectRatio: 0.8,
+      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: crossAxisCount,
+        crossAxisSpacing: screenWidth < 400 ? 12 : 16,
+        mainAxisSpacing: screenWidth < 400 ? 12 : 16,
+        childAspectRatio: screenWidth < 400 ? 0.65 : 0.75,
       ),
       itemCount: frames.length,
       itemBuilder: (context, index) {
@@ -774,60 +776,69 @@ class _IconChangeScreenState extends State<IconChangeScreen>
               }
             },
             child: Padding(
-              padding: const EdgeInsets.all(12),
+              padding: EdgeInsets.all(MediaQuery.of(context).size.width < 400 ? 8 : 12),
               child: Column(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   // フレームプレビュー
-                  CustomCircleAvatar(
-                    frameId: frame.id,
-                    radius: 35,
-                    backgroundColor: const Color(0xFF8E1728),
-                    designBuilder: _currentUser!.selectedDesign != null
-                        ? AvatarDesigns.getById(_currentUser!.selectedDesign!).builder
-                        : null,
-                    child: _currentUser!.selectedDesign == null || _currentUser!.selectedDesign == 'default'
-                        ? const Icon(Icons.person, color: Colors.white, size: 35)
-                        : null,
+                  Expanded(
+                    child: Center(
+                      child: CustomCircleAvatar(
+                        frameId: frame.id,
+                        radius: screenWidth < 400 ? 25 : 35,
+                        backgroundColor: const Color(0xFF8E1728),
+                        designBuilder: _currentUser!.selectedDesign != null
+                            ? AvatarDesigns.getById(_currentUser!.selectedDesign!).builder
+                            : null,
+                        child: _currentUser!.selectedDesign == null || _currentUser!.selectedDesign == 'default'
+                            ? Icon(Icons.person, color: Colors.white, size: screenWidth < 400 ? 25 : 35)
+                            : null,
+                      ),
+                    ),
                   ),
                   // フレーム名
                   Text(
                     frame.name,
-                    style: const TextStyle(
-                      fontSize: 16,
+                    style: TextStyle(
+                      fontSize: screenWidth < 400 ? 12 : 14,
                       fontWeight: FontWeight.bold,
                     ),
                     textAlign: TextAlign.center,
-                  ),
-                  // 説明
-                  Text(
-                    frame.description,
-                    style: TextStyle(
-                      fontSize: 11,
-                      color: Colors.grey[600],
-                    ),
-                    textAlign: TextAlign.center,
-                    maxLines: 2,
+                    maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
+                  // 説明
+                  if (screenWidth >= 400)
+                    Text(
+                      frame.description,
+                      style: TextStyle(
+                        fontSize: 10,
+                        color: Colors.grey[600],
+                      ),
+                      textAlign: TextAlign.center,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
                   // アニメーションバッジ
                   if (frame.hasAnimation)
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                      padding: EdgeInsets.symmetric(horizontal: screenWidth < 400 ? 4 : 8, vertical: 2),
                       decoration: BoxDecoration(
                         color: Colors.purple.withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(12),
                         border: Border.all(color: Colors.purple.withValues(alpha: 0.3)),
                       ),
-                      child: const Row(
+                      child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Icon(Icons.auto_awesome, size: 12, color: Colors.purple),
-                          SizedBox(width: 4),
-                          Text(
-                            'アニメーション',
-                            style: TextStyle(fontSize: 10, color: Colors.purple),
-                          ),
+                          Icon(Icons.auto_awesome, size: screenWidth < 400 ? 10 : 12, color: Colors.purple),
+                          if (screenWidth >= 400) ...[
+                            const SizedBox(width: 4),
+                            const Text(
+                              'アニメーション',
+                              style: TextStyle(fontSize: 10, color: Colors.purple),
+                            ),
+                          ],
                         ],
                       ),
                     ),
@@ -848,26 +859,36 @@ class _IconChangeScreenState extends State<IconChangeScreen>
                       ),
                     )
                   else if (isUnlocked)
-                    ElevatedButton(
-                      onPressed: () => _equipFrame(frame),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.green,
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                    Flexible(
+                      child: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        child: ElevatedButton(
+                          onPressed: () => _equipFrame(frame),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.green,
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
+                          ),
+                          child: const Text('装備する', style: TextStyle(fontSize: 12)),
+                        ),
                       ),
-                      child: const Text('装備する'),
                     )
                   else
-                    ElevatedButton.icon(
-                      onPressed: (_currentUser?.points ?? 0) >= frame.price
-                          ? () => _purchaseFrame(frame)
-                          : null,
-                      icon: const Icon(Icons.shopping_cart, size: 16),
-                      label: Text('${frame.price}P'),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: (_currentUser?.points ?? 0) >= frame.price
-                            ? Colors.amber
-                            : Colors.grey,
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                    Flexible(
+                      child: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        child: ElevatedButton.icon(
+                          onPressed: (_currentUser?.points ?? 0) >= frame.price
+                              ? () => _purchaseFrame(frame)
+                              : null,
+                          icon: const Icon(Icons.shopping_cart, size: 16),
+                          label: Text('${frame.price}P'),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: (_currentUser?.points ?? 0) >= frame.price
+                                ? Colors.amber
+                                : Colors.grey,
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                          ),
+                        ),
                       ),
                     ),
                 ],
@@ -881,14 +902,16 @@ class _IconChangeScreenState extends State<IconChangeScreen>
 
   Widget _buildDesignGrid(AvatarDesignCategory category) {
     final designs = AvatarDesigns.getByCategory(category);
+    final screenWidth = MediaQuery.of(context).size.width;
+    final crossAxisCount = screenWidth < 400 ? 3 : (screenWidth < 600 ? 4 : 5);
     
     return GridView.builder(
-      padding: const EdgeInsets.all(16),
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 3,
-        crossAxisSpacing: 12,
-        mainAxisSpacing: 12,
-        childAspectRatio: 0.9,
+      padding: EdgeInsets.all(screenWidth < 400 ? 12 : 16),
+      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: crossAxisCount,
+        crossAxisSpacing: screenWidth < 400 ? 8 : 12,
+        mainAxisSpacing: screenWidth < 400 ? 8 : 12,
+        childAspectRatio: screenWidth < 400 ? 0.85 : 0.9,
       ),
       itemCount: designs.length,
       itemBuilder: (context, index) {
@@ -978,28 +1001,38 @@ class _IconChangeScreenState extends State<IconChangeScreen>
                       ),
                     )
                   else if (isUnlocked)
-                    ElevatedButton(
-                      onPressed: () => _equipDesign(design),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.green,
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
-                        minimumSize: const Size(0, 28),
+                    Flexible(
+                      child: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        child: ElevatedButton(
+                          onPressed: () => _equipDesign(design),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.green,
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                            minimumSize: const Size(0, 24),
+                          ),
+                          child: const Text('装備', style: TextStyle(fontSize: 11)),
+                        ),
                       ),
-                      child: const Text('装備', style: TextStyle(fontSize: 12)),
                     )
                   else
-                    ElevatedButton(
-                      onPressed: (_currentUser?.points ?? 0) >= design.price
-                          ? () => _purchaseDesign(design)
-                          : null,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: (_currentUser?.points ?? 0) >= design.price
-                            ? Colors.amber
-                            : Colors.grey,
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
-                        minimumSize: const Size(0, 28),
+                    Flexible(
+                      child: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        child: ElevatedButton(
+                          onPressed: (_currentUser?.points ?? 0) >= design.price
+                              ? () => _purchaseDesign(design)
+                              : null,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: (_currentUser?.points ?? 0) >= design.price
+                                ? Colors.amber
+                                : Colors.grey,
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                            minimumSize: const Size(0, 24),
+                          ),
+                          child: Text('${design.price}P', style: const TextStyle(fontSize: 11)),
+                        ),
                       ),
-                      child: Text('${design.price}P', style: const TextStyle(fontSize: 12)),
                     ),
                 ],
               ),
@@ -1012,14 +1045,16 @@ class _IconChangeScreenState extends State<IconChangeScreen>
 
   Widget _buildColorGrid(ColorTier tier) {
     final colors = AvatarColors.getByTier(tier);
+    final screenWidth = MediaQuery.of(context).size.width;
+    final crossAxisCount = screenWidth < 400 ? 3 : (screenWidth < 600 ? 4 : 5);
     
     return GridView.builder(
-      padding: const EdgeInsets.all(16),
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 3,
-        crossAxisSpacing: 12,
-        mainAxisSpacing: 12,
-        childAspectRatio: 1.0,
+      padding: EdgeInsets.all(screenWidth < 400 ? 12 : 16),
+      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: crossAxisCount,
+        crossAxisSpacing: screenWidth < 400 ? 8 : 12,
+        mainAxisSpacing: screenWidth < 400 ? 8 : 12,
+        childAspectRatio: screenWidth < 400 ? 0.95 : 1.0,
       ),
       itemCount: colors.length,
       itemBuilder: (context, index) {
@@ -1115,28 +1150,38 @@ class _IconChangeScreenState extends State<IconChangeScreen>
                       ),
                     )
                   else if (isUnlocked)
-                    ElevatedButton(
-                      onPressed: () => _equipColor(color),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.green,
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
-                        minimumSize: const Size(0, 24),
+                    Flexible(
+                      child: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        child: ElevatedButton(
+                          onPressed: () => _equipColor(color),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.green,
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                            minimumSize: const Size(0, 20),
+                          ),
+                          child: const Text('装備', style: TextStyle(fontSize: 10)),
+                        ),
                       ),
-                      child: const Text('装備', style: TextStyle(fontSize: 10)),
                     )
                   else
-                    ElevatedButton(
-                      onPressed: (_currentUser?.points ?? 0) >= color.price
-                          ? () => _purchaseColor(color)
-                          : null,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: (_currentUser?.points ?? 0) >= color.price
-                            ? Colors.amber
-                            : Colors.grey,
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
-                        minimumSize: const Size(0, 24),
+                    Flexible(
+                      child: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        child: ElevatedButton(
+                          onPressed: (_currentUser?.points ?? 0) >= color.price
+                              ? () => _purchaseColor(color)
+                              : null,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: (_currentUser?.points ?? 0) >= color.price
+                                ? Colors.amber
+                                : Colors.grey,
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                            minimumSize: const Size(0, 20),
+                          ),
+                          child: Text('${color.price}P', style: const TextStyle(fontSize: 10)),
+                        ),
                       ),
-                      child: Text('${color.price}P', style: const TextStyle(fontSize: 10)),
                     ),
                 ],
               ),

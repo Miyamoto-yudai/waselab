@@ -378,21 +378,32 @@ class _ChatScreenState extends State<ChatScreen> {
                               width: 36,
                               margin: const EdgeInsets.only(left: 4, right: 8),
                               child: showAvatar
-                                  ? CustomCircleAvatar(
-                                      frameId: _otherUser?.selectedFrame,
-                                      radius: 18,
-                                      backgroundColor: const Color(0xFF8E1728),
-                                      designBuilder: _otherUser?.selectedDesign != null && _otherUser?.selectedDesign != 'default'
-                                          ? AvatarDesigns.getById(_otherUser!.selectedDesign!).builder
-                                          : null,
-                                      child: _otherUser?.selectedDesign == null || _otherUser?.selectedDesign == 'default'
-                                          ? Text(
-                                              widget.otherUserName.isNotEmpty 
-                                                ? widget.otherUserName[0].toUpperCase() 
-                                                : '?',
-                                              style: const TextStyle(color: Colors.white, fontSize: 14),
-                                            )
-                                          : null,
+                                  ? GestureDetector(
+                                      onTap: () {
+                                        showDialog(
+                                          context: context,
+                                          builder: (context) => UserDetailDialog(
+                                            userId: widget.otherUserId,
+                                            userName: widget.otherUserName,
+                                          ),
+                                        );
+                                      },
+                                      child: CustomCircleAvatar(
+                                        frameId: _otherUser?.selectedFrame,
+                                        radius: 18,
+                                        backgroundColor: const Color(0xFF8E1728),
+                                        designBuilder: _otherUser?.selectedDesign != null && _otherUser?.selectedDesign != 'default'
+                                            ? AvatarDesigns.getById(_otherUser!.selectedDesign!).builder
+                                            : null,
+                                        child: _otherUser?.selectedDesign == null || _otherUser?.selectedDesign == 'default'
+                                            ? Text(
+                                                widget.otherUserName.isNotEmpty 
+                                                  ? widget.otherUserName[0].toUpperCase() 
+                                                  : '?',
+                                                style: const TextStyle(color: Colors.white, fontSize: 14),
+                                              )
+                                            : null,
+                                      ),
                                     )
                                   : null,
                             ),
@@ -473,21 +484,34 @@ class _ChatScreenState extends State<ChatScreen> {
                               width: 36,
                               margin: const EdgeInsets.only(left: 8, right: 4),
                               child: showAvatar
-                                  ? CustomCircleAvatar(
-                                      frameId: _currentAppUser?.selectedFrame,
-                                      radius: 18,
-                                      backgroundColor: const Color(0xFF8E1728),
-                                      designBuilder: _currentAppUser?.selectedDesign != null && _currentAppUser?.selectedDesign != 'default'
-                                          ? AvatarDesigns.getById(_currentAppUser!.selectedDesign!).builder
-                                          : null,
-                                      child: _currentAppUser?.selectedDesign == null || _currentAppUser?.selectedDesign == 'default'
-                                          ? Text(
-                                              _currentUserName != null && _currentUserName!.isNotEmpty 
-                                                ? _currentUserName![0].toUpperCase() 
-                                                : '?',
-                                              style: const TextStyle(color: Colors.white, fontSize: 14),
-                                            )
-                                          : null,
+                                  ? GestureDetector(
+                                      onTap: () {
+                                        if (_currentUserId != null && _currentUserName != null) {
+                                          showDialog(
+                                            context: context,
+                                            builder: (context) => UserDetailDialog(
+                                              userId: _currentUserId!,
+                                              userName: _currentUserName!,
+                                            ),
+                                          );
+                                        }
+                                      },
+                                      child: CustomCircleAvatar(
+                                        frameId: _currentAppUser?.selectedFrame,
+                                        radius: 18,
+                                        backgroundColor: const Color(0xFF8E1728),
+                                        designBuilder: _currentAppUser?.selectedDesign != null && _currentAppUser?.selectedDesign != 'default'
+                                            ? AvatarDesigns.getById(_currentAppUser!.selectedDesign!).builder
+                                            : null,
+                                        child: _currentAppUser?.selectedDesign == null || _currentAppUser?.selectedDesign == 'default'
+                                            ? Text(
+                                                _currentUserName != null && _currentUserName!.isNotEmpty 
+                                                  ? _currentUserName![0].toUpperCase() 
+                                                  : '?',
+                                                style: const TextStyle(color: Colors.white, fontSize: 14),
+                                              )
+                                            : null,
+                                      ),
                                     )
                                   : null,
                             ),

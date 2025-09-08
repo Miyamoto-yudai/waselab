@@ -379,28 +379,27 @@ class _ExperimentManagementScreenState extends State<ExperimentManagementScreen>
                     ),
                   ),
                   const SizedBox(height: 16),
-                  Row(
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
                     children: [
                       _buildInfoChip(
                         Icons.science,
                         _experiment.type.label,
                         _getTypeColor(_experiment.type),
                       ),
-                      const SizedBox(width: 8),
                       if (_experiment.isPaid)
                         _buildInfoChip(
                           Icons.payments,
                           '¥${_experiment.reward}',
                           Colors.green,
                         ),
-                      const SizedBox(width: 8),
                       if (_experiment.location.isNotEmpty)
-                        Flexible(
-                          child: _buildInfoChip(
-                            Icons.location_on,
-                            _experiment.location,
-                            Colors.blue,
-                          ),
+                        _buildInfoChip(
+                          Icons.location_on,
+                          _experiment.location,
+                          Colors.blue,
+                          isFlexible: true,
                         ),
                     ],
                   ),
@@ -1040,8 +1039,11 @@ class _ExperimentManagementScreenState extends State<ExperimentManagementScreen>
     );
   }
 
-  Widget _buildInfoChip(IconData icon, String label, Color color) {
+  Widget _buildInfoChip(IconData icon, String label, Color color, {bool isFlexible = false}) {
     return Container(
+      constraints: isFlexible 
+        ? const BoxConstraints(maxWidth: 200) 
+        : null,
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.1),
@@ -1052,12 +1054,16 @@ class _ExperimentManagementScreenState extends State<ExperimentManagementScreen>
         children: [
           Icon(icon, size: 14, color: color),
           const SizedBox(width: 4),
-          Text(
-            label,
-            style: TextStyle(
-              fontSize: 12,
-              color: color,
-              fontWeight: FontWeight.bold,
+          Flexible(
+            child: Text(
+              label,
+              style: TextStyle(
+                fontSize: 12,
+                color: color,
+                fontWeight: FontWeight.bold,
+              ),
+              overflow: TextOverflow.ellipsis,
+              maxLines: 1,
             ),
           ),
         ],
