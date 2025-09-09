@@ -10,8 +10,11 @@ import '../services/auth_service.dart';
 import '../services/experiment_service.dart';
 import '../services/user_service.dart';
 import '../services/notification_service.dart';
+import '../models/app_user.dart';
+import 'support_donation_screen.dart';
 
 class NavigationScreen extends StatefulWidget {
+  
   const NavigationScreen({super.key});
 
   @override
@@ -28,6 +31,7 @@ class _NavigationScreenState extends State<NavigationScreen> {
   int _unreadCount = 0;
   int _pendingEvaluations = 0; // 未評価の実験数
   int _unreadNotifications = 0; // 未読通知数
+  AppUser? _currentUser;
 
   late final List<Widget> _screens;
 
@@ -40,10 +44,12 @@ class _NavigationScreenState extends State<NavigationScreen> {
       const NotificationScreen(),
       const HistoryScreen(),
       MyPageScreen(key: UniqueKey()), // UniqueKeyで再構築を強制
+      const SupportDonationScreen(),
     ];
     _loadUnreadCount();
     _loadPendingEvaluations();
     _loadUnreadNotifications();
+    _loadCurrentUser();
   }
 
   Future<void> _loadUnreadCount() async {
@@ -129,6 +135,15 @@ class _NavigationScreenState extends State<NavigationScreen> {
       });
     }
   }
+  
+  Future<void> _loadCurrentUser() async {
+    final user = await _authService.getCurrentAppUser();
+    if (mounted) {
+      setState(() {
+        _currentUser = user;
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -141,27 +156,36 @@ class _NavigationScreenState extends State<NavigationScreen> {
           index: _selectedIndex,
           children: _screens,
         ),
-        bottomNavigationBar: NavigationBar(
-          selectedIndex: _selectedIndex,
-          onDestinationSelected: (index) {
-            setState(() {
-              _selectedIndex = index;
-              if (index == 4) {
-                // マイページに遷移したら画面を再構築して最新状態を表示
-                _screens[4] = MyPageScreen(key: UniqueKey());
-                _loadPendingEvaluations(); // 評価状態を更新
+        bottomNavigationBar: Theme(
+          data: Theme.of(context).copyWith(
+            navigationBarTheme: NavigationBarThemeData(
+              labelTextStyle: WidgetStateProperty.all(
+                const TextStyle(fontSize: 10, fontWeight: FontWeight.w500),
+              ),
+            ),
+          ),
+          child: NavigationBar(
+            selectedIndex: _selectedIndex,
+            onDestinationSelected: (index) {
+              setState(() {
+                _selectedIndex = index;
+                if (index == 4) {
+                  // マイページに遷移したら画面を再構築して最新状態を表示
+                  _screens[4] = MyPageScreen(key: UniqueKey());
+                  _loadPendingEvaluations(); // 評価状態を更新
+                }
+              });
+              if (index == 1) {
+                _loadUnreadCount();
+              } else if (index == 3) {
+                // 履歴画面に遷移したら再構築して最新状態を表示
+                _screens[3] = const HistoryScreen();
               }
-            });
-            if (index == 1) {
-              _loadUnreadCount();
-            } else if (index == 3) {
-              // 履歴画面に遷移したら再構築して最新状態を表示
-              _screens[3] = const HistoryScreen();
-            }
-          },
-          backgroundColor: Colors.white,
-          indicatorColor: const Color(0xFF8E1728).withValues(alpha: 0.2),
-          destinations: [
+            },
+            backgroundColor: Colors.white,
+            indicatorColor: const Color(0xFF8E1728).withValues(alpha: 0.2),
+            labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
+            destinations: [
             const NavigationDestination(
               icon: Icon(Icons.home_outlined),
               selectedIcon: Icon(Icons.home, color: Color(0xFF8E1728)),
@@ -213,7 +237,13 @@ class _NavigationScreenState extends State<NavigationScreen> {
               selectedIcon: Icon(Icons.person, color: Color(0xFF8E1728)),
               label: 'マイページ',
             ),
+            const NavigationDestination(
+              icon: Icon(Icons.favorite_outline),
+              selectedIcon: Icon(Icons.favorite, color: Color(0xFF8E1728)),
+              label: '支援・依頼',
+            ),
           ],
+          ),
         ),
       );
     } else {
@@ -295,6 +325,11 @@ class _NavigationScreenState extends State<NavigationScreen> {
                   icon: Icon(Icons.person_outline),
                   selectedIcon: Icon(Icons.person, color: Color(0xFF8E1728)),
                   label: Text('マイページ'),
+                ),
+                const NavigationRailDestination(
+                  icon: Icon(Icons.favorite_outline),
+                  selectedIcon: Icon(Icons.favorite, color: Color(0xFF8E1728)),
+                  label: Text('支援・依頼'),
                 ),
               ],
             ),

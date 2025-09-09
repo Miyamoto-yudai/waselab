@@ -22,7 +22,7 @@ class ExperimentCalendarView extends StatefulWidget {
 
 class _ExperimentCalendarViewState extends State<ExperimentCalendarView> {
   final ReservationService _reservationService = ReservationService();
-  CalendarFormat _calendarFormat = CalendarFormat.month;
+  final CalendarFormat _calendarFormat = CalendarFormat.month;
   late DateTime _focusedDay;
   DateTime? _selectedDay;
   Map<DateTime, List<ExperimentSlot>> _slotsByDate = {};

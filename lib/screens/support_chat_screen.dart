@@ -468,12 +468,15 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
                     ? Container(
                         color: Colors.grey[50],
                         padding: const EdgeInsets.all(8),
-                        child: GridView.count(
-                          crossAxisCount: 3,
-                          childAspectRatio: 2.5,
-                          mainAxisSpacing: 8,
-                          crossAxisSpacing: 8,
-                          children: _getSupportTemplates()
+                        child: Center(
+                          child: Container(
+                            constraints: const BoxConstraints(maxWidth: 600),
+                            child: GridView.count(
+                              crossAxisCount: 3,
+                              childAspectRatio: 2.5,
+                              mainAxisSpacing: 8,
+                              crossAxisSpacing: 8,
+                              children: _getSupportTemplates()
                               .map((template) => InkWell(
                                     onTap: () => _selectTemplate(template['template'] as String),
                                     child: Container(
@@ -509,6 +512,8 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
                                     ),
                                   ))
                               .toList(),
+                            ),
+                          ),
                         ),
                       )
                     : null,

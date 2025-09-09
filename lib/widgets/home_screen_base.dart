@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import '../models/experiment.dart';
 import '../widgets/experiment_card.dart';
+import '../widgets/support_banner.dart';
+import '../services/preference_service.dart';
 
 /// ホーム画面の共通ベースウィジェット
 class HomeScreenBase extends StatefulWidget {
@@ -204,6 +206,8 @@ class _HomeScreenBaseState extends State<HomeScreenBase> {
   void initState() {
     super.initState();
     _scrollController.addListener(_onScroll);
+    // 初回起動を記録
+    PreferenceService.recordFirstLaunch();
   }
 
   void _onScroll() {
@@ -394,6 +398,8 @@ class _HomeScreenBaseState extends State<HomeScreenBase> {
     return Scaffold(
       body: Column(
         children: [
+          // 支援バナー（条件付きで表示）
+          const SupportBanner(),
           // アプリバー部分（スクロールで隠れる）
           AnimatedContainer(
             duration: const Duration(milliseconds: 200),
@@ -405,26 +411,28 @@ class _HomeScreenBaseState extends State<HomeScreenBase> {
               flexibleSpace: SafeArea(
                 child: Container(),
               ),
-              leading: Container(
-                margin: const EdgeInsets.only(left: 16),
-                width: 40,
-                height: 40,
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  shape: BoxShape.circle,
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.1),
-                      blurRadius: 8,
-                      offset: const Offset(0, 2),
-                    ),
-                  ],
+              leading: IconButton(
+                icon: Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    shape: BoxShape.circle,
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.1),
+                        blurRadius: 8,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: const Icon(
+                    Icons.science,
+                    size: 24,
+                    color: Color(0xFF8E1728),
+                  ),
                 ),
-                child: const Icon(
-                  Icons.science,
-                  size: 24,
-                  color: Color(0xFF8E1728),
-                ),
+                onPressed: () {},
               ),
               title: Padding(
                 padding: const EdgeInsets.only(left: 8),
@@ -875,6 +883,7 @@ class _HomeScreenBaseState extends State<HomeScreenBase> {
           child: SizedBox(
             height: 64,
             child: FloatingActionButton.extended(
+              heroTag: "create_experiment_fab",
               onPressed: widget.canCreateExperiment
                   ? widget.onCreateExperiment ?? () {
                       ScaffoldMessenger.of(context).showSnackBar(
@@ -930,5 +939,4 @@ class _HomeScreenBaseState extends State<HomeScreenBase> {
       ),
     );
   }
-
 }

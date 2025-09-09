@@ -18,7 +18,9 @@ import 'package:firebase_auth/firebase_auth.dart';
 import '../services/message_service.dart';
 import '../services/auth_service.dart';
 import '../services/user_service.dart';
+import '../services/preference_service.dart';
 import 'chat_screen.dart';
+import 'support_donation_screen.dart';
 
 /// 実験詳細画面
 /// 選択された実験の詳細情報を表示する
@@ -461,6 +463,14 @@ class _ExperimentDetailScreenState extends State<ExperimentDetailScreen> {
             duration: Duration(seconds: 4),
           ),
         );
+        
+        // 実験完了回数を増やす
+        await PreferenceService.incrementExperimentCompletedCount();
+        
+        // 3回以上完了している場合、支援メッセージを表示
+        if (await PreferenceService.hasCompletedMultipleExperiments()) {
+          _showSupportMessage();
+        }
       }
     } catch (e) {
       if (mounted) {
@@ -594,6 +604,84 @@ class _ExperimentDetailScreenState extends State<ExperimentDetailScreen> {
         );
       }
     }
+  }
+  
+  void _showSupportMessage() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Row(
+          children: [
+            Icon(
+              Icons.celebration,
+              color: Color(0xFF8E1728),
+            ),
+            SizedBox(width: 8),
+            Text('実験参加ありがとうございます！'),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'わせラボをご利用いただき、誠にありがとうございます。',
+              style: TextStyle(fontSize: 14),
+            ),
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: const Color(0xFF8E1728).withValues(alpha: 0.05),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(
+                  color: const Color(0xFF8E1728).withValues(alpha: 0.2),
+                ),
+              ),
+              child: const Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    '💖 サービスへのご支援について',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 13,
+                    ),
+                  ),
+                  SizedBox(height: 6),
+                  Text(
+                    'このサービスは皆様の支援の元無償で成り立っています。'
+                    'ご支援いただけると大変励みになります。',
+                    style: TextStyle(fontSize: 12),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('閉じる'),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const SupportDonationScreen(),
+                ),
+              );
+            },
+            style: TextButton.styleFrom(
+              foregroundColor: const Color(0xFF8E1728),
+            ),
+            child: const Text('詳しく見る'),
+          ),
+        ],
+      ),
+    );
   }
 
   /// 質問するボタンの処理

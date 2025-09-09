@@ -739,7 +739,10 @@ class _IconChangeScreenState extends State<IconChangeScreen>
     final screenWidth = MediaQuery.of(context).size.width;
     final crossAxisCount = screenWidth < 400 ? 2 : (screenWidth < 600 ? 3 : 4);
     
-    return GridView.builder(
+    return Center(
+      child: Container(
+        constraints: const BoxConstraints(maxWidth: 800),
+        child: GridView.builder(
       padding: const EdgeInsets.all(16),
       gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: crossAxisCount,
@@ -904,6 +907,8 @@ class _IconChangeScreenState extends State<IconChangeScreen>
           ),
         );
       },
+        ),
+      ),
     );
   }
 
@@ -912,7 +917,10 @@ class _IconChangeScreenState extends State<IconChangeScreen>
     final screenWidth = MediaQuery.of(context).size.width;
     final crossAxisCount = screenWidth < 400 ? 2 : (screenWidth < 600 ? 3 : 4);
     
-    return GridView.builder(
+    return Center(
+      child: Container(
+        constraints: const BoxConstraints(maxWidth: 800),
+        child: GridView.builder(
       padding: const EdgeInsets.all(16),
       gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: crossAxisCount,
@@ -1056,6 +1064,8 @@ class _IconChangeScreenState extends State<IconChangeScreen>
           ),
         );
       },
+        ),
+      ),
     );
   }
 
@@ -1064,7 +1074,10 @@ class _IconChangeScreenState extends State<IconChangeScreen>
     final screenWidth = MediaQuery.of(context).size.width;
     final crossAxisCount = screenWidth < 400 ? 2 : (screenWidth < 600 ? 3 : 4);
     
-    return GridView.builder(
+    return Center(
+      child: Container(
+        constraints: const BoxConstraints(maxWidth: 800),
+        child: GridView.builder(
       padding: const EdgeInsets.all(16),
       gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: crossAxisCount,
@@ -1119,15 +1132,15 @@ class _IconChangeScreenState extends State<IconChangeScreen>
                               backgroundColor: color.hasGradient && color.gradientColors != null
                                   ? color.gradientColors!.first
                                   : color.color,
+                              designBuilder: _currentUser!.selectedDesign != null && _currentUser!.selectedDesign != 'default'
+                                  ? AvatarDesigns.getById(_currentUser!.selectedDesign!).builder
+                                  : null,
                               child: _currentUser!.selectedDesign == null || _currentUser!.selectedDesign == 'default'
                                   ? Icon(
                                       color.hasShimmer ? Icons.auto_awesome : Icons.person,
                                       color: Colors.white,
                                       size: screenWidth < 400 ? 22 : 28,
                                     )
-                                  : null,
-                              designBuilder: _currentUser!.selectedDesign != null && _currentUser!.selectedDesign != 'default'
-                                  ? AvatarDesigns.getById(_currentUser!.selectedDesign!).builder
                                   : null,
                             ),
                           ),
@@ -1219,6 +1232,8 @@ class _IconChangeScreenState extends State<IconChangeScreen>
           ),
         );
       },
+        ),
+      ),
     );
   }
 }

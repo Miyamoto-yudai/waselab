@@ -194,10 +194,23 @@ class AuthService {
           return 'Googleサインインが無効です';
         case 'user-disabled':
           return 'このユーザーは無効化されています';
+        case 'popup-closed-by-user':
+        case 'cancelled':
+        case 'popup_closed_by_user':
+          // ポップアップがユーザーによって閉じられた場合
+          return 'CANCELLED';
         default:
           return 'エラーが発生しました: ${e.message}';
       }
     } catch (e) {
+      // エラーメッセージを詳しく確認
+      final errorString = e.toString().toLowerCase();
+      if (errorString.contains('popup') || 
+          errorString.contains('cancel') || 
+          errorString.contains('closed')) {
+        // ポップアップが閉じられた場合はキャンセル扱い
+        return 'CANCELLED';
+      }
       return 'エラーが発生しました: $e';
     }
   }

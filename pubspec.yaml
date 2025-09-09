@@ -49,6 +49,9 @@ dependencies:
   
   # URL起動用
   url_launcher: ^6.3.0
+  
+  # ローカルストレージ
+  shared_preferences: ^2.3.3
 
 dev_dependencies:
   flutter_test:
@@ -107,7 +110,7 @@ flutter:
 flutter_launcher_icons:
   android: true
   ios: true
-  image_path: "assets/icons/app_icon.png"
+  image_path: "waselab_icon.png"
   adaptive_icon_background: "#FFFFFF"
-  adaptive_icon_foreground: "assets/icons/app_icon_foreground.png"
+  adaptive_icon_foreground: "waselab_icon.png"
   remove_alpha_ios: true

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../services/auth_service.dart';
 import 'login_screen.dart';
 import 'support_chat_screen.dart';
+import 'support_donation_screen.dart';
 
 /// 設定画面
 class SettingsScreen extends StatefulWidget {
@@ -113,7 +114,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
             '3. 個人情報の第三者提供\n'
             '法令に基づく場合を除き、本人の同意なく第三者に提供することはありません。\n\n'
             '4. 個人情報の管理\n'
-            '適切なセキュリティ対策を講じて管理します。',
+            '適切なセキュリティ対策を講じて管理します。\n\n'
+            '5. Firebaseの利用\n'
+            '本アプリはFirebaseを利用しており、以下の情報を自動的に収集します：\n'
+            '・利用状況データ（Firebase Analytics）\n'
+            '・クラッシュレポート（Firebase Crashlytics）\n'
+            'これらのデータはGoogleのサーバーに保存されます。\n\n'
+            '6. 外部サービスへのリンク\n'
+            '本アプリには外部サービスへのリンクが含まれています。\n'
+            '外部サイトのプライバシーポリシーについては各サービスをご確認ください。',
           ),
         ),
         actions: [
@@ -317,6 +326,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   title: const Text('お問い合わせ'),
                   trailing: const Icon(Icons.chevron_right),
                   onTap: _openSupport,
+                ),
+                const Divider(height: 1),
+                ListTile(
+                  leading: const Icon(Icons.volunteer_activism, color: Color(0xFF8E1728)),
+                  title: const Text('支援・開発のご依頼'),
+                  subtitle: const Text('サービス運営への支援と開発案件のご相談'),
+                  trailing: const Icon(Icons.chevron_right, color: Color(0xFF8E1728)),
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (context) => const SupportDonationScreen()),
+                    );
+                  },
                 ),
                 const Divider(height: 1),
                 ListTile(
