@@ -3,8 +3,8 @@
   <!-- 早稲田カラーの円形背景 -->
   <circle cx="512" cy="512" r="512" fill="#8E1728"/>
   
-  <!-- 白いフラスコ（中央に配置） -->
-  <g transform="translate(535, 500)">
+  <!-- 白いフラスコ（完全に中央配置） -->
+  <g transform="translate(545, 500)">
     <!-- フラスコの口 -->
     <rect x="-80" y="-280" width="160" height="20" fill="#FFFFFF"/>
     

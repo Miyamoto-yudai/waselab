@@ -162,24 +162,10 @@ class _ExperimentCalendarViewState extends State<ExperimentCalendarView> {
               ),
             ),
             headerStyle: const HeaderStyle(
-              formatButtonVisible: true,
+              formatButtonVisible: false,
               titleCentered: true,
-              formatButtonDecoration: BoxDecoration(
-                color: Color(0xFF8E1728),
-                borderRadius: BorderRadius.all(Radius.circular(12.0)),
-              ),
-              formatButtonTextStyle: TextStyle(
-                color: Colors.white,
-              ),
             ),
             onDaySelected: _onDaySelected,
-            onFormatChanged: (format) {
-              if (_calendarFormat != format) {
-                setState(() {
-                  _calendarFormat = format;
-                });
-              }
-            },
             onPageChanged: (focusedDay) {
               setState(() {
                 _focusedDay = focusedDay;
