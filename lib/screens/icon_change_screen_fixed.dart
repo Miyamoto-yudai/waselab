@@ -830,13 +830,26 @@ class _IconChangeScreenState extends State<IconChangeScreen>
                                 overflow: TextOverflow.ellipsis,
                               ),
                             ),
+                          // アニメーションバッジ
+                          if (frame.hasAnimation)
+                            Flexible(
+                              child: Container(
+                                padding: EdgeInsets.symmetric(horizontal: screenWidth < 400 ? 2 : 4, vertical: 1),
+                                decoration: BoxDecoration(
+                                  color: Colors.purple.withValues(alpha: 0.1),
+                                  borderRadius: BorderRadius.circular(8),
+                                  border: Border.all(color: Colors.purple.withValues(alpha: 0.3)),
+                                ),
+                                child: Icon(Icons.auto_awesome, size: screenWidth < 400 ? 8 : 10, color: Colors.purple),
+                              ),
+                            ),
                           SizedBox(height: screenWidth < 400 ? 2 : 4),
                           // 価格/状態
                           if (isEquipped)
                             FittedBox(
                               fit: BoxFit.scaleDown,
                               child: Container(
-                                padding: EdgeInsets.symmetric(horizontal: screenWidth < 400 ? 12 : 16, vertical: screenWidth < 400 ? 4 : 6),
+                                padding: EdgeInsets.symmetric(horizontal: screenWidth < 400 ? 8 : 10, vertical: 3),
                                 decoration: BoxDecoration(
                                   color: const Color(0xFF8E1728),
                                   borderRadius: BorderRadius.circular(15),
@@ -845,7 +858,7 @@ class _IconChangeScreenState extends State<IconChangeScreen>
                                   '装備中',
                                   style: TextStyle(
                                     color: Colors.white,
-                                    fontSize: screenWidth < 400 ? 12 : 14,
+                                    fontSize: screenWidth < 400 ? 9 : 10,
                                     fontWeight: FontWeight.bold,
                                   ),
                                 ),
@@ -859,14 +872,14 @@ class _IconChangeScreenState extends State<IconChangeScreen>
                                 style: ElevatedButton.styleFrom(
                                   backgroundColor: Colors.green,
                                   padding: EdgeInsets.symmetric(
-                                    horizontal: screenWidth < 400 ? 12 : 16, 
-                                    vertical: screenWidth < 400 ? 4 : 6
+                                    horizontal: screenWidth < 400 ? 6 : 10, 
+                                    vertical: 1
                                   ),
-                                  minimumSize: Size(0, screenWidth < 400 ? 32 : 36),
+                                  minimumSize: Size(0, screenWidth < 400 ? 20 : 24),
                                 ),
                                 child: Text(
                                   screenWidth < 400 ? '装備' : '装備する', 
-                                  style: TextStyle(fontSize: screenWidth < 400 ? 12 : 14)
+                                  style: TextStyle(fontSize: screenWidth < 400 ? 9 : 10)
                                 ),
                               ),
                             )
@@ -880,17 +893,17 @@ class _IconChangeScreenState extends State<IconChangeScreen>
                                 icon: Icon(Icons.shopping_cart, size: screenWidth < 400 ? 10 : 12),
                                 label: Text(
                                   '${frame.price}P',
-                                  style: TextStyle(fontSize: screenWidth < 400 ? 12 : 14),
+                                  style: TextStyle(fontSize: screenWidth < 400 ? 9 : 10),
                                 ),
                                 style: ElevatedButton.styleFrom(
                                   backgroundColor: (_currentUser?.points ?? 0) >= frame.price
                                       ? Colors.amber
                                       : Colors.grey,
                                   padding: EdgeInsets.symmetric(
-                                    horizontal: screenWidth < 400 ? 10 : 14, 
-                                    vertical: screenWidth < 400 ? 4 : 6
+                                    horizontal: screenWidth < 400 ? 4 : 6, 
+                                    vertical: 1
                                   ),
-                                  minimumSize: Size(0, screenWidth < 400 ? 32 : 36),
+                                  minimumSize: Size(0, screenWidth < 400 ? 20 : 24),
                                 ),
                               ),
                             ),
@@ -913,7 +926,7 @@ class _IconChangeScreenState extends State<IconChangeScreen>
     final crossAxisCount = screenWidth < 400 ? 2 : (screenWidth < 600 ? 3 : 4);
     
     return GridView.builder(
-      padding: const EdgeInsets.all(16),
+      padding: EdgeInsets.all(screenWidth < 400 ? 12 : 16),
       gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: crossAxisCount,
         crossAxisSpacing: screenWidth < 400 ? 8 : 16,
@@ -948,107 +961,110 @@ class _IconChangeScreenState extends State<IconChangeScreen>
             },
             child: LayoutBuilder(
               builder: (context, constraints) {
-                return SingleChildScrollView(
-                  child: ConstrainedBox(
-                    constraints: BoxConstraints(
-                      minHeight: constraints.maxHeight,
-                    ),
-                    child: Padding(
-                      padding: EdgeInsets.all(screenWidth < 400 ? 4 : 8),
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          // デザインプレビュー
-                          Flexible(
-                            child: CustomCircleAvatar(
-                              frameId: _currentUser!.selectedFrame,
-                              radius: screenWidth < 400 ? 22 : 28,
-                              backgroundColor: const Color(0xFF8E1728),
-                              designBuilder: design.builder,
-                            ),
-                          ),
-                          SizedBox(height: screenWidth < 400 ? 2 : 4),
-                          // デザイン名
-                          Flexible(
-                            child: Text(
-                              design.name,
-                              style: TextStyle(
-                                fontSize: screenWidth < 400 ? 10 : 12,
-                                fontWeight: FontWeight.bold,
-                              ),
-                              textAlign: TextAlign.center,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                          SizedBox(height: screenWidth < 400 ? 2 : 4),
-                          // 価格/状態
-                          if (isEquipped)
-                            FittedBox(
-                              fit: BoxFit.scaleDown,
-                              child: Container(
-                                padding: EdgeInsets.symmetric(horizontal: screenWidth < 400 ? 12 : 16, vertical: screenWidth < 400 ? 4 : 6),
-                                decoration: BoxDecoration(
-                                  color: const Color(0xFF8E1728),
-                                  borderRadius: BorderRadius.circular(15),
-                                ),
-                                child: Text(
-                                  '装備中',
-                                  style: TextStyle(
-                                    color: Colors.white,
-                                    fontSize: screenWidth < 400 ? 12 : 14,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                              ),
-                            )
-                          else if (isUnlocked)
-                            FittedBox(
-                              fit: BoxFit.scaleDown,
-                              child: ElevatedButton(
-                                onPressed: () => _equipDesign(design),
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: Colors.green,
-                                  padding: EdgeInsets.symmetric(
-                                    horizontal: screenWidth < 400 ? 12 : 16, 
-                                    vertical: screenWidth < 400 ? 4 : 6
-                                  ),
-                                  minimumSize: Size(0, screenWidth < 400 ? 32 : 36),
-                                ),
-                                child: Text(
-                                  screenWidth < 400 ? '装備' : '装備する', 
-                                  style: TextStyle(fontSize: screenWidth < 400 ? 12 : 14)
-                                ),
-                              ),
-                            )
-                          else
-                            FittedBox(
-                              fit: BoxFit.scaleDown,
-                              child: ElevatedButton.icon(
-                                onPressed: (_currentUser?.points ?? 0) >= design.price
-                                    ? () => _purchaseDesign(design)
-                                    : null,
-                                icon: Icon(Icons.shopping_cart, size: screenWidth < 400 ? 10 : 12),
-                                label: Text(
-                                  '${design.price}P',
-                                  style: TextStyle(fontSize: screenWidth < 400 ? 12 : 14),
-                                ),
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: (_currentUser?.points ?? 0) >= design.price
-                                      ? Colors.amber
-                                      : Colors.grey,
-                                  padding: EdgeInsets.symmetric(
-                                    horizontal: screenWidth < 400 ? 10 : 14, 
-                                    vertical: screenWidth < 400 ? 4 : 6
-                                  ),
-                                  minimumSize: Size(0, screenWidth < 400 ? 32 : 36),
-                                ),
-                              ),
-                            ),
-                        ],
+                return Padding(
+                  padding: EdgeInsets.all(screenWidth < 400 ? 6 : 10),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                    children: [
+                      // デザインプレビュー
+                      Flexible(
+                        flex: 3,
+                        child: CustomCircleAvatar(
+                          frameId: _currentUser!.selectedFrame,
+                          radius: screenWidth < 400 ? 22 : 28,
+                          backgroundColor: const Color(0xFF8E1728),
+                          designBuilder: design.builder,
+                        ),
                       ),
-                    ),
+                      // デザイン名
+                      Flexible(
+                        flex: 1,
+                        child: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: Text(
+                            design.name,
+                            style: TextStyle(
+                              fontSize: screenWidth < 400 ? 11 : 13,
+                              fontWeight: FontWeight.bold,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                        ),
+                      ),
+                      // プレミアムバッジ
+                      if (design.isPremium)
+                        Flexible(
+                          flex: 1,
+                          child: FittedBox(
+                            fit: BoxFit.scaleDown,
+                            child: Container(
+                              padding: EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                              decoration: BoxDecoration(
+                                color: Colors.amber.withValues(alpha: 0.1),
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(color: Colors.amber.withValues(alpha: 0.3)),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(Icons.star, size: 8, color: Colors.amber),
+                                  SizedBox(width: 2),
+                                  Text(
+                                    'プレミアム',
+                                    style: TextStyle(fontSize: 8, color: Colors.amber),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                      // 価格/状態
+                      Flexible(
+                        flex: 1,
+                        child: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: isEquipped
+                              ? Container(
+                                  padding: EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFF8E1728),
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  child: Text(
+                                    '装備中',
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontSize: screenWidth < 400 ? 11 : 12,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                )
+                              : isUnlocked
+                                  ? ElevatedButton(
+                                      onPressed: () => _equipDesign(design),
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: Colors.green,
+                                        padding: EdgeInsets.symmetric(horizontal: screenWidth < 400 ? 8 : 10, vertical: 2),
+                                        minimumSize: Size(0, screenWidth < 400 ? 24 : 28),
+                                      ),
+                                      child: Text('装備', style: TextStyle(fontSize: screenWidth < 400 ? 11 : 12)),
+                                    )
+                                  : ElevatedButton(
+                                      onPressed: (_currentUser?.points ?? 0) >= design.price
+                                          ? () => _purchaseDesign(design)
+                                          : null,
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: (_currentUser?.points ?? 0) >= design.price
+                                            ? Colors.amber
+                                            : Colors.grey,
+                                        padding: EdgeInsets.symmetric(horizontal: screenWidth < 400 ? 8 : 10, vertical: 2),
+                                        minimumSize: Size(0, screenWidth < 400 ? 24 : 28),
+                                      ),
+                                      child: Text('${design.price}P', style: TextStyle(fontSize: screenWidth < 400 ? 11 : 12)),
+                                    ),
+                        ),
+                      ),
+                    ],
                   ),
                 );
               },
@@ -1065,7 +1081,7 @@ class _IconChangeScreenState extends State<IconChangeScreen>
     final crossAxisCount = screenWidth < 400 ? 2 : (screenWidth < 600 ? 3 : 4);
     
     return GridView.builder(
-      padding: const EdgeInsets.all(16),
+      padding: EdgeInsets.all(screenWidth < 400 ? 12 : 16),
       gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: crossAxisCount,
         crossAxisSpacing: screenWidth < 400 ? 8 : 16,
@@ -1100,118 +1116,110 @@ class _IconChangeScreenState extends State<IconChangeScreen>
             },
             child: LayoutBuilder(
               builder: (context, constraints) {
-                return SingleChildScrollView(
-                  child: ConstrainedBox(
-                    constraints: BoxConstraints(
-                      minHeight: constraints.maxHeight,
-                    ),
-                    child: Padding(
-                      padding: EdgeInsets.all(screenWidth < 400 ? 4 : 8),
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          // カラープレビュー
-                          Flexible(
-                            child: CustomCircleAvatar(
-                              frameId: _currentUser!.selectedFrame,
-                              radius: screenWidth < 400 ? 22 : 28,
-                              backgroundColor: color.hasGradient && color.gradientColors != null
-                                  ? color.gradientColors!.first
-                                  : color.color,
-                              child: _currentUser!.selectedDesign == null || _currentUser!.selectedDesign == 'default'
-                                  ? Icon(
-                                      color.hasShimmer ? Icons.auto_awesome : Icons.person,
-                                      color: Colors.white,
-                                      size: screenWidth < 400 ? 22 : 28,
-                                    )
-                                  : null,
-                              designBuilder: _currentUser!.selectedDesign != null && _currentUser!.selectedDesign != 'default'
-                                  ? AvatarDesigns.getById(_currentUser!.selectedDesign!).builder
-                                  : null,
-                            ),
+                return Padding(
+                  padding: EdgeInsets.all(screenWidth < 400 ? 6 : 10),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                    children: [
+                      // カラープレビュー
+                      Flexible(
+                        flex: 3,
+                        child: Container(
+                          width: screenWidth < 400 ? 35 : 45,
+                          height: screenWidth < 400 ? 35 : 45,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: color.hasGradient && color.gradientColors != null
+                                ? null
+                                : color.color,
+                            gradient: color.hasGradient && color.gradientColors != null
+                                ? LinearGradient(
+                                    begin: Alignment.topLeft,
+                                    end: Alignment.bottomRight,
+                                    colors: color.gradientColors!,
+                                  )
+                                : null,
+                            boxShadow: [
+                              BoxShadow(
+                                color: (color.hasGradient && color.gradientColors != null
+                                    ? color.gradientColors!.first
+                                    : color.color).withValues(alpha: 0.3),
+                                blurRadius: 6,
+                                spreadRadius: 1,
+                              ),
+                            ],
                           ),
-                          SizedBox(height: screenWidth < 400 ? 2 : 4),
-                          // カラー名  
-                          Flexible(
-                            child: Text(
-                              color.name,
-                              style: TextStyle(
-                                fontSize: screenWidth < 400 ? 10 : 12,
-                                fontWeight: FontWeight.bold,
-                              ),
-                              textAlign: TextAlign.center,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                          SizedBox(height: screenWidth < 400 ? 2 : 4),
-                          // 価格/状態
-                          if (isEquipped)
-                            FittedBox(
-                              fit: BoxFit.scaleDown,
-                              child: Container(
-                                padding: EdgeInsets.symmetric(horizontal: screenWidth < 400 ? 12 : 16, vertical: screenWidth < 400 ? 4 : 6),
-                                decoration: BoxDecoration(
-                                  color: const Color(0xFF8E1728),
-                                  borderRadius: BorderRadius.circular(15),
-                                ),
-                                child: Text(
-                                  '装備中',
-                                  style: TextStyle(
-                                    color: Colors.white,
-                                    fontSize: screenWidth < 400 ? 12 : 14,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                              ),
-                            )
-                          else if (isUnlocked)
-                            FittedBox(
-                              fit: BoxFit.scaleDown,
-                              child: ElevatedButton(
-                                onPressed: () => _equipColor(color),
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: Colors.green,
-                                  padding: EdgeInsets.symmetric(
-                                    horizontal: screenWidth < 400 ? 12 : 16, 
-                                    vertical: screenWidth < 400 ? 4 : 6
-                                  ),
-                                  minimumSize: Size(0, screenWidth < 400 ? 32 : 36),
-                                ),
-                                child: Text(
-                                  screenWidth < 400 ? '装備' : '装備する', 
-                                  style: TextStyle(fontSize: screenWidth < 400 ? 12 : 14)
-                                ),
-                              ),
-                            )
-                          else
-                            FittedBox(
-                              fit: BoxFit.scaleDown,
-                              child: ElevatedButton.icon(
-                                onPressed: (_currentUser?.points ?? 0) >= color.price
-                                    ? () => _purchaseColor(color)
-                                    : null,
-                                icon: Icon(Icons.shopping_cart, size: screenWidth < 400 ? 10 : 12),
-                                label: Text(
-                                  '${color.price}P',
-                                  style: TextStyle(fontSize: screenWidth < 400 ? 12 : 14),
-                                ),
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: (_currentUser?.points ?? 0) >= color.price
-                                      ? Colors.amber
-                                      : Colors.grey,
-                                  padding: EdgeInsets.symmetric(
-                                    horizontal: screenWidth < 400 ? 10 : 14, 
-                                    vertical: screenWidth < 400 ? 4 : 6
-                                  ),
-                                  minimumSize: Size(0, screenWidth < 400 ? 32 : 36),
-                                ),
-                              ),
-                            ),
-                        ],
+                          child: color.hasShimmer
+                              ? Icon(
+                                  Icons.auto_awesome,
+                                  color: Colors.white,
+                                  size: screenWidth < 400 ? 16 : 20,
+                                )
+                              : null,
+                        ),
                       ),
-                    ),
+                      // カラー名  
+                      Flexible(
+                        flex: 1,
+                        child: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: Text(
+                            color.name,
+                            style: TextStyle(
+                              fontSize: screenWidth < 400 ? 11 : 13,
+                              fontWeight: FontWeight.bold,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                        ),
+                      ),
+                      // 価格/状態
+                      Flexible(
+                        flex: 1,
+                        child: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: isEquipped
+                              ? Container(
+                                  padding: EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFF8E1728),
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  child: Text(
+                                    '装備中',
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontSize: screenWidth < 400 ? 11 : 12,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                )
+                              : isUnlocked
+                                  ? ElevatedButton(
+                                      onPressed: () => _equipColor(color),
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: Colors.green,
+                                        padding: EdgeInsets.symmetric(horizontal: screenWidth < 400 ? 8 : 10, vertical: 2),
+                                        minimumSize: Size(0, screenWidth < 400 ? 24 : 28),
+                                      ),
+                                      child: Text('装備', style: TextStyle(fontSize: screenWidth < 400 ? 11 : 12)),
+                                    )
+                                  : ElevatedButton(
+                                      onPressed: (_currentUser?.points ?? 0) >= color.price
+                                          ? () => _purchaseColor(color)
+                                          : null,
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: (_currentUser?.points ?? 0) >= color.price
+                                            ? Colors.amber
+                                            : Colors.grey,
+                                        padding: EdgeInsets.symmetric(horizontal: screenWidth < 400 ? 8 : 10, vertical: 2),
+                                        minimumSize: Size(0, screenWidth < 400 ? 24 : 28),
+                                      ),
+                                      child: Text('${color.price}P', style: TextStyle(fontSize: screenWidth < 400 ? 11 : 12)),
+                                    ),
+                        ),
+                      ),
+                    ],
                   ),
                 );
               },
