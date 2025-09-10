@@ -185,4 +185,20 @@ class MessageService {
 
     return totalUnread;
   }
+
+  Stream<int> streamUnreadMessageCount(String userId) {
+    return _firestore
+        .collection('conversations')
+        .where('participantIds', arrayContains: userId)
+        .snapshots()
+        .map((snapshot) {
+          int totalUnread = 0;
+          for (var doc in snapshot.docs) {
+            final data = doc.data();
+            final unreadCounts = Map<String, dynamic>.from(data['unreadCounts'] ?? {});
+            totalUnread += (unreadCounts[userId] ?? 0) as int;
+          }
+          return totalUnread;
+        });
+  }
 }

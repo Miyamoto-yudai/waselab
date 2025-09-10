@@ -404,6 +404,7 @@ class _HomeScreenBaseState extends State<HomeScreenBase> {
           AnimatedContainer(
             duration: const Duration(milliseconds: 100), // アニメーション時間を短縮
             height: _isHeaderVisible ? (isSmallScreen ? 70 + safeAreaTop : 70) : 0,
+            curve: Curves.easeInOut,
             child: AppBar(
               toolbarHeight: isSmallScreen ? 70 + safeAreaTop : 70,
               titleSpacing: 0,
@@ -505,6 +506,7 @@ class _HomeScreenBaseState extends State<HomeScreenBase> {
           AnimatedContainer(
             duration: const Duration(milliseconds: 100), // アニメーション時間を短縮
             height: _isHeaderVisible ? (isSmallScreen ? 180 : 160) : 0,
+            curve: Curves.easeInOut,
             child: SingleChildScrollView(
               physics: const NeverScrollableScrollPhysics(),
               child: Visibility( // OpacityをVisibilityに変更
@@ -848,9 +850,15 @@ class _HomeScreenBaseState extends State<HomeScreenBase> {
                     )
                   : LayoutBuilder(
                       builder: (context, constraints) {
+                        
                         return GridView.builder(
                           controller: _scrollController,
-                          padding: const EdgeInsets.all(12),
+                          padding: EdgeInsets.only(
+                            left: 12,
+                            right: 12,
+                            top: 12,
+                            bottom: 12,
+                          ),
                           gridDelegate: SliverGridDelegateWithMaxCrossAxisExtent(
                             maxCrossAxisExtent: 600, // カード最大幅を600pxに設定
                             crossAxisSpacing: 4, // 列間隔を4pxに設定
@@ -860,6 +868,7 @@ class _HomeScreenBaseState extends State<HomeScreenBase> {
                           itemCount: filteredExperiments.length,
                           addAutomaticKeepAlives: false, // パフォーマンス改善
                           addRepaintBoundaries: false, // パフォーマンス改善
+                          physics: ClampingScrollPhysics(),
                           itemBuilder: (context, index) {
                             final experiment = filteredExperiments[index];
                             return RepaintBoundary( // 個別に再描画境界を設定

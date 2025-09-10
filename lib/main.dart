@@ -3,6 +3,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'firebase_options.dart';
 import 'services/auth_service.dart';
+import 'services/fcm_service.dart';
 import 'screens/login_screen.dart';
 import 'screens/navigation_screen.dart';
 import 'screens/email_verification_screen.dart';
@@ -26,6 +27,9 @@ void main() async {
     // 日本語ロケールを初期化
     initializeDateFormatting('ja_JP', null),
   ]);
+  
+  // FCMサービスの初期化
+  await FCMService().initialize();
   
   // 初期化完了後にアプリを起動
   runApp(const WaseLaboApp(

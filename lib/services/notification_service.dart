@@ -62,6 +62,16 @@ class NotificationService {
     }
   }
 
+  /// 未読通知数をリアルタイムで取得
+  Stream<int> streamUnreadNotificationCount(String userId) {
+    return _firestore
+        .collection(_collection)
+        .where('userId', isEqualTo: userId)
+        .where('isRead', isEqualTo: false)
+        .snapshots()
+        .map((snapshot) => snapshot.docs.length);
+  }
+
   /// 通知を既読にする
   Future<void> markAsRead(String notificationId) async {
     try {

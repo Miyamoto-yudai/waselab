@@ -52,6 +52,9 @@ dependencies:
   
   # ローカルストレージ
   shared_preferences: ^2.3.3
+  firebase_messaging: ^15.2.10
+  cloud_functions: ^5.6.2
+  flutter_local_notifications: ^19.4.1
 
 dev_dependencies:
   flutter_test:

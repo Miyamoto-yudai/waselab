@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../services/auth_service.dart';
+import '../services/fcm_service.dart';
 import 'login_screen.dart';
 import 'support_chat_screen.dart';
 import 'support_donation_screen.dart';
@@ -14,6 +15,7 @@ class SettingsScreen extends StatefulWidget {
 
 class _SettingsScreenState extends State<SettingsScreen> {
   final AuthService _authService = AuthService();
+  final FCMService _fcmService = FCMService();
   
   // 通知設定
   bool _experimentNotifications = true;
@@ -189,6 +191,35 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     setState(() {
                       _emailNotifications = value;
                     });
+                  },
+                ),
+                const Divider(height: 1),
+                ListTile(
+                  leading: const Icon(Icons.notifications_active),
+                  title: const Text('プッシュ通知テスト'),
+                  subtitle: const Text('プッシュ通知が正常に動作するかテストします'),
+                  trailing: const Icon(Icons.send),
+                  onTap: () async {
+                    try {
+                      await _fcmService.sendTestNotification();
+                      if (mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('テスト通知を送信しました'),
+                            backgroundColor: Colors.green,
+                          ),
+                        );
+                      }
+                    } catch (e) {
+                      if (mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text('通知の送信に失敗しました: $e'),
+                            backgroundColor: Colors.red,
+                          ),
+                        );
+                      }
+                    }
                   },
                 ),
               ],

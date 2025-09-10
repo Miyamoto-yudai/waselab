@@ -50,6 +50,7 @@ class _NavigationScreenState extends State<NavigationScreen> {
     _loadPendingEvaluations();
     _loadUnreadNotifications();
     _loadCurrentUser();
+    _setupRealtimeListeners();
   }
 
   Future<void> _loadUnreadCount() async {
@@ -145,6 +146,36 @@ class _NavigationScreenState extends State<NavigationScreen> {
     }
   }
 
+  void _setupRealtimeListeners() {
+    final user = _authService.currentUser;
+    if (user == null) return;
+
+    // メッセージの未読数をリアルタイムで監視
+    _messageService.streamUnreadMessageCount(user.uid).listen((count) {
+      if (mounted) {
+        setState(() {
+          _unreadCount = count;
+        });
+      }
+    });
+
+    // 通知の未読数をリアルタイムで監視
+    _notificationService.streamUnreadNotificationCount(user.uid).listen((count) {
+      if (mounted) {
+        setState(() {
+          _unreadNotifications = count;
+        });
+      }
+    });
+
+    // 評価待ちの実験数を定期的に更新（5秒ごと）
+    Stream.periodic(const Duration(seconds: 5)).listen((_) {
+      if (mounted) {
+        _loadPendingEvaluations();
+      }
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final screenWidth = MediaQuery.of(context).size.width;
@@ -195,11 +226,13 @@ class _NavigationScreenState extends State<NavigationScreen> {
               icon: Badge(
                 label: Text('$_unreadCount'),
                 isLabelVisible: _unreadCount > 0,
+                alignment: AlignmentDirectional.topEnd,
                 child: const Icon(Icons.message_outlined),
               ),
               selectedIcon: Badge(
                 label: Text('$_unreadCount'),
                 isLabelVisible: _unreadCount > 0,
+                alignment: AlignmentDirectional.topEnd,
                 child: const Icon(Icons.message, color: Color(0xFF8E1728)),
               ),
               label: 'メッセージ',
@@ -208,11 +241,13 @@ class _NavigationScreenState extends State<NavigationScreen> {
               icon: Badge(
                 label: Text('$_unreadNotifications'),
                 isLabelVisible: _unreadNotifications > 0,
+                alignment: AlignmentDirectional.topEnd,
                 child: const Icon(Icons.notifications_outlined),
               ),
               selectedIcon: Badge(
                 label: Text('$_unreadNotifications'),
                 isLabelVisible: _unreadNotifications > 0,
+                alignment: AlignmentDirectional.topEnd,
                 child: const Icon(Icons.notifications, color: Color(0xFF8E1728)),
               ),
               label: '通知',

@@ -175,52 +175,52 @@ class _MessagesScreenState extends State<MessagesScreen> {
               final otherUserId = conversation.getOtherParticipantId(_currentUserId!);
               final unreadCount = conversation.unreadCounts[_currentUserId] ?? 0;
 
-              return Card(
-                margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                elevation: 1,
-                child: ListTile(
-                  leading: FutureBuilder<AppUser?>(
-                    future: _userService.getUserById(otherUserId),
-                    builder: (context, userSnapshot) {
-                      if (userSnapshot.hasData && userSnapshot.data != null) {
-                        final userData = userSnapshot.data!;
-                        return CustomCircleAvatar(
-                          frameId: userData.selectedFrame,
-                          radius: 20,
-                          backgroundColor: const Color(0xFF8E1728),
-                          designBuilder: userData.selectedDesign != null && userData.selectedDesign != 'default'
-                              ? AvatarDesigns.getById(userData.selectedDesign!).builder
-                              : null,
-                          child: userData.selectedDesign == null || userData.selectedDesign == 'default'
-                              ? Text(
-                                  otherUserName.isNotEmpty ? otherUserName[0].toUpperCase() : '?',
-                                  style: const TextStyle(color: Colors.white),
-                                )
-                              : null,
-                        );
-                      } else {
-                        return CustomCircleAvatar(
-                          frameId: null,
-                          radius: 20,
-                          backgroundColor: const Color(0xFF8E1728),
-                          child: Text(
-                            otherUserName.isNotEmpty ? otherUserName[0].toUpperCase() : '?',
-                            style: const TextStyle(color: Colors.white),
+              return FutureBuilder<AppUser?>(
+                future: _userService.getUserById(otherUserId),
+                builder: (context, userSnapshot) {
+                  // ユーザー情報から最新の名前を取得
+                  final latestUserName = userSnapshot.hasData && userSnapshot.data != null
+                      ? userSnapshot.data!.name
+                      : otherUserName;
+                  
+                  return Card(
+                    margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    elevation: 1,
+                    child: ListTile(
+                      leading: userSnapshot.hasData && userSnapshot.data != null
+                        ? CustomCircleAvatar(
+                            frameId: userSnapshot.data!.selectedFrame,
+                            radius: 20,
+                            backgroundColor: const Color(0xFF8E1728),
+                            designBuilder: userSnapshot.data!.selectedDesign != null && userSnapshot.data!.selectedDesign != 'default'
+                                ? AvatarDesigns.getById(userSnapshot.data!.selectedDesign!).builder
+                                : null,
+                            child: userSnapshot.data!.selectedDesign == null || userSnapshot.data!.selectedDesign == 'default'
+                                ? Text(
+                                    latestUserName.isNotEmpty ? latestUserName[0].toUpperCase() : '?',
+                                    style: const TextStyle(color: Colors.white),
+                                  )
+                                : null,
+                          )
+                        : CustomCircleAvatar(
+                            frameId: null,
+                            radius: 20,
+                            backgroundColor: const Color(0xFF8E1728),
+                            child: Text(
+                              latestUserName.isNotEmpty ? latestUserName[0].toUpperCase() : '?',
+                              style: const TextStyle(color: Colors.white),
+                            ),
                           ),
-                        );
-                      }
-                    },
-                  ),
-                  title: Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          otherUserName,
-                          style: TextStyle(
-                            fontWeight: unreadCount > 0 ? FontWeight.bold : FontWeight.normal,
+                      title: Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              latestUserName,
+                              style: TextStyle(
+                                fontWeight: unreadCount > 0 ? FontWeight.bold : FontWeight.normal,
+                              ),
+                            ),
                           ),
-                        ),
-                      ),
                       if (conversation.lastMessageTime != null)
                         Text(
                           _formatTime(conversation.lastMessageTime),
@@ -262,21 +262,24 @@ class _MessagesScreenState extends State<MessagesScreen> {
                         ),
                     ],
                   ),
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => ChatScreen(
-                          conversationId: conversation.id,
-                          otherUserId: otherUserId,
-                          otherUserName: otherUserName,
-                        ),
-                      ),
-                    ).then((_) {
-                      _messageService.markMessagesAsRead(conversation.id, _currentUserId!);
-                    });
-                  },
-                ),
+                      onTap: () {
+                        // 最新の名前をChatScreenに渡す
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => ChatScreen(
+                              conversationId: conversation.id,
+                              otherUserId: otherUserId,
+                              otherUserName: latestUserName,
+                            ),
+                          ),
+                        ).then((_) {
+                          _messageService.markMessagesAsRead(conversation.id, _currentUserId!);
+                        });
+                      },
+                    ),
+                  );
+                },
               );
             },
           );
