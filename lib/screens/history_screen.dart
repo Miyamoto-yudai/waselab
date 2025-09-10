@@ -750,13 +750,33 @@ class _HistoryScreenState extends State<HistoryScreen> with TickerProviderStateM
                             children: [
                               Icon(Icons.location_on, size: 14, color: Colors.grey[600]),
                               const SizedBox(width: 4),
-                              ConstrainedBox(
-                                constraints: const BoxConstraints(maxWidth: 150),
-                                child: Text(
-                                  experiment.location,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                              Flexible(
+                                child: LayoutBuilder(
+                                  builder: (context, constraints) {
+                                    final locationLength = experiment.location.length;
+                                    double fontSize = 12;
+                                    
+                                    // 文字数に応じてフォントサイズを調整
+                                    if (locationLength > 20) {
+                                      fontSize = 11;
+                                    }
+                                    if (locationLength > 30) {
+                                      fontSize = 10;
+                                    }
+                                    if (locationLength > 40) {
+                                      fontSize = 9;
+                                    }
+                                    
+                                    return Text(
+                                      experiment.location,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: TextStyle(
+                                        fontSize: fontSize,
+                                        color: Colors.grey[600],
+                                      ),
+                                    );
+                                  },
                                 ),
                               ),
                             ],
