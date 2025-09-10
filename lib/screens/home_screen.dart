@@ -35,20 +35,18 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
     super.initState();
-    // 遅延実行で起動を高速化
-    Future.delayed(Duration.zero, () async {
-      _loadCurrentUser();
-      _loadUnreadMessages();
-      
-      // デバッグ用：Firestoreの状態を確認
-      if (!kReleaseMode) {
+    // 並列で実行して起動を高速化
+    _loadCurrentUser();
+    _loadUnreadMessages();
+    _loadExperiments();
+    
+    // デバッグ用：Firestoreの状態を確認（非同期で実行）
+    if (!kReleaseMode) {
+      Future(() async {
         await TestFirestore.checkExperiments();
-        // 詳細なデバッグ情報を出力
         await FirestoreDebugger.generateFullReport();
-      }
-      
-      _loadExperiments();
-    });
+      });
+    }
   }
 
   /// 現在のユーザー情報を取得
@@ -68,78 +66,49 @@ class _HomeScreenState extends State<HomeScreen> {
   /// 実験データを読み込み
   Future<void> _loadExperiments() async {
     try {
-      debugPrint('実験データ取得開始...');
-      
-      // まず、シンプルなクエリで試す（orderByなし）
+      // orderByを使用したクエリを試す
       QuerySnapshot snapshot;
       try {
-        // orderByを使用したクエリを試す
         snapshot = await _firestore
             .collection('experiments')
             .orderBy('createdAt', descending: true)
             .limit(50)
             .get();
-        debugPrint('orderByクエリ成功: ${snapshot.docs.length}件');
       } catch (orderByError) {
-        debugPrint('orderByクエリ失敗: $orderByError');
-        debugPrint('インデックスなしでクエリを実行します...');
-        
         // orderByなしで全データ取得
         snapshot = await _firestore
             .collection('experiments')
             .limit(50)
             .get();
-        debugPrint('シンプルクエリ成功: ${snapshot.docs.length}件');
       }
-      
-      debugPrint('実験データ取得完了: ${snapshot.docs.length}件');
       
       if (mounted) {
+        final experiments = snapshot.docs
+            .map((doc) {
+              try {
+                return Experiment.fromFirestore(doc);
+              } catch (e) {
+                return null;
+              }
+            })
+            .where((exp) => exp != null)
+            .cast<Experiment>()
+            .toList();
+        
+        // createdAtでソート
+        experiments.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+        
         setState(() {
-          _experiments = snapshot.docs
-              .map((doc) {
-                try {
-                  final exp = Experiment.fromFirestore(doc);
-                  debugPrint('実験解析成功: ${exp.title}');
-                  debugPrint('  - ID: ${exp.id}');
-                  debugPrint('  - status: ${exp.status.name}');
-                  debugPrint('  - creatorId: ${exp.creatorId}');
-                  debugPrint('  - recruitmentStartDate: ${exp.recruitmentStartDate}');
-                  debugPrint('  - recruitmentEndDate: ${exp.recruitmentEndDate}');
-                  return exp;
-                } catch (parseError) {
-                  debugPrint('実験データ解析エラー (doc.id: ${doc.id}): $parseError');
-                  debugPrint('データ内容: ${doc.data()}');
-                  return null;
-                }
-              })
-              .where((exp) => exp != null)
-              .cast<Experiment>()
-              .toList();
+          _experiments = experiments;
           _isLoading = false;
         });
-        
-        debugPrint('最終的に解析された実験数: ${_experiments.length}');
-        
-        // createdAtがないデータはソート
-        _experiments.sort((a, b) => b.createdAt.compareTo(a.createdAt));
       }
     } catch (e) {
-      debugPrint('実験データの取得エラー: $e');
-      debugPrint('エラースタックトレース: ${StackTrace.current}');
       if (mounted) {
         setState(() {
           _isLoading = false;
           _experiments = [];
         });
-        
-        // エラーをユーザーに表示
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('実験データの取得に失敗しました: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
       }
     }
   }

@@ -402,7 +402,7 @@ class _HomeScreenBaseState extends State<HomeScreenBase> {
           const SupportBanner(),
           // アプリバー部分（スクロールで隠れる）
           AnimatedContainer(
-            duration: const Duration(milliseconds: 200),
+            duration: const Duration(milliseconds: 100), // アニメーション時間を短縮
             height: _isHeaderVisible ? (isSmallScreen ? 70 + safeAreaTop : 70) : 0,
             child: AppBar(
               toolbarHeight: isSmallScreen ? 70 + safeAreaTop : 70,
@@ -503,13 +503,12 @@ class _HomeScreenBaseState extends State<HomeScreenBase> {
           ),
           // 検索バー、日付フィルター、種別切り替えボタン、ソート選択
           AnimatedContainer(
-            duration: const Duration(milliseconds: 200),
+            duration: const Duration(milliseconds: 100), // アニメーション時間を短縮
             height: _isHeaderVisible ? (isSmallScreen ? 180 : 160) : 0,
             child: SingleChildScrollView(
               physics: const NeverScrollableScrollPhysics(),
-              child: AnimatedOpacity(
-                duration: const Duration(milliseconds: 200),
-                opacity: _isHeaderVisible ? 1.0 : 0.0,
+              child: Visibility( // OpacityをVisibilityに変更
+                visible: _isHeaderVisible,
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
@@ -859,12 +858,16 @@ class _HomeScreenBaseState extends State<HomeScreenBase> {
                             mainAxisExtent: 230, // カードの固定高さを230pxに設定
                           ),
                           itemCount: filteredExperiments.length,
+                          addAutomaticKeepAlives: false, // パフォーマンス改善
+                          addRepaintBoundaries: false, // パフォーマンス改善
                           itemBuilder: (context, index) {
                             final experiment = filteredExperiments[index];
-                            return ExperimentCard(
-                              experiment: experiment,
-                              isDemo: widget.isDemo,
-                              currentUserId: widget.currentUserId,
+                            return RepaintBoundary( // 個別に再描画境界を設定
+                              child: ExperimentCard(
+                                experiment: experiment,
+                                isDemo: widget.isDemo,
+                                currentUserId: widget.currentUserId,
+                              ),
                             );
                           },
                         );
@@ -875,11 +878,10 @@ class _HomeScreenBaseState extends State<HomeScreenBase> {
         ],
       ),
       floatingActionButton: AnimatedSlide(
-        duration: const Duration(milliseconds: 200),
+        duration: const Duration(milliseconds: 100), // アニメーション時間を短縮
         offset: _isHeaderVisible ? Offset.zero : const Offset(0, 2),
-        child: AnimatedOpacity(
-          duration: const Duration(milliseconds: 200),
-          opacity: _isHeaderVisible ? 1.0 : 0.0,
+        child: Visibility( // OpacityをVisibilityに変更
+          visible: _isHeaderVisible,
           child: SizedBox(
             height: 64,
             child: FloatingActionButton.extended(

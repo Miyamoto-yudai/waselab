@@ -38,7 +38,7 @@ class AuthService {
            lowercaseEmail.endsWith('@waseda.jp');
   }
 
-  /// メールアドレスとパスワードでサインアップ（早稲田メール限定）
+  /// メールアドレスとパスワードでサインアップ
   Future<String?> signUpWithEmail({
     required String email,
     required String password,
@@ -47,10 +47,6 @@ class AuthService {
     int? age,
   }) async {
     try {
-      // 早稲田大学のメールアドレスかチェック
-      if (!_isWasedaEmail(email)) {
-        return '早稲田大学のメールアドレスのみ登録可能です';
-      }
 
       // ユーザー作成
       final UserCredential userCredential = await _auth
@@ -96,16 +92,12 @@ class AuthService {
     }
   }
 
-  /// メールアドレスとパスワードでサインイン（早稲田メール限定）
+  /// メールアドレスとパスワードでサインイン
   Future<String?> signInWithEmail({
     required String email,
     required String password,
   }) async {
     try {
-      // 早稲田大学のメールアドレスかチェック
-      if (!_isWasedaEmail(email)) {
-        return '早稲田大学のメールアドレスのみログイン可能です';
-      }
 
       await _auth.signInWithEmailAndPassword(
         email: email,
@@ -215,13 +207,9 @@ class AuthService {
     }
   }
 
-  /// パスワードリセットメールの送信（早稲田メール限定）
+  /// パスワードリセットメールの送信
   Future<String?> sendPasswordResetEmail(String email) async {
     try {
-      // 早稲田大学のメールアドレスかチェック
-      if (!_isWasedaEmail(email)) {
-        return '早稲田大学のメールアドレスのみ利用可能です';
-      }
 
       // アプリケーションの言語設定を日本語に設定
       await _auth.setLanguageCode('ja');

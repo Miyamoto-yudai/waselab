@@ -17,10 +17,17 @@ void main() async {
   // Flutter Engineの初期化を確実に行う
   WidgetsFlutterBinding.ensureInitialized();
   
-  // 日本語ロケールを初期化
-  await initializeDateFormatting('ja_JP', null);
+  // 並列で初期化処理を実行
+  await Future.wait([
+    // Firebaseの初期化
+    Firebase.initializeApp(
+      options: DefaultFirebaseOptions.currentPlatform,
+    ),
+    // 日本語ロケールを初期化
+    initializeDateFormatting('ja_JP', null),
+  ]);
   
-  // アプリを先に起動（ローディング画面を表示）
+  // 初期化完了後にアプリを起動
   runApp(const WaseLaboApp(
     home: AuthWrapper(),
     isDemo: false,
@@ -36,89 +43,8 @@ class AuthWrapper extends StatefulWidget {
 }
 
 class _AuthWrapperState extends State<AuthWrapper> {
-  bool _isInitialized = false;
-  String? _error;
-
-  @override
-  void initState() {
-    super.initState();
-    _initializeFirebase();
-  }
-
-  Future<void> _initializeFirebase() async {
-    try {
-      // Firebaseが既に初期化されているか確認
-      if (Firebase.apps.isEmpty) {
-        await Firebase.initializeApp(
-          options: DefaultFirebaseOptions.currentPlatform,
-        );
-      }
-      setState(() {
-        _isInitialized = true;
-      });
-    } catch (e) {
-      setState(() {
-        _error = e.toString();
-      });
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
-    // Firebase初期化中
-    if (!_isInitialized && _error == null) {
-      return const Scaffold(
-        body: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              CircularProgressIndicator(),
-              SizedBox(height: 16),
-              Text('アプリを起動中...'),
-            ],
-          ),
-        ),
-      );
-    }
-    
-    // エラーが発生した場合
-    if (_error != null) {
-      return Scaffold(
-        body: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const Icon(
-                Icons.error_outline,
-                size: 64,
-                color: Colors.red,
-              ),
-              const SizedBox(height: 16),
-              Text(
-                'エラーが発生しました',
-                style: Theme.of(context).textTheme.headlineSmall,
-              ),
-              const SizedBox(height: 8),
-              Text(
-                _error!,
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 24),
-              ElevatedButton(
-                onPressed: () {
-                  setState(() {
-                    _error = null;
-                  });
-                  _initializeFirebase();
-                },
-                child: const Text('再試行'),
-              ),
-            ],
-          ),
-        ),
-      );
-    }
-    
     final authService = AuthService();
     
     // Firebase Authの認証状態を監視

@@ -1,23 +1,47 @@
 import 'package:flutter/material.dart';
 import '../models/experiment.dart';
 import '../models/app_user.dart';
-import '../services/user_service.dart';
+import '../services/user_cache_service.dart';
 import '../screens/experiment_detail_screen.dart';
 import '../screens/experiment_detail_screen_demo.dart';
 
 /// 実験カードの共通ウィジェット
-class ExperimentCard extends StatelessWidget {
+class ExperimentCard extends StatefulWidget {
   final Experiment experiment;
   final bool isDemo;
   final String? currentUserId;
-  final UserService _userService = UserService();
   
-  ExperimentCard({
+  const ExperimentCard({
     super.key,
     required this.experiment,
     this.isDemo = false,
     this.currentUserId,
   });
+
+  @override
+  State<ExperimentCard> createState() => _ExperimentCardState();
+}
+
+class _ExperimentCardState extends State<ExperimentCard> {
+  final UserCacheService _userCache = UserCacheService();
+  AppUser? _creator;
+  bool _isLoadingCreator = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadCreator();
+  }
+
+  Future<void> _loadCreator() async {
+    final creator = await _userCache.getUserById(widget.experiment.creatorId);
+    if (mounted) {
+      setState(() {
+        _creator = creator;
+        _isLoadingCreator = false;
+      });
+    }
+  }
 
   /// 実験種別のアイコンを取得
   IconData _getTypeIcon(ExperimentType type) {
@@ -46,7 +70,7 @@ class ExperimentCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     // 締切までの残り日数を計算
-    final daysLeft = experiment.endDate?.difference(DateTime.now()).inDays;
+    final daysLeft = widget.experiment.endDate?.difference(DateTime.now()).inDays;
     
     return Container(
       decoration: BoxDecoration(
@@ -58,9 +82,9 @@ class ExperimentCard extends StatelessWidget {
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
-            blurRadius: 12,
-            offset: const Offset(0, 3),
+            color: Colors.black.withValues(alpha: 0.03),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
           ),
         ],
       ),
@@ -71,9 +95,9 @@ class ExperimentCard extends StatelessWidget {
             Navigator.push(
               context,
               MaterialPageRoute(
-                builder: (context) => isDemo
-                  ? ExperimentDetailScreenDemo(experiment: experiment)
-                  : ExperimentDetailScreen(experiment: experiment),
+                builder: (context) => widget.isDemo
+                  ? ExperimentDetailScreenDemo(experiment: widget.experiment)
+                  : ExperimentDetailScreen(experiment: widget.experiment),
               ),
             );
           },
@@ -89,7 +113,7 @@ class ExperimentCard extends StatelessWidget {
               Row(
                 children: [
                   // 状態バッジ（自分の実験または参加予定）
-                  if (currentUserId != null && experiment.creatorId == currentUserId)
+                  if (widget.currentUserId != null && widget.experiment.creatorId == widget.currentUserId)
                     Container(
                       margin: const EdgeInsets.only(bottom: 6, right: 8),
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
@@ -121,8 +145,8 @@ class ExperimentCard extends StatelessWidget {
                         ],
                       ),
                     ),
-                  if (currentUserId != null &&
-                      experiment.participants.contains(currentUserId))
+                  if (widget.currentUserId != null &&
+                      widget.experiment.participants.contains(widget.currentUserId))
                     Container(
                       margin: const EdgeInsets.only(bottom: 6, right: 8),
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
@@ -155,7 +179,7 @@ class ExperimentCard extends StatelessWidget {
                       ),
                     ),
                   // 柔軟なスケジュール調整のバッジ
-                  if (experiment.allowFlexibleSchedule)
+                  if (widget.experiment.allowFlexibleSchedule)
                     Container(
                       margin: const EdgeInsets.only(bottom: 6, right: 8),
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
@@ -187,7 +211,7 @@ class ExperimentCard extends StatelessWidget {
                         ],
                       ),
                     )
-                  else if (experiment.type == ExperimentType.survey)
+                  else if (widget.experiment.type == ExperimentType.survey)
                     Container(
                       margin: const EdgeInsets.only(bottom: 6, right: 8),
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
@@ -292,7 +316,7 @@ class ExperimentCard extends StatelessWidget {
                     fit: BoxFit.scaleDown,
                     alignment: Alignment.centerLeft,
                     child: Text(
-                      experiment.title,
+                      widget.experiment.title,
                       style: const TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.w800,
@@ -305,35 +329,22 @@ class ExperimentCard extends StatelessWidget {
                   const SizedBox(height: 4),
                   Row(
                     children: [
-                      Container(
-                        padding: const EdgeInsets.all(3),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF8E1728).withValues(alpha: 0.08),
-                          borderRadius: BorderRadius.circular(6),
-                        ),
-                        child: const Icon(
-                          Icons.school,
-                          size: 12,
-                          color: Color(0xFF8E1728),
-                        ),
+                      const Icon(
+                        Icons.school,
+                        size: 14,
+                        color: Color(0xFF8E1728),
                       ),
                       const SizedBox(width: 8),
                       Expanded(
-                        child: FutureBuilder<AppUser?>(
-                          future: _userService.getUserById(experiment.creatorId),
-                          builder: (context, snapshot) {
-                            final creatorName = snapshot.data?.name ?? '読み込み中...';
-                            return Text(
-                              '${experiment.labName ?? "研究室名未設定"} / $creatorName',
-                              style: const TextStyle(
-                                fontSize: 11,
-                                fontWeight: FontWeight.w600,
-                                color: Color(0xFF8E1728),
-                              ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            );
-                          },
+                        child: Text(
+                          '${widget.experiment.labName ?? "研究室名未設定"} / ${_isLoadingCreator ? '読み込み中...' : (_creator?.name ?? '不明')}',
+                          style: const TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                            color: Color(0xFF8E1728),
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                         ),
                       ),
                     ],
@@ -345,7 +356,7 @@ class ExperimentCard extends StatelessWidget {
               
               // 説明文
               Text(
-                experiment.description,
+                widget.experiment.description,
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(
@@ -376,12 +387,12 @@ class ExperimentCard extends StatelessWidget {
                     Icon(
                       Icons.payments_outlined,
                       size: 16,
-                      color: experiment.isPaid ? const Color(0xFF8E1728) : Colors.grey[600],
+                      color: widget.experiment.isPaid ? const Color(0xFF8E1728) : Colors.grey[600],
                     ),
                     const SizedBox(width: 4),
                     Text(
-                      experiment.isPaid 
-                        ? '¥${experiment.reward.toString().replaceAllMapped(
+                      widget.experiment.isPaid 
+                        ? '¥${widget.experiment.reward.toString().replaceAllMapped(
                             RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
                             (Match m) => '${m[1]},',
                           )}'
@@ -389,22 +400,22 @@ class ExperimentCard extends StatelessWidget {
                       style: TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.w600,
-                        color: experiment.isPaid ? const Color(0xFF8E1728) : Colors.grey[700],
+                        color: widget.experiment.isPaid ? const Color(0xFF8E1728) : Colors.grey[700],
                       ),
                     ),
                     // 所要時間（2番目）
-                    if (experiment.duration != null) ...[
+                    if (widget.experiment.duration != null) ...[
                       const SizedBox(width: 6),
-                      Container(
+                      SizedBox(
                         width: 1,
                         height: 24,
-                        color: Colors.grey[300],
+                        child: ColoredBox(color: Color(0xFFE0E0E0)),
                       ),
                       const SizedBox(width: 6),
                       Icon(Icons.timer_outlined, size: 16, color: Colors.grey[600]),
                       const SizedBox(width: 2),
                       Text(
-                        '${experiment.duration}分',
+                        '${widget.experiment.duration}分',
                         style: TextStyle(
                           fontSize: 12,
                           fontWeight: FontWeight.w500,
@@ -425,18 +436,18 @@ class ExperimentCard extends StatelessWidget {
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           Icon(
-                            _getTypeIcon(experiment.type),
+                            _getTypeIcon(widget.experiment.type),
                             size: 16,
-                            color: _getTypeColor(experiment.type),
+                            color: _getTypeColor(widget.experiment.type),
                           ),
                           const SizedBox(width: 4),
                           Flexible(
                             child: Text(
-                              experiment.type.label,
+                              widget.experiment.type.label,
                               style: TextStyle(
                                 fontSize: 12,
                                 fontWeight: FontWeight.w600,
-                                color: _getTypeColor(experiment.type),
+                                color: _getTypeColor(widget.experiment.type),
                               ),
                               overflow: TextOverflow.ellipsis,
                             ),
@@ -445,18 +456,18 @@ class ExperimentCard extends StatelessWidget {
                       ),
                     ),
                     // 募集人数（最後）
-                    if (experiment.maxParticipants != null) ...[
+                    if (widget.experiment.maxParticipants != null) ...[
                       const SizedBox(width: 6),
-                      Container(
+                      SizedBox(
                         width: 1,
                         height: 20,
-                        color: Colors.grey[300],
+                        child: ColoredBox(color: Color(0xFFE0E0E0)),
                       ),
                       const SizedBox(width: 6),
                       Icon(Icons.group_outlined, size: 16, color: Colors.grey[600]),
                       const SizedBox(width: 4),
                       Text(
-                        '募集${experiment.maxParticipants}名',
+                        '募集${widget.experiment.maxParticipants}名',
                         style: TextStyle(
                           fontSize: 12,
                           fontWeight: FontWeight.w500,
@@ -491,7 +502,7 @@ class ExperimentCard extends StatelessWidget {
                           const SizedBox(width: 6),
                           Flexible(
                             child: Text(
-                              experiment.location,
+                              widget.experiment.location,
                               style: TextStyle(
                                 fontSize: 12,
                                 color: Colors.blue[900],
@@ -507,7 +518,7 @@ class ExperimentCard extends StatelessWidget {
                   ),
                   const SizedBox(width: 4),
                   // 日程情報
-                  if (experiment.allowFlexibleSchedule)
+                  if (widget.experiment.allowFlexibleSchedule)
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
                       decoration: BoxDecoration(

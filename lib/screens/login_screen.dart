@@ -6,7 +6,7 @@ import 'email_verification_screen.dart';
 import 'admin/admin_login_screen.dart';
 
 /// ログイン画面
-/// 早稲田大学メールアドレス（@waseda.jp）でのみログイン・新規登録が可能
+/// すべてのメールアドレスでログイン・新規登録が可能
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
 
@@ -261,7 +261,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                       const SizedBox(height: 8),
                       Text(
-                        '一般の方もご利用できます',
+                        'すべての方がご利用いただけます',
                         style: TextStyle(
                           fontSize: 12,
                           color: Colors.grey[600],
@@ -395,7 +395,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         keyboardType: TextInputType.emailAddress,
                         decoration: const InputDecoration(
                           labelText: 'メールアドレス',
-                          hintText: 'example@waseda.jp',
+                          hintText: 'example@example.com',
                           prefixIcon: Icon(Icons.email),
                           border: OutlineInputBorder(),
                         ),
@@ -403,11 +403,9 @@ class _LoginScreenState extends State<LoginScreen> {
                           if (value == null || value.trim().isEmpty) {
                             return 'メールアドレスを入力してください';
                           }
-                          final lowercaseEmail = value.toLowerCase();
-                          // 早稲田大学の各種メールドメインに対応
-                          if (!lowercaseEmail.endsWith('.waseda.jp') && 
-                              !lowercaseEmail.endsWith('@waseda.jp')) {
-                            return '早稲田大学のメールアドレスを使用してください';
+                          // メールアドレスの形式を簡易チェック
+                          if (!value.contains('@') || !value.contains('.')) {
+                            return '正しいメールアドレスを入力してください';
                           }
                           return null;
                         },
@@ -596,7 +594,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                     text: '  ✓ 実験の募集・掲載が可能\n  ✓ 実験への応募が可能\n',
                                   ),
                                   TextSpan(
-                                    text: '\n● Googleアカウント\n',
+                                    text: '\n● その他のメールアカウント・Googleアカウント\n',
                                     style: TextStyle(
                                       fontWeight: FontWeight.bold,
                                       color: Colors.blue[700],
