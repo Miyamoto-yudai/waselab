@@ -37,13 +37,13 @@ class NotificationService {
     return _firestore
         .collection(_collection)
         .where('userId', isEqualTo: userId)
-        .where('type', isNotEqualTo: 'message')  // メッセージ通知を除外
-        .orderBy('type')  // isNotEqualToを使う場合は同じフィールドでorderByが必要
         .orderBy('createdAt', descending: true)
         .snapshots()
         .map((snapshot) {
+      // クライアント側でメッセージ通知をフィルタリング
       return snapshot.docs
           .map((doc) => AppNotification.fromFirestore(doc))
+          .where((notification) => notification.type != NotificationType.message)
           .toList();
     });
   }
@@ -55,10 +55,15 @@ class NotificationService {
           .collection(_collection)
           .where('userId', isEqualTo: userId)
           .where('isRead', isEqualTo: false)
-          .where('type', isNotEqualTo: 'message')  // メッセージ通知を除外
           .get();
       
-      return snapshot.docs.length;
+      // クライアント側でメッセージ通知をフィルタリング
+      final count = snapshot.docs
+          .map((doc) => AppNotification.fromFirestore(doc))
+          .where((notification) => notification.type != NotificationType.message)
+          .length;
+      
+      return count;
     } catch (e) {
       print('未読通知数の取得に失敗しました: $e');
       return 0;
@@ -71,10 +76,14 @@ class NotificationService {
         .collection(_collection)
         .where('userId', isEqualTo: userId)
         .where('isRead', isEqualTo: false)
-        .where('type', isNotEqualTo: 'message')  // メッセージ通知を除外
-        .orderBy('type')  // isNotEqualToを使う場合は同じフィールドでorderByが必要
         .snapshots()
-        .map((snapshot) => snapshot.docs.length);
+        .map((snapshot) {
+      // クライアント側でメッセージ通知をフィルタリング
+      return snapshot.docs
+          .map((doc) => AppNotification.fromFirestore(doc))
+          .where((notification) => notification.type != NotificationType.message)
+          .length;
+    });
   }
 
   /// 通知を既読にする
