@@ -32,11 +32,13 @@ class NotificationService {
     }
   }
 
-  /// ユーザーの通知一覧を取得（リアルタイム）
+  /// ユーザーの通知一覧を取得（リアルタイム）- メッセージ通知は除外
   Stream<List<AppNotification>> getUserNotifications(String userId) {
     return _firestore
         .collection(_collection)
         .where('userId', isEqualTo: userId)
+        .where('type', isNotEqualTo: 'message')  // メッセージ通知を除外
+        .orderBy('type')  // isNotEqualToを使う場合は同じフィールドでorderByが必要
         .orderBy('createdAt', descending: true)
         .snapshots()
         .map((snapshot) {
@@ -46,13 +48,14 @@ class NotificationService {
     });
   }
 
-  /// 未読通知数を取得
+  /// 未読通知数を取得 - メッセージ通知は除外
   Future<int> getUnreadNotificationCount(String userId) async {
     try {
       final snapshot = await _firestore
           .collection(_collection)
           .where('userId', isEqualTo: userId)
           .where('isRead', isEqualTo: false)
+          .where('type', isNotEqualTo: 'message')  // メッセージ通知を除外
           .get();
       
       return snapshot.docs.length;
@@ -62,12 +65,14 @@ class NotificationService {
     }
   }
 
-  /// 未読通知数をリアルタイムで取得
+  /// 未読通知数をリアルタイムで取得 - メッセージ通知は除外
   Stream<int> streamUnreadNotificationCount(String userId) {
     return _firestore
         .collection(_collection)
         .where('userId', isEqualTo: userId)
         .where('isRead', isEqualTo: false)
+        .where('type', isNotEqualTo: 'message')  // メッセージ通知を除外
+        .orderBy('type')  // isNotEqualToを使う場合は同じフィールドでorderByが必要
         .snapshots()
         .map((snapshot) => snapshot.docs.length);
   }

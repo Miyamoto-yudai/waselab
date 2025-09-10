@@ -76,23 +76,8 @@ class MessageService {
       'unreadCounts.$receiverId': FieldValue.increment(1),
     });
 
-    // 受信者に通知を送信
-    try {
-      // メッセージのプレビューを作成（最大30文字）
-      final messagePreview = content.length > 30 
-        ? '${content.substring(0, 30)}...' 
-        : content;
-      
-      await _notificationService.createMessageNotification(
-        userId: receiverId,
-        senderName: senderName,
-        messagePreview: messagePreview,
-        conversationId: conversationId,
-      );
-    } catch (e) {
-      // 通知送信に失敗してもメッセージ送信は成功とする
-      print('通知送信エラー（無視）: $e');
-    }
+    // 受信者への通知は送信しない（メッセージ画面で確認できるため）
+    // プッシュ通知はFCMサービス側で処理される
 
     return conversationId;
   }
