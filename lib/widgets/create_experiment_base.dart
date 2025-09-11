@@ -4,6 +4,8 @@ import '../models/experiment.dart';
 import '../models/date_time_slot.dart';
 import 'experiment_card.dart';
 import 'time_slot_calendar_editor.dart';
+import '../services/preference_service.dart';
+import '../services/google_calendar_service.dart';
 
 /// 実験作成画面の共通ベースウィジェット
 class CreateExperimentBase extends StatefulWidget {
@@ -24,6 +26,8 @@ class _CreateExperimentBaseState extends State<CreateExperimentBase> {
   final _formKey = GlobalKey<FormState>();
   final PageController _pageController = PageController();
   int _currentStep = 0;
+  final GoogleCalendarService _calendarService = GoogleCalendarService();
+  bool _hasShownCalendarPrompt = false;
   
   // フォームコントローラー
   final _titleController = TextEditingController();
@@ -42,6 +46,7 @@ class _CreateExperimentBaseState extends State<CreateExperimentBase> {
   ExperimentType _selectedType = ExperimentType.onsite;
   bool _isPaid = false;
   bool _allowFlexibleSchedule = false;
+  ScheduleType _scheduleType = ScheduleType.fixed; // スケジュールタイプ
   DateTime? _recruitmentStartDate;
   DateTime? _recruitmentEndDate;
   DateTime? _experimentPeriodStart;
@@ -102,6 +107,7 @@ class _CreateExperimentBaseState extends State<CreateExperimentBase> {
       _selectedType = ExperimentType.onsite;
       _isPaid = true;
       _allowFlexibleSchedule = true;
+      _scheduleType = ScheduleType.reservation;
       _recruitmentStartDate = DateTime.now();
       _recruitmentEndDate = DateTime.now().add(const Duration(days: 14));
       _experimentPeriodStart = DateTime.now().add(const Duration(days: 7));
@@ -270,6 +276,22 @@ class _CreateExperimentBaseState extends State<CreateExperimentBase> {
     // 柔軟なスケジュールの場合、期間やスロットが設定されていなくても許可
     // 固定日時の場合も、未設定を許可（個別調整で決定）
     
+    // 初回実験作成かつカレンダー連携が無効の場合、プロンプトを表示
+    if (!_hasShownCalendarPrompt && !widget.isDemo) {
+      final isFirstExperiment = await PreferenceService.isFirstExperimentCreated();
+      final calendarEnabled = await _calendarService.isCalendarEnabled();
+      final hasShownPrompt = await PreferenceService.hasShownCalendarPrompt();
+      
+      if (isFirstExperiment && !calendarEnabled && !hasShownPrompt) {
+        _hasShownCalendarPrompt = true;
+        await PreferenceService.recordCalendarPromptShown();
+        final shouldEnableCalendar = await _showCalendarPromptDialog();
+        if (shouldEnableCalendar) {
+          await _enableCalendarIntegration();
+        }
+      }
+    }
+    
     setState(() => _isLoading = true);
     
     final data = {
@@ -334,6 +356,82 @@ class _CreateExperimentBaseState extends State<CreateExperimentBase> {
     }
   }
 
+  /// カレンダー連携プロンプトを表示
+  Future<bool> _showCalendarPromptDialog() async {
+    return await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        title: const Row(
+          children: [
+            Icon(Icons.calendar_today, color: Colors.blue),
+            SizedBox(width: 8),
+            Text('Googleカレンダー連携'),
+          ],
+        ),
+        content: const Text(
+          '実験予約をGoogleカレンダーに自動で追加しますか？\n\n'
+          '連携すると、参加者からの予約が自動であなたの'
+          'カレンダーに登録されます。\n\n'
+          '（後から設定画面で変更できます）',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('今はしない'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('連携する'),
+          ),
+        ],
+      ),
+    ) ?? false;
+  }
+  
+  /// カレンダー連携を有効化
+  Future<void> _enableCalendarIntegration() async {
+    try {
+      setState(() => _isLoading = true);
+      
+      final hasPermission = await _calendarService.requestCalendarPermission();
+      if (hasPermission) {
+        await _calendarService.setCalendarEnabled(true);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Googleカレンダーと連携しました'),
+              backgroundColor: Colors.green,
+            ),
+          );
+        }
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('カレンダー連携がキャンセルされました'),
+              backgroundColor: Colors.orange,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      debugPrint('カレンダー連携エラー: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('カレンダー連携に失敗しました: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
+  }
+  
   /// ステップのタイトル
   String _getStepTitle() {
     switch (_currentStep) {
@@ -1130,6 +1228,31 @@ class _CreateExperimentBaseState extends State<CreateExperimentBase> {
                 });
               },
               defaultSimultaneousCapacity: _simultaneousCapacity,
+            ),
+          ] else if (_scheduleType == ScheduleType.individual) ...[
+            // 個別調整の場合
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.orange.shade50,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.orange.shade200),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.info_outline, size: 20, color: Colors.orange.shade700),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      '実験日時は参加者との個別調整により決定します。\n参加者が予約後、メッセージで日程を調整してください。',
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: Colors.orange.shade700,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
           ] else ...[
             const Text('固定日程で実施', style: TextStyle(fontWeight: FontWeight.bold)),

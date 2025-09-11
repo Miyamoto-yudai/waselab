@@ -12,6 +12,23 @@ enum ExperimentType {
   const ExperimentType(this.label);
 }
 
+/// 日程設定方法
+enum ScheduleType {
+  fixed('固定日時'),         // 全員同じ日時
+  reservation('予約制'),     // 複数の時間枠から参加者が選択
+  individual('個別調整');    // 参加者と話し合って決定
+
+  final String label;
+  const ScheduleType(this.label);
+  
+  static ScheduleType fromString(String value) {
+    return ScheduleType.values.firstWhere(
+      (e) => e.name == value,
+      orElse: () => ScheduleType.fixed,
+    );
+  }
+}
+
 /// 実験ステータス
 enum ExperimentStatus {
   recruiting('募集中'),
@@ -46,7 +63,8 @@ class Experiment {
   final DateTime? recruitmentEndDate;   // 募集終了日
   final DateTime? experimentPeriodStart; // 実験実施期間開始
   final DateTime? experimentPeriodEnd;   // 実験実施期間終了
-  final bool allowFlexibleSchedule;      // 柔軟なスケジュール調整可能
+  final bool allowFlexibleSchedule;      // 柔軟なスケジュール調整可能（互換性のため保持）
+  final ScheduleType scheduleType;       // 日程設定方法
   final String? labName;         // 研究室名
   final int? duration;          // 所要時間（分）
   final int? maxParticipants;   // 最大参加者数
@@ -86,6 +104,7 @@ class Experiment {
     this.experimentPeriodStart,
     this.experimentPeriodEnd,
     this.allowFlexibleSchedule = false,
+    ScheduleType? scheduleType,
     this.labName,
     this.duration,
     this.maxParticipants,
@@ -104,7 +123,7 @@ class Experiment {
     this.actualStartDate,
     this.surveyUrl,
     this.consentItems = const [],
-  });
+  }) : scheduleType = scheduleType ?? (allowFlexibleSchedule ? ScheduleType.individual : ScheduleType.fixed);
 
   /// FirestoreのドキュメントからExperimentを作成
   factory Experiment.fromFirestore(DocumentSnapshot doc) {
@@ -131,6 +150,9 @@ class Experiment {
       experimentPeriodStart: (data['experimentPeriodStart'] as Timestamp?)?.toDate(),
       experimentPeriodEnd: (data['experimentPeriodEnd'] as Timestamp?)?.toDate(),
       allowFlexibleSchedule: data['allowFlexibleSchedule'] ?? false,
+      scheduleType: data['scheduleType'] != null 
+        ? ScheduleType.fromString(data['scheduleType']) 
+        : (data['allowFlexibleSchedule'] == true ? ScheduleType.individual : ScheduleType.fixed),
       labName: data['labName'],
       duration: data['duration'],
       maxParticipants: data['maxParticipants'],
@@ -197,6 +219,7 @@ class Experiment {
         ? Timestamp.fromDate(experimentPeriodEnd!)
         : null,
       'allowFlexibleSchedule': allowFlexibleSchedule,
+      'scheduleType': scheduleType.name,
       'labName': labName,
       'duration': duration,
       'maxParticipants': maxParticipants,

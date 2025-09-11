@@ -3,11 +3,13 @@ import 'package:flutter/foundation.dart';
 import '../models/experiment_slot.dart';
 import '../models/experiment_reservation.dart';
 import 'notification_service.dart';
+import 'google_calendar_service.dart';
 
 /// 予約管理サービス
 class ReservationService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final NotificationService _notificationService = NotificationService();
+  final GoogleCalendarService _calendarService = GoogleCalendarService();
 
   /// 実験の予約枠を取得
   Stream<List<ExperimentSlot>> getExperimentSlots(String experimentId) {
@@ -142,6 +144,15 @@ class ReservationService {
 
   /// 予約をキャンセル
   Future<void> cancelReservation(String reservationId, String? reason) async {
+    // Googleカレンダーから削除（トランザクション前に実行）
+    try {
+      if (await _calendarService.isCalendarEnabled()) {
+        await _calendarService.removeReservationFromCalendar(reservationId);
+      }
+    } catch (e) {
+      debugPrint('カレンダーイベント削除エラー（無視）: $e');
+    }
+    
     await _firestore.runTransaction((transaction) async {
       // 予約情報を取得
       final reservationDoc = await transaction.get(

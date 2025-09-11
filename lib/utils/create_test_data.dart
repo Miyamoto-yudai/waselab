@@ -122,6 +122,7 @@ class TestDataCreator {
         'labName': '早稲田大学 ${exp['category']}研究室', // 研究室名
         'isPaid': (exp['reward'] as int) > 0, // 有償かどうか
         'allowFlexibleSchedule': true, // 柔軟なスケジュール対応
+        'scheduleType': 'reservation', // デフォルトは予約制
         'status': 'recruiting',
         'recruitmentStart': Timestamp.fromDate(recruitmentStart),
         'recruitmentEnd': Timestamp.fromDate(recruitmentEnd),
@@ -583,6 +584,9 @@ class TestDataCreator {
           'isOnline': exp['isOnline'] ?? false,
           'isPaid': (exp['reward'] as int) > 0, // 有償かどうか
           'allowFlexibleSchedule': true, // 柔軟なスケジュール対応
+          'scheduleType': _getScheduleType(i), // スケジュールタイプを振り分け
+          'fixedExperimentDate': _getScheduleType(i) == 'fixed' ? Timestamp.fromDate(experimentStart.add(Duration(days: 7))) : null,
+          'fixedExperimentTime': _getScheduleType(i) == 'fixed' ? {'hour': 14, 'minute': 0} : null,
           'tags': ['早稲田大学', '実験', exp['category'].toString()],
           'imageUrl': '',
           'contactEmail': creatorEmail,
@@ -600,5 +604,17 @@ class TestDataCreator {
     }
     
     return;
+  }
+  
+  /// インデックスに基づいてスケジュールタイプを決定
+  static String _getScheduleType(int index) {
+    // 30件を3つのタイプに均等に振り分け
+    if (index % 3 == 0) {
+      return 'fixed'; // 固定日時
+    } else if (index % 3 == 1) {
+      return 'reservation'; // 予約制
+    } else {
+      return 'individual'; // 個別調整
+    }
   }
 }

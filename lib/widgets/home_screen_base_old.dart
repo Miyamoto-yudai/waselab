@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import '../models/experiment.dart';
 import '../widgets/experiment_card.dart';
-import '../widgets/support_banner.dart';
 import '../services/preference_service.dart';
 
 /// ホーム画面の共通ベースウィジェット

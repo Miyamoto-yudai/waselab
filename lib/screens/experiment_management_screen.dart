@@ -6,6 +6,8 @@ import '../models/app_user.dart';
 import '../services/experiment_service.dart';
 import '../services/user_service.dart';
 import '../services/auth_service.dart';
+import '../services/flexible_schedule_service.dart';
+import '../services/google_calendar_service.dart';
 import '../widgets/custom_circle_avatar.dart';
 import '../models/avatar_design.dart';
 import 'chat_screen.dart';
@@ -32,6 +34,8 @@ class _ExperimentManagementScreenState extends State<ExperimentManagementScreen>
   final ExperimentService _experimentService = ExperimentService();
   final UserService _userService = UserService();
   final AuthService _authService = AuthService();
+  final FlexibleScheduleService _scheduleService = FlexibleScheduleService();
+  final GoogleCalendarService _calendarService = GoogleCalendarService();
   
   late Experiment _experiment;
   List<AppUser> _participants = [];
@@ -811,6 +815,16 @@ class _ExperimentManagementScreenState extends State<ExperimentManagementScreen>
                             label: const Text('メッセージ'),
                           ),
                         ),
+                        // 個別調整の場合、日程設定ボタンを表示
+                        if (_experiment.scheduleType == ScheduleType.individual)
+                          SizedBox(
+                            width: MediaQuery.of(context).size.width < 400 ? double.infinity : 150,
+                            child: OutlinedButton.icon(
+                              onPressed: () => _showScheduleDialog(participant),
+                              icon: const Icon(Icons.calendar_today, size: 16),
+                              label: Text(_getScheduleButtonLabel(participant.uid)),
+                            ),
+                          ),
                         // 実験者がまだ参加者を評価していない場合、かつ（実施日時を迎えている OR 参加者が既に評価済み）の場合に評価ボタンを表示
                         if (!creatorToParticipant && (isExperimentStarted || participantToCreator))
                           SizedBox(
@@ -1131,6 +1145,86 @@ class _ExperimentManagementScreenState extends State<ExperimentManagementScreen>
     );
   }
 
+  /// 日程設定ボタンのラベルを取得
+  String _getScheduleButtonLabel(String participantId) {
+    final participantSchedule = _experiment.participantEvaluations?[participantId];
+    if (participantSchedule != null && participantSchedule['scheduledDate'] != null) {
+      final date = (participantSchedule['scheduledDate'] as Timestamp).toDate();
+      return DateFormat('MM/dd HH:mm').format(date);
+    }
+    return '日程設定';
+  }
+  
+  /// 日程設定ダイアログを表示
+  Future<void> _showScheduleDialog(AppUser participant) async {
+    final participantSchedule = _experiment.participantEvaluations?[participant.uid];
+    DateTime? currentDate;
+    TimeOfDay? currentTime;
+    String? location;
+    
+    if (participantSchedule != null && participantSchedule['scheduledDate'] != null) {
+      final scheduledDate = (participantSchedule['scheduledDate'] as Timestamp).toDate();
+      currentDate = scheduledDate;
+      currentTime = TimeOfDay.fromDateTime(scheduledDate);
+      location = participantSchedule['location'];
+    }
+    
+    await showDialog(
+      context: context,
+      builder: (context) => _ScheduleSettingDialog(
+        participant: participant,
+        experiment: _experiment,
+        initialDate: currentDate,
+        initialTime: currentTime,
+        initialLocation: location,
+        onScheduleSet: (date, time, loc) async {
+          final scheduledDateTime = DateTime(
+            date.year,
+            date.month,
+            date.day,
+            time.hour,
+            time.minute,
+          );
+          
+          setState(() => _isLoading = true);
+          
+          try {
+            await _scheduleService.setParticipantSchedule(
+              experimentId: _experiment.id,
+              participantId: participant.uid,
+              scheduledDate: scheduledDateTime,
+              location: loc,
+            );
+            
+            await _loadData();
+            
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('日程を設定しました。カレンダーに自動登録されました。'),
+                  backgroundColor: Colors.green,
+                ),
+              );
+            }
+          } catch (e) {
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('日程設定に失敗しました: $e'),
+                  backgroundColor: Colors.red,
+                ),
+              );
+            }
+          } finally {
+            if (mounted) {
+              setState(() => _isLoading = false);
+            }
+          }
+        },
+      ),
+    );
+  }
+  
   Color _getTypeColor(ExperimentType type) {
     switch (type) {
       case ExperimentType.online:
@@ -1170,5 +1264,167 @@ class _ExperimentManagementScreenState extends State<ExperimentManagementScreen>
   void dispose() {
     _tabController.dispose();
     super.dispose();
+  }
+}
+
+/// 日程設定ダイアログ
+class _ScheduleSettingDialog extends StatefulWidget {
+  final AppUser participant;
+  final Experiment experiment;
+  final DateTime? initialDate;
+  final TimeOfDay? initialTime;
+  final String? initialLocation;
+  final Function(DateTime, TimeOfDay, String?) onScheduleSet;
+  
+  const _ScheduleSettingDialog({
+    required this.participant,
+    required this.experiment,
+    this.initialDate,
+    this.initialTime,
+    this.initialLocation,
+    required this.onScheduleSet,
+  });
+  
+  @override
+  State<_ScheduleSettingDialog> createState() => _ScheduleSettingDialogState();
+}
+
+class _ScheduleSettingDialogState extends State<_ScheduleSettingDialog> {
+  late DateTime _selectedDate;
+  late TimeOfDay _selectedTime;
+  final TextEditingController _locationController = TextEditingController();
+  
+  @override
+  void initState() {
+    super.initState();
+    _selectedDate = widget.initialDate ?? DateTime.now();
+    _selectedTime = widget.initialTime ?? TimeOfDay.now();
+    _locationController.text = widget.initialLocation ?? widget.experiment.location;
+  }
+  
+  @override
+  void dispose() {
+    _locationController.dispose();
+    super.dispose();
+  }
+  
+  Future<void> _selectDate() async {
+    final date = await showDatePicker(
+      context: context,
+      initialDate: _selectedDate,
+      firstDate: DateTime.now(),
+      lastDate: DateTime.now().add(const Duration(days: 365)),
+    );
+    
+    if (date != null) {
+      setState(() {
+        _selectedDate = date;
+      });
+    }
+  }
+  
+  Future<void> _selectTime() async {
+    final time = await showTimePicker(
+      context: context,
+      initialTime: _selectedTime,
+    );
+    
+    if (time != null) {
+      setState(() {
+        _selectedTime = time;
+      });
+    }
+  }
+  
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: Text('${widget.participant.name}さんの実験日程設定'),
+      content: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              '実験実施日時',
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: _selectDate,
+                    icon: const Icon(Icons.calendar_today),
+                    label: Text(DateFormat('yyyy/MM/dd').format(_selectedDate)),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: _selectTime,
+                    icon: const Icon(Icons.access_time),
+                    label: Text(_selectedTime.format(context)),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            const Text(
+              '場所（オプション）',
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 8),
+            TextField(
+              controller: _locationController,
+              decoration: InputDecoration(
+                hintText: widget.experiment.type == ExperimentType.online 
+                  ? 'オンライン会議のURL等' 
+                  : '実施場所',
+                border: const OutlineInputBorder(),
+              ),
+              maxLines: 2,
+            ),
+            const SizedBox(height: 16),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.blue.shade50,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.info_outline, color: Colors.blue.shade700, size: 20),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      '設定すると、参加者に通知が送信され、双方のGoogleカレンダーに自動登録されます',
+                      style: TextStyle(fontSize: 12, color: Colors.blue.shade700),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('キャンセル'),
+        ),
+        ElevatedButton(
+          onPressed: () {
+            widget.onScheduleSet(
+              _selectedDate,
+              _selectedTime,
+              _locationController.text.isNotEmpty ? _locationController.text : null,
+            );
+            Navigator.pop(context);
+          },
+          child: const Text('設定'),
+        ),
+      ],
+    );
   }
 }

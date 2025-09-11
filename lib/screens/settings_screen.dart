@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../services/auth_service.dart';
 import '../services/fcm_service.dart';
+import '../services/google_calendar_service.dart';
 import 'login_screen.dart';
 import 'support_chat_screen.dart';
 import 'support_donation_screen.dart';
@@ -13,14 +15,89 @@ class SettingsScreen extends StatefulWidget {
   State<SettingsScreen> createState() => _SettingsScreenState();
 }
 
-class _SettingsScreenState extends State<SettingsScreen> {
+class _SettingsScreenState extends State<SettingsScreen> with WidgetsBindingObserver {
   final AuthService _authService = AuthService();
   final FCMService _fcmService = FCMService();
+  final GoogleCalendarService _calendarService = GoogleCalendarService();
   
   // 通知設定
   bool _experimentNotifications = true;
   bool _messageNotifications = true;
   bool _emailNotifications = false;
+  
+  // カレンダー連携設定
+  bool _calendarEnabled = false;
+  bool _calendarConnected = false;
+  
+  @override
+  void initState() {
+    super.initState();
+    debugPrint('SettingsScreen.initState: Starting');
+    WidgetsBinding.instance.addObserver(this);
+    _loadSettings();
+  }
+  
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    debugPrint('SettingsScreen.didChangeAppLifecycleState: $state');
+    if (state == AppLifecycleState.resumed) {
+      debugPrint('SettingsScreen: App resumed, reloading settings');
+      _loadSettings();
+    }
+  }
+  
+  Future<void> _loadSettings() async {
+    // 通知設定を読み込み
+    final prefs = await SharedPreferences.getInstance();
+    if (mounted) {
+      setState(() {
+        _experimentNotifications = prefs.getBool('experiment_notifications') ?? true;
+        _messageNotifications = prefs.getBool('message_notifications') ?? true;
+        _emailNotifications = prefs.getBool('email_notifications') ?? false;
+      });
+    }
+    
+    // カレンダー設定を読み込み
+    await _loadCalendarSettings();
+  }
+  
+  Future<void> _saveNotificationSettings() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('experiment_notifications', _experimentNotifications);
+    await prefs.setBool('message_notifications', _messageNotifications);
+    await prefs.setBool('email_notifications', _emailNotifications);
+  }
+  
+  Future<void> _loadCalendarSettings() async {
+    debugPrint('SettingsScreen._loadCalendarSettings: Starting load');
+    try {
+      // まず保存された設定を読み込む
+      final enabled = await _calendarService.isCalendarEnabled();
+      debugPrint('SettingsScreen._loadCalendarSettings: enabled = $enabled');
+      
+      // 接続状態を確認（enabledの値に関わらず）
+      final connected = await _calendarService.hasCalendarPermission();
+      debugPrint('SettingsScreen._loadCalendarSettings: connected = $connected');
+      
+      if (mounted) {
+        setState(() {
+          _calendarEnabled = enabled;
+          _calendarConnected = connected;
+        });
+        debugPrint('SettingsScreen._loadCalendarSettings: State updated - enabled=$_calendarEnabled, connected=$_calendarConnected');
+      } else {
+        debugPrint('SettingsScreen._loadCalendarSettings: Widget not mounted, skipping setState');
+      }
+    } catch (e) {
+      debugPrint('カレンダー設定読み込みエラー: $e');
+      if (mounted) {
+        setState(() {
+          _calendarEnabled = false;
+          _calendarConnected = false;
+        });
+      }
+    }
+  }
   
   /// ログアウト処理
   Future<void> _handleLogout() async {
@@ -138,7 +215,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
   
   @override
+  void dispose() {
+    debugPrint('SettingsScreen.dispose: Screen being disposed');
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+  
+  @override
   Widget build(BuildContext context) {
+    debugPrint('SettingsScreen.build: Building with calendarEnabled=$_calendarEnabled, calendarConnected=$_calendarConnected');
     return Scaffold(
       appBar: AppBar(
         title: const Text('設定'),
@@ -165,10 +250,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   title: const Text('実験に関する通知'),
                   subtitle: const Text('新しい実験募集、参加実験の更新など'),
                   value: _experimentNotifications,
-                  onChanged: (value) {
+                  onChanged: (value) async {
                     setState(() {
                       _experimentNotifications = value;
                     });
+                    await _saveNotificationSettings();
                   },
                 ),
                 const Divider(height: 1),
@@ -176,10 +262,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   title: const Text('メッセージ通知'),
                   subtitle: const Text('新着メッセージの通知'),
                   value: _messageNotifications,
-                  onChanged: (value) {
+                  onChanged: (value) async {
                     setState(() {
                       _messageNotifications = value;
                     });
+                    await _saveNotificationSettings();
                   },
                 ),
                 const Divider(height: 1),
@@ -187,10 +274,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   title: const Text('メール通知'),
                   subtitle: const Text('重要なお知らせをメールで受け取る'),
                   value: _emailNotifications,
-                  onChanged: (value) {
+                  onChanged: (value) async {
                     setState(() {
                       _emailNotifications = value;
                     });
+                    await _saveNotificationSettings();
                   },
                 ),
                 const Divider(height: 1),
@@ -221,6 +309,145 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       }
                     }
                   },
+                ),
+              ],
+            ),
+          ),
+          
+          const SizedBox(height: 24),
+          
+          // Googleカレンダー連携セクション
+          const Padding(
+            padding: EdgeInsets.all(16.0),
+            child: Text(
+              'Googleカレンダー連携',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                color: Colors.grey,
+              ),
+            ),
+          ),
+          Card(
+            margin: const EdgeInsets.symmetric(horizontal: 16),
+            child: Column(
+              children: [
+                SwitchListTile(
+                  title: const Text('カレンダー連携'),
+                  subtitle: Text(_calendarConnected 
+                    ? (_calendarEnabled ? 'Googleカレンダーと連携済み' : 'カレンダー連携は無効です')
+                    : 'Googleカレンダーと連携していません'),
+                  value: _calendarEnabled,
+                  onChanged: (value) async {
+                    debugPrint('SettingsScreen: Calendar toggle changed to $value');
+                    if (value) {
+                      // カレンダー連携を有効にする
+                      if (!_calendarConnected) {
+                        // まだ認証していない場合は認証を行う
+                        debugPrint('SettingsScreen: Requesting calendar permission');
+                        final success = await _calendarService.requestCalendarPermission();
+                        if (success) {
+                          await _calendarService.setCalendarEnabled(true);
+                          if (mounted) {
+                            setState(() {
+                              _calendarEnabled = true;
+                              _calendarConnected = true;
+                            });
+                            debugPrint('SettingsScreen: Calendar enabled and connected');
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('Googleカレンダーと連携しました'),
+                                backgroundColor: Colors.green,
+                              ),
+                            );
+                          }
+                        } else {
+                          debugPrint('SettingsScreen: Calendar permission request failed');
+                          if (mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('カレンダー連携に失敗しました'),
+                                backgroundColor: Colors.red,
+                              ),
+                            );
+                          }
+                        }
+                      } else {
+                        // すでに認証済みの場合は有効化のみ
+                        debugPrint('SettingsScreen: Re-enabling calendar (already connected)');
+                        await _calendarService.setCalendarEnabled(true);
+                        setState(() {
+                          _calendarEnabled = true;
+                        });
+                        debugPrint('SettingsScreen: Calendar re-enabled');
+                      }
+                    } else {
+                      // カレンダー連携を無効にする（接続は維持）
+                      debugPrint('SettingsScreen: Disabling calendar');
+                      await _calendarService.setCalendarEnabled(false);
+                      setState(() {
+                        _calendarEnabled = false;
+                      });
+                      debugPrint('SettingsScreen: Calendar disabled (connection maintained)');
+                    }
+                  },
+                ),
+                if (_calendarConnected && _calendarEnabled) ...[
+                  const Divider(height: 1),
+                  ListTile(
+                    leading: const Icon(Icons.link_off, color: Colors.red),
+                    title: const Text('カレンダー連携を解除'),
+                    subtitle: const Text('Googleカレンダーとの連携を解除します'),
+                    trailing: const Icon(Icons.chevron_right),
+                    onTap: () async {
+                      final confirmed = await showDialog<bool>(
+                        context: context,
+                        builder: (context) => AlertDialog(
+                          title: const Text('カレンダー連携の解除'),
+                          content: const Text(
+                            'Googleカレンダーとの連携を解除しますか？\n'
+                            '解除後も既にカレンダーに追加された予定は残ります。',
+                          ),
+                          actions: [
+                            TextButton(
+                              onPressed: () => Navigator.pop(context, false),
+                              child: const Text('キャンセル'),
+                            ),
+                            TextButton(
+                              onPressed: () => Navigator.pop(context, true),
+                              child: const Text('解除', style: TextStyle(color: Colors.red)),
+                            ),
+                          ],
+                        ),
+                      );
+                      
+                      if (confirmed == true) {
+                        await _calendarService.disconnectCalendar();
+                        if (mounted) {
+                          setState(() {
+                            _calendarEnabled = false;
+                            _calendarConnected = false;
+                          });
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('カレンダー連携を解除しました'),
+                              backgroundColor: Colors.orange,
+                            ),
+                          );
+                        }
+                      }
+                    },
+                  ),
+                ],
+                const Divider(height: 1),
+                const ListTile(
+                  leading: Icon(Icons.info_outline),
+                  title: Text('カレンダー連携について'),
+                  subtitle: Text(
+                    '実験の予約時に自動でGoogleカレンダーに予定を追加できます。'
+                    'キャンセル時は手動でカレンダーから削除してください。',
+                    style: TextStyle(fontSize: 12),
+                  ),
                 ),
               ],
             ),

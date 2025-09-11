@@ -8,6 +8,9 @@ class PreferenceService {
   static const String _keySupportBannerNeverShow = 'support_banner_never_show';
   static const String _keyDonationCardCollapsed = 'donation_card_collapsed';
   static const String _keyExperimentCompletedCount = 'experiment_completed_count';
+  static const String _keyFirstReservationMade = 'first_reservation_made';
+  static const String _keyFirstExperimentCreated = 'first_experiment_created';
+  static const String _keyCalendarPromptShown = 'calendar_prompt_shown';
   
   /// 初回起動日を記録
   static Future<void> recordFirstLaunch() async {
@@ -104,6 +107,42 @@ class PreferenceService {
   static Future<bool> hasCompletedMultipleExperiments() async {
     final count = await getExperimentCompletedCount();
     return count >= 3;
+  }
+  
+  /// 初回予約かどうかをチェック
+  static Future<bool> isFirstReservation() async {
+    final prefs = await SharedPreferences.getInstance();
+    return !prefs.containsKey(_keyFirstReservationMade);
+  }
+  
+  /// 初回予約を記録
+  static Future<void> recordFirstReservation() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_keyFirstReservationMade, true);
+  }
+  
+  /// 初回実験作成かどうかをチェック
+  static Future<bool> isFirstExperimentCreated() async {
+    final prefs = await SharedPreferences.getInstance();
+    return !prefs.containsKey(_keyFirstExperimentCreated);
+  }
+  
+  /// 初回実験作成を記録
+  static Future<void> recordFirstExperimentCreated() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_keyFirstExperimentCreated, true);
+  }
+  
+  /// カレンダー連携プロンプトを表示したかどうか
+  static Future<bool> hasShownCalendarPrompt() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getBool(_keyCalendarPromptShown) ?? false;
+  }
+  
+  /// カレンダー連携プロンプトを表示したことを記録
+  static Future<void> recordCalendarPromptShown() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_keyCalendarPromptShown, true);
   }
   
   /// すべての設定をリセット（デバッグ用）

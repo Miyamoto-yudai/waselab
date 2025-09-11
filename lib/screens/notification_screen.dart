@@ -4,6 +4,9 @@ import '../models/notification.dart';
 import '../services/notification_service.dart';
 import '../services/auth_service.dart';
 import '../services/experiment_service.dart';
+import '../services/google_calendar_service.dart';
+import '../services/reservation_service.dart';
+import '../services/flexible_schedule_service.dart';
 import 'messages_screen.dart';
 import 'experiment_detail_screen.dart';
 import 'experiment_management_screen.dart';
@@ -21,7 +24,11 @@ class _NotificationScreenState extends State<NotificationScreen> {
   final NotificationService _notificationService = NotificationService();
   final AuthService _authService = AuthService();
   final ExperimentService _experimentService = ExperimentService();
+  final GoogleCalendarService _calendarService = GoogleCalendarService();
+  final ReservationService _reservationService = ReservationService();
+  final FlexibleScheduleService _scheduleService = FlexibleScheduleService();
   String? _currentUserId;
+  final Set<String> _addingToCalendar = {};
   
   @override
   void initState() {
@@ -160,6 +167,169 @@ class _NotificationScreenState extends State<NotificationScreen> {
       ),
     );
   }
+  
+  Future<void> _addToCalendar(AppNotification notification) async {
+    // カレンダー連携が有効かチェック
+    if (!await _calendarService.isCalendarEnabled()) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('設定画面でGoogleカレンダー連携を有効にしてください'),
+            backgroundColor: Colors.orange,
+          ),
+        );
+      }
+      return;
+    }
+    
+    setState(() {
+      _addingToCalendar.add(notification.id);
+    });
+    
+    try {
+      // 通知データから情報を取得
+      final experimentId = notification.data?['experimentId'];
+      final slotId = notification.data?['slotId'];
+      final participantName = notification.data?['participantName'] ?? 'ユーザー';
+      
+      if (experimentId == null) {
+        throw Exception('実験情報が見つかりません');
+      }
+      
+      // 実験情報を取得
+      final experiment = await _experimentService.getExperiment(experimentId);
+      if (experiment == null) {
+        throw Exception('実験が見つかりません');
+      }
+      
+      // 日程確定通知の場合（柔軟な日程調整）
+      if (notification.data?['scheduledDate'] != null) {
+        final scheduledDate = DateTime.parse(notification.data!['scheduledDate']);
+        final endTime = scheduledDate.add(Duration(minutes: experiment.duration ?? 60));
+        
+        // 実験者側の通知の場合
+        if (notification.data?['isCreatorNotification'] == true) {
+          final participantName = notification.data?['participantName'] ?? '参加者';
+          
+          // 実験者側のカレンダーに追加
+          final eventId = await _calendarService.quickAddReservationToCalendar(
+            experimentTitle: experiment.title,
+            startTime: scheduledDate,
+            endTime: endTime,
+            participantName: participantName,
+            location: experiment.location,
+            surveyUrl: experiment.surveyUrl,
+            type: experiment.type,
+          );
+          
+          if (eventId != null && mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Googleカレンダーに予定を追加しました'),
+                backgroundColor: Colors.green,
+              ),
+            );
+          }
+        } else {
+          // 参加者側からカレンダーに追加
+          final eventId = await _scheduleService.addParticipantCalendarEvent(
+            experimentId: experimentId,
+            participantId: _currentUserId!,
+          );
+          
+          if (eventId != null && mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Googleカレンダーに予定を追加しました'),
+                backgroundColor: Colors.green,
+              ),
+            );
+          }
+        }
+        return;
+      }
+      
+      // スロット情報がある場合は取得
+      if (slotId != null) {
+        final slot = await _reservationService.getSlotById(slotId);
+        
+        // クイック追加（実験作成者用）
+        final eventId = await _calendarService.quickAddReservationToCalendar(
+          experimentTitle: experiment.title,
+          startTime: slot.startTime,
+          endTime: slot.endTime,
+          participantName: participantName,
+          location: experiment.location,
+          surveyUrl: experiment.surveyUrl,
+          type: experiment.type,
+        );
+        
+        if (eventId != null && mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Googleカレンダーに予定を追加しました'),
+              backgroundColor: Colors.green,
+            ),
+          );
+        }
+      } else if (experiment.fixedExperimentDate != null) {
+        // 固定日時の実験の場合
+        DateTime startTime = experiment.fixedExperimentDate!;
+        DateTime endTime = startTime;
+        
+        if (experiment.fixedExperimentTime != null) {
+          final hour = experiment.fixedExperimentTime!['hour'] ?? 0;
+          final minute = experiment.fixedExperimentTime!['minute'] ?? 0;
+          startTime = DateTime(
+            startTime.year,
+            startTime.month,
+            startTime.day,
+            hour,
+            minute,
+          );
+          endTime = startTime.add(Duration(minutes: experiment.duration ?? 60));
+        } else {
+          endTime = startTime.add(Duration(minutes: experiment.duration ?? 60));
+        }
+        
+        final eventId = await _calendarService.quickAddReservationToCalendar(
+          experimentTitle: experiment.title,
+          startTime: startTime,
+          endTime: endTime,
+          participantName: participantName,
+          location: experiment.location,
+          surveyUrl: experiment.surveyUrl,
+          type: experiment.type,
+        );
+        
+        if (eventId != null && mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Googleカレンダーに予定を追加しました'),
+              backgroundColor: Colors.green,
+            ),
+          );
+        }
+      } else {
+        throw Exception('日時が確定していない実験です');
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('カレンダー追加に失敗しました: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _addingToCalendar.remove(notification.id);
+        });
+      }
+    }
+  }
 
   Future<void> _markAllAsRead() async {
     if (_currentUserId != null) {
@@ -221,7 +391,7 @@ class _NotificationScreenState extends State<NotificationScreen> {
         builder: (context, snapshot) {
           // エラーチェックを追加
           if (snapshot.hasError) {
-            print('通知取得エラー: ${snapshot.error}');
+            debugPrint('通知取得エラー: ${snapshot.error}');
             return Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -385,13 +555,67 @@ class _NotificationScreenState extends State<NotificationScreen> {
                                   overflow: TextOverflow.ellipsis,
                                 ),
                                 const SizedBox(height: 4),
-                                Text(
-                                  notification.type.label,
-                                  style: TextStyle(
-                                    fontSize: 11,
-                                    color: _getNotificationColor(notification.type),
-                                    fontWeight: FontWeight.w500,
-                                  ),
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Text(
+                                      notification.type.label,
+                                      style: TextStyle(
+                                        fontSize: 11,
+                                        color: _getNotificationColor(notification.type),
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                    // 実験参加通知または日程確定通知の場合はカレンダー追加ボタンを表示
+                                    if ((notification.type == NotificationType.experimentJoined &&
+                                        notification.data?['experimentId'] != null) ||
+                                        (notification.data?['scheduledDate'] != null))
+                                      _addingToCalendar.contains(notification.id)
+                                        ? const SizedBox(
+                                            width: 20,
+                                            height: 20,
+                                            child: CircularProgressIndicator(
+                                              strokeWidth: 2,
+                                            ),
+                                          )
+                                        : InkWell(
+                                            onTap: () => _addToCalendar(notification),
+                                            borderRadius: BorderRadius.circular(4),
+                                            child: Container(
+                                              padding: const EdgeInsets.symmetric(
+                                                horizontal: 6,
+                                                vertical: 2,
+                                              ),
+                                              decoration: BoxDecoration(
+                                                color: Colors.blue.withOpacity(0.1),
+                                                borderRadius: BorderRadius.circular(4),
+                                                border: Border.all(
+                                                  color: Colors.blue.withOpacity(0.3),
+                                                  width: 1,
+                                                ),
+                                              ),
+                                              child: const Row(
+                                                mainAxisSize: MainAxisSize.min,
+                                                children: [
+                                                  Icon(
+                                                    Icons.calendar_today,
+                                                    size: 14,
+                                                    color: Colors.blue,
+                                                  ),
+                                                  SizedBox(width: 3),
+                                                  Text(
+                                                    '日程を追加',
+                                                    style: TextStyle(
+                                                      fontSize: 11,
+                                                      color: Colors.blue,
+                                                      fontWeight: FontWeight.w500,
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                            ),
+                                          ),
+                                  ],
                                 ),
                               ],
                             ),

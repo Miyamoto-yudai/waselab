@@ -622,26 +622,16 @@ class _LoginScreenState extends State<LoginScreen> {
                           );
                         },
                         style: TextButton.styleFrom(
-                          foregroundColor: Colors.grey[500],
+                          foregroundColor: Colors.grey[400],
                           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                         ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(
-                              Icons.admin_panel_settings,
-                              size: 14,
-                              color: Colors.grey[500],
-                            ),
-                            const SizedBox(width: 4),
-                            Text(
-                              '管理者',
-                              style: TextStyle(
-                                fontSize: 11,
-                                color: Colors.grey[500],
-                              ),
-                            ),
-                          ],
+                        child: Text(
+                          '© 2024 WaseLab Team',
+                          style: TextStyle(
+                            fontSize: 10,
+                            color: Colors.grey[400],
+                            fontWeight: FontWeight.w300,
+                          ),
                         ),
                       ),
                     ],

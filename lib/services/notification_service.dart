@@ -1,4 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:intl/intl.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../models/notification.dart';
 
 class NotificationService {
@@ -14,6 +16,25 @@ class NotificationService {
     Map<String, dynamic>? data,
   }) async {
     try {
+      // 通知設定を確認
+      final prefs = await SharedPreferences.getInstance();
+      
+      // タイプに応じて通知設定を確認
+      bool shouldSendNotification = true;
+      
+      if (type == NotificationType.experimentJoined || 
+          type == NotificationType.experimentCancelled ||
+          type == NotificationType.experimentCompleted) {
+        shouldSendNotification = prefs.getBool('experiment_notifications') ?? true;
+      } else if (type == NotificationType.message) {
+        shouldSendNotification = prefs.getBool('message_notifications') ?? true;
+      }
+      
+      // 通知が無効の場合は作成しない
+      if (!shouldSendNotification) {
+        return;
+      }
+      
       final notification = AppNotification(
         id: '',
         userId: userId,
@@ -217,6 +238,83 @@ class NotificationService {
     );
   }
 
+  /// 日程確定通知を作成（参加者向け）
+  Future<void> createScheduleConfirmedNotification({
+    required String userId,
+    required String experimentTitle,
+    required DateTime scheduledDate,
+    required String experimentId,
+  }) async {
+    final notification = AppNotification(
+      id: '',
+      userId: userId,
+      title: '実験日程が確定しました',
+      message: '「$experimentTitle」の実施日時が${DateFormat('MM月dd日 HH:mm').format(scheduledDate)}に確定しました',
+      type: NotificationType.experimentJoined,
+      createdAt: DateTime.now(),
+      isRead: false,
+      data: {
+        'experimentId': experimentId,
+        'scheduledDate': scheduledDate.toIso8601String(),
+      },
+    );
+    
+    await _firestore.collection(_collection).add(notification.toFirestore());
+  }
+  
+  /// 日程確定通知を作成（実験者向け）
+  Future<void> createCreatorScheduleNotification({
+    required String creatorId,
+    required String experimentTitle,
+    required String participantName,
+    required DateTime scheduledDate,
+    required String experimentId,
+    required String participantId,
+  }) async {
+    final notification = AppNotification(
+      id: '',
+      userId: creatorId,
+      title: '日程が確定しました',
+      message: '$participantNameさんとの「$experimentTitle」の日程が${DateFormat('MM月dd日 HH:mm').format(scheduledDate)}に確定しました',
+      type: NotificationType.experimentJoined,
+      createdAt: DateTime.now(),
+      isRead: false,
+      data: {
+        'experimentId': experimentId,
+        'participantId': participantId,
+        'participantName': participantName,
+        'scheduledDate': scheduledDate.toIso8601String(),
+        'isCreatorNotification': true,  // 実験者側の通知であることを示す
+      },
+    );
+    
+    await _firestore.collection(_collection).add(notification.toFirestore());
+  }
+  
+  /// 日程キャンセル通知を作成
+  Future<void> createScheduleCancelledNotification({
+    required String userId,
+    required String experimentTitle,
+    required String experimentId,
+    String? reason,
+  }) async {
+    final notification = AppNotification(
+      id: '',
+      userId: userId,
+      title: '実験日程がキャンセルされました',
+      message: '「$experimentTitle」の実施日程がキャンセルされました${reason != null ? '（理由: $reason）' : ''}',
+      type: NotificationType.experimentCancelled,
+      createdAt: DateTime.now(),
+      isRead: false,
+      data: {
+        'experimentId': experimentId,
+        'reason': reason,
+      },
+    );
+    
+    await _firestore.collection(_collection).add(notification.toFirestore());
+  }
+  
   // 予約キャンセル通知を作成
   Future<void> createExperimentCancelledNotification({
     required String userId,

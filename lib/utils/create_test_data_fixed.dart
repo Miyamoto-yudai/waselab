@@ -76,6 +76,7 @@ class TestDataCreatorFixed {
           'type': exp['type'],
           'isPaid': true,
           'allowFlexibleSchedule': true,
+          'scheduleType': i % 3 == 0 ? 'fixed' : (i % 3 == 1 ? 'reservation' : 'individual'), // 3種類をローテーション
           'maxParticipants': 30,
           'participants': [],
           'status': 'recruiting',
@@ -92,8 +93,19 @@ class TestDataCreatorFixed {
         // Firestoreに保存
         final docRef = await firestore.collection('experiments').add(experimentData);
         
-        // experiment_slotsコレクションに予約スロットを作成
-        await _createExperimentSlots(docRef.id, experimentStart, experimentEnd);
+        // scheduleTypeに応じて処理を分岐
+        final scheduleType = experimentData['scheduleType'];
+        if (scheduleType == 'reservation') {
+          // 予約制の場合のみスロットを作成
+          await _createExperimentSlots(docRef.id, experimentStart, experimentEnd);
+        } else if (scheduleType == 'fixed') {
+          // 固定日時の場合は、固定日時情報を追加
+          await firestore.collection('experiments').doc(docRef.id).update({
+            'fixedExperimentDate': Timestamp.fromDate(experimentStart.add(Duration(days: 7))),
+            'fixedExperimentTime': {'hour': 14, 'minute': 0},
+          });
+        }
+        // individualの場合は特別な処理なし（参加者と個別調整）
         
         createdCount++;
         print('実験データ作成 ${i + 1}/3: ${exp['title']}');

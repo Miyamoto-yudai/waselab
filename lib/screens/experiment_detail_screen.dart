@@ -10,6 +10,7 @@ import '../models/notification.dart';
 import '../services/reservation_service.dart';
 import '../services/experiment_service.dart';
 import '../services/notification_service.dart';
+import '../services/google_calendar_service.dart';
 import '../widgets/experiment_calendar_view.dart';
 import '../widgets/custom_circle_avatar.dart';
 import '../models/avatar_design.dart';
@@ -45,6 +46,7 @@ class _ExperimentDetailScreenState extends State<ExperimentDetailScreen> {
   final AuthService _authService = AuthService();
   final ExperimentService _experimentService = ExperimentService();
   final UserService _userService = UserService();
+  final GoogleCalendarService _calendarService = GoogleCalendarService();
   bool _showCalendar = false;
   bool _isLoading = false;
   bool _isParticipating = false;
@@ -395,6 +397,82 @@ class _ExperimentDetailScreenState extends State<ExperimentDetailScreen> {
     );
   }
 
+  /// カレンダー連携プロンプトを表示
+  Future<bool> _showCalendarPromptDialog() async {
+    return await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        title: const Row(
+          children: [
+            Icon(Icons.calendar_today, color: Colors.blue),
+            SizedBox(width: 8),
+            Text('Googleカレンダー連携'),
+          ],
+        ),
+        content: const Text(
+          '実験の予約をGoogleカレンダーに自動で追加しますか？\n\n'
+          '連携すると、予約した実験の日時が自動でカレンダーに登録され、'
+          'リマインダーも設定されます。\n\n'
+          '（後から設定画面で変更できます）',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('今はしない'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('連携する'),
+          ),
+        ],
+      ),
+    ) ?? false;
+  }
+  
+  /// カレンダー連携を有効化
+  Future<void> _enableCalendarIntegration() async {
+    try {
+      setState(() => _isLoading = true);
+      
+      final hasPermission = await _calendarService.requestCalendarPermission();
+      if (hasPermission) {
+        await _calendarService.setCalendarEnabled(true);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Googleカレンダーと連携しました'),
+              backgroundColor: Colors.green,
+            ),
+          );
+        }
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('カレンダー連携がキャンセルされました'),
+              backgroundColor: Colors.orange,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      debugPrint('カレンダー連携エラー: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('カレンダー連携に失敗しました: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
+  }
+  
   /// 予約を実行
   Future<void> _makeReservation(ExperimentSlot slot) async {
     try {
@@ -434,13 +512,31 @@ class _ExperimentDetailScreenState extends State<ExperimentDetailScreen> {
         }
         return;
       }
+      
+      // 初回予約かつカレンダー連携が無効の場合、プロンプトを表示
+      final isFirstReservation = await PreferenceService.isFirstReservation();
+      final calendarEnabled = await _calendarService.isCalendarEnabled();
+      final hasShownPrompt = await PreferenceService.hasShownCalendarPrompt();
+      
+      if (isFirstReservation && !calendarEnabled && !hasShownPrompt && mounted) {
+        await PreferenceService.recordCalendarPromptShown();
+        final shouldEnableCalendar = await _showCalendarPromptDialog();
+        if (shouldEnableCalendar) {
+          await _enableCalendarIntegration();
+        }
+      }
 
       // 予約を作成
-      await _reservationService.createReservation(
+      final reservationId = await _reservationService.createReservation(
         userId: user.uid,
         experimentId: widget.experiment.id,
         slotId: slot.id,
       );
+      
+      // 初回予約を記録
+      if (isFirstReservation) {
+        await PreferenceService.recordFirstReservation();
+      }
 
       // 実験への参加履歴を追加
       final experimentService = ExperimentService();
@@ -454,6 +550,29 @@ class _ExperimentDetailScreenState extends State<ExperimentDetailScreen> {
 
       // 予約情報を再読み込み
       await _loadUserReservation();
+      
+      // Googleカレンダーに登録（エラーが起きても予約処理は続行）
+      if (await _calendarService.isCalendarEnabled()) {
+        try {
+          final eventId = await _calendarService.addReservationToCalendar(
+            experiment: widget.experiment,
+            slot: slot,
+            reservationId: reservationId,
+          );
+          
+          if (eventId != null && mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Googleカレンダーに予定を追加しました'),
+                backgroundColor: Colors.blue,
+                duration: Duration(seconds: 2),
+              ),
+            );
+          }
+        } catch (e) {
+          debugPrint('カレンダー登録エラー: $e');
+        }
+      }
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

@@ -23,6 +23,8 @@ class ExperimentReservation {
   final ReservationStatus status; // 予約状態
   final String? cancelReason;    // キャンセル理由（オプション）
   final String? note;           // 備考（オプション）
+  final String? googleCalendarEventId; // GoogleカレンダーイベントID（オプション）
+  final DateTime? calendarSyncedAt;    // カレンダー同期日時（オプション）
 
   ExperimentReservation({
     required this.id,
@@ -33,6 +35,8 @@ class ExperimentReservation {
     required this.status,
     this.cancelReason,
     this.note,
+    this.googleCalendarEventId,
+    this.calendarSyncedAt,
   });
 
   /// FirestoreのドキュメントからExperimentReservationを作成
@@ -51,6 +55,8 @@ class ExperimentReservation {
       ),
       cancelReason: data['cancelReason'],
       note: data['note'],
+      googleCalendarEventId: data['googleCalendarEventId'],
+      calendarSyncedAt: (data['calendarSyncedAt'] as Timestamp?)?.toDate(),
     );
   }
 
@@ -64,6 +70,8 @@ class ExperimentReservation {
       'status': status.name,
       'cancelReason': cancelReason,
       'note': note,
+      if (googleCalendarEventId != null) 'googleCalendarEventId': googleCalendarEventId,
+      if (calendarSyncedAt != null) 'calendarSyncedAt': Timestamp.fromDate(calendarSyncedAt!),
     };
   }
 
@@ -77,6 +85,8 @@ class ExperimentReservation {
     ReservationStatus? status,
     String? cancelReason,
     String? note,
+    String? googleCalendarEventId,
+    DateTime? calendarSyncedAt,
   }) {
     return ExperimentReservation(
       id: id ?? this.id,
@@ -87,6 +97,8 @@ class ExperimentReservation {
       status: status ?? this.status,
       cancelReason: cancelReason ?? this.cancelReason,
       note: note ?? this.note,
+      googleCalendarEventId: googleCalendarEventId ?? this.googleCalendarEventId,
+      calendarSyncedAt: calendarSyncedAt ?? this.calendarSyncedAt,
     );
   }
 

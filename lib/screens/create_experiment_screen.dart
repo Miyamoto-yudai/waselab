@@ -4,6 +4,8 @@ import 'package:firebase_auth/firebase_auth.dart';
 import '../widgets/create_experiment_base.dart';
 import '../models/experiment_slot.dart';
 import '../services/reservation_service.dart';
+import '../services/preference_service.dart';
+import '../services/google_calendar_service.dart';
 
 /// 実験作成画面（早稲田ユーザー専用）
 class CreateExperimentScreen extends StatelessWidget {
@@ -13,6 +15,7 @@ class CreateExperimentScreen extends StatelessWidget {
     final firestore = FirebaseFirestore.instance;
     final auth = FirebaseAuth.instance;
     final reservationService = ReservationService();
+    final calendarService = GoogleCalendarService();
     
     final user = auth.currentUser;
     if (user == null) {
@@ -47,6 +50,17 @@ class CreateExperimentScreen extends StatelessWidget {
     debugPrint('研究室/個人: ${data['isLabExperiment']}');
     debugPrint('=========================');
 
+    // 初回実験作成かつカレンダー連携が無効の場合、プロンプトを表示
+    final isFirstExperiment = await PreferenceService.isFirstExperimentCreated();
+    final calendarEnabled = await calendarService.isCalendarEnabled();
+    final hasShownPrompt = await PreferenceService.hasShownCalendarPrompt();
+    
+    if (isFirstExperiment && !calendarEnabled && !hasShownPrompt) {
+      await PreferenceService.recordCalendarPromptShown();
+      // ここではダイアログを表示できないため、フラグのみ設定
+      // 実際のダイアログ表示はWidget側で制御
+    }
+    
     // Firestoreに実験を追加
     final docRef = await firestore.collection('experiments').add({
       'title': data['title'],
@@ -243,6 +257,11 @@ class CreateExperimentScreen extends StatelessWidget {
       debugPrint('Fixed slot created successfully');
     } else {
       debugPrint('No slot creation needed - allowFlexible: ${data['allowFlexibleSchedule']}, fixedDate: ${data['fixedExperimentDate']}');
+    }
+    
+    // 初回実験作成を記録
+    if (isFirstExperiment) {
+      await PreferenceService.recordFirstExperimentCreated();
     }
   }
 
