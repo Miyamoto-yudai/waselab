@@ -133,48 +133,42 @@ exports.sendEvaluationNotification = functions.firestore
     }
 });
 exports.sendMessageNotification = functions.firestore
-    .document("conversations/{conversationId}/messages/{messageId}")
+    .document("messages/{messageId}")
     .onCreate(async (snapshot, context) => {
     var _a;
     const message = snapshot.data();
-    const conversationId = context.params.conversationId;
     try {
-        const conversationDoc = await db
-            .collection("conversations")
-            .doc(conversationId)
-            .get();
-        if (!conversationDoc.exists) {
-            console.log(`Conversation ${conversationId} not found`);
-            return null;
-        }
-        const conversation = conversationDoc.data();
-        const participants = (conversation === null || conversation === void 0 ? void 0 : conversation.participants) || [];
-        const targetUserId = participants.find((id) => id !== message.senderId);
-        if (!targetUserId) {
-            console.log("No recipient found for message");
+        if (!message.receiverId || !message.senderId) {
+            console.log("Missing receiverId or senderId in message");
             return null;
         }
         const senderDoc = await db.collection("users").doc(message.senderId).get();
         const senderName = senderDoc.exists
             ? ((_a = senderDoc.data()) === null || _a === void 0 ? void 0 : _a.name) || "ユーザー"
             : "ユーザー";
-        const messagePreview = message.text.length > 50
-            ? message.text.substring(0, 50) + "..."
-            : message.text;
-        const notificationRef = db.collection("notifications").doc();
-        await notificationRef.set({
-            userId: targetUserId,
-            type: "message",
-            title: "新しいメッセージ",
-            message: `${senderName}さん: ${messagePreview}`,
-            createdAt: admin.firestore.FieldValue.serverTimestamp(),
-            isRead: false,
-            data: {
-                conversationId,
+        const receiverDoc = await db.collection("users").doc(message.receiverId).get();
+        if (!receiverDoc.exists) {
+            console.log(`Receiver ${message.receiverId} not found`);
+            return null;
+        }
+        const receiverData = receiverDoc.data();
+        const messagePreview = message.content.length > 50
+            ? message.content.substring(0, 50) + "..."
+            : message.content;
+        // 直接プッシュ通知を送信（notificationsコレクションには追加しない）
+        if (receiverData.fcmToken) {
+            await sendPushNotification(receiverData.fcmToken, "新しいメッセージ", `${senderName}さん: ${messagePreview}`, {
+                type: "message",
+                conversationId: message.conversationId,
+                senderId: message.senderId,
                 senderName,
-            },
-        });
-        console.log(`Message notification created for user ${targetUserId}`);
+                messageId: context.params.messageId,
+            });
+            console.log(`Push notification sent directly to user ${message.receiverId}`);
+        }
+        else {
+            console.log(`User ${message.receiverId} has no FCM token`);
+        }
         return null;
     }
     catch (error) {

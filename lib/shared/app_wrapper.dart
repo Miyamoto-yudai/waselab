@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'app_theme.dart';
+import '../services/navigation_service.dart';
 
 /// アプリのルートウィジェット（共通）
 /// main.dartとmain_demo.dartで共有される
@@ -22,6 +23,7 @@ class WaseLaboApp extends StatelessWidget {
       title: 'わせラボ',
       debugShowCheckedModeBanner: false,
       theme: isDemo ? AppTheme.demoTheme : AppTheme.theme,
+      navigatorKey: NavigationService.navigatorKey,
       home: home,
     );
   }

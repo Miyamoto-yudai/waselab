@@ -4,6 +4,8 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:cloud_functions/cloud_functions.dart';
 import 'local_notification_service.dart';
+import 'navigation_service.dart';
+import 'auth_service.dart';
 
 @pragma('vm:entry-point')
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
@@ -221,10 +223,20 @@ class FCMService {
     }
   }
 
-  void _handleNotificationTap(RemoteMessage message) {
+  void _handleNotificationTap(RemoteMessage message) async {
     final type = message.data['type'];
     final experimentId = message.data['experimentId'];
     final conversationId = message.data['conversationId'];
+    final senderId = message.data['senderId'];
+    final senderName = message.data['senderName'] ?? 'ユーザー';
+    
+    // ユーザーがログインしているか確認
+    final authService = AuthService();
+    final currentUser = authService.currentUser;
+    if (currentUser == null) {
+      print('ユーザーがログインしていません');
+      return;
+    }
     
     switch (type) {
       case 'evaluation':
@@ -233,15 +245,18 @@ class FCMService {
       case 'experiment_completed':
         if (experimentId != null) {
           print('実験詳細画面に遷移: $experimentId');
+          await NavigationService.navigateToExperiment(experimentId);
         }
         break;
       case 'message':
-        if (conversationId != null) {
+        if (conversationId != null && senderId != null) {
           print('メッセージ画面に遷移: $conversationId');
+          await NavigationService.navigateToMessage(conversationId, senderId, senderName);
         }
         break;
       default:
         print('通知画面に遷移');
+        await NavigationService.navigateToNotifications();
     }
   }
 

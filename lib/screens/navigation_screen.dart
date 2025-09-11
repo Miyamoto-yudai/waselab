@@ -18,10 +18,10 @@ class NavigationScreen extends StatefulWidget {
   const NavigationScreen({super.key});
 
   @override
-  State<NavigationScreen> createState() => _NavigationScreenState();
+  State<NavigationScreen> createState() => NavigationScreenState();
 }
 
-class _NavigationScreenState extends State<NavigationScreen> {
+class NavigationScreenState extends State<NavigationScreen> {
   int _selectedIndex = 0;
   final MessageService _messageService = MessageService();
   final AuthService _authService = AuthService();
@@ -143,6 +143,25 @@ class _NavigationScreenState extends State<NavigationScreen> {
       setState(() {
         _currentUser = user;
       });
+    }
+  }
+  
+  void setSelectedIndex(int index) {
+    if (mounted) {
+      setState(() {
+        _selectedIndex = index;
+        if (index == 4) {
+          // マイページに遷移したら画面を再構築して最新状態を表示
+          _screens[4] = MyPageScreen(key: UniqueKey());
+          _loadPendingEvaluations(); // 評価状態を更新
+        }
+      });
+      if (index == 1) {
+        _loadUnreadCount();
+      } else if (index == 3) {
+        // 履歴画面に遷移したら再構築して最新状態を表示
+        _screens[3] = const HistoryScreen();
+      }
     }
   }
 
