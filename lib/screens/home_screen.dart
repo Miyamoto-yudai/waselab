@@ -201,13 +201,9 @@ class _HomeScreenState extends State<HomeScreen> {
       canCreateExperiment: _currentUser?.canCreateExperiment ?? false,
       userName: _currentUser?.name,
       isWasedaUser: _currentUser?.isWasedaUser ?? false,
-      onLogout: _handleLogout,
       onCreateExperiment: _navigateToCreateExperiment,
+      onSettingsTap: _navigateToSettings,
       currentUserId: _currentUser?.uid,
-      unreadMessages: _unreadMessages,
-      onNavigateToMyPage: _navigateToMyPage,
-      onNavigateToMessages: _navigateToMessages,
-      onNavigateToSettings: _navigateToSettings,
     );
   }
 }

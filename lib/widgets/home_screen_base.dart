@@ -1,383 +1,277 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../models/experiment.dart';
+import '../screens/settings_screen.dart';
 import '../widgets/experiment_card.dart';
 import '../widgets/support_banner.dart';
-import '../services/preference_service.dart';
+import '../screens/create_experiment_screen.dart';
 
-/// ホーム画面の共通ベースウィジェット
+enum SortOption {
+  newest('新しい順'),
+  deadline('締切が近い順'),
+  reward('報酬が高い順'),
+  duration('所要時間が短い順');
+
+  final String label;
+  const SortOption(this.label);
+}
+
 class HomeScreenBase extends StatefulWidget {
   final String title;
   final List<Experiment> experiments;
   final bool canCreateExperiment;
+  final bool showOnlyAvailable;
+  final bool isDemo;
+  final VoidCallback? onNavigateToParticipations;
+  final VoidCallback? onSettingsTap;
+  final VoidCallback? onCreateExperiment;
   final String? userName;
   final bool isWasedaUser;
-  final VoidCallback onLogout;
-  final VoidCallback? onCreateExperiment;
-  final bool isDemo;
   final String? currentUserId;
-  final int unreadMessages;
-  final VoidCallback? onNavigateToMyPage;
-  final VoidCallback? onNavigateToMessages;
-  final VoidCallback? onNavigateToSettings;
-  
+
   const HomeScreenBase({
     super.key,
     required this.title,
     required this.experiments,
-    required this.canCreateExperiment,
-    required this.userName,
-    required this.isWasedaUser,
-    required this.onLogout,
-    this.onCreateExperiment,
+    this.canCreateExperiment = false,
+    this.showOnlyAvailable = false,
     this.isDemo = false,
+    this.onNavigateToParticipations,
+    this.onSettingsTap,
+    this.onCreateExperiment,
+    this.userName,
+    this.isWasedaUser = false,
     this.currentUserId,
-    this.unreadMessages = 0,
-    this.onNavigateToMyPage,
-    this.onNavigateToMessages,
-    this.onNavigateToSettings,
   });
 
   @override
   State<HomeScreenBase> createState() => _HomeScreenBaseState();
 }
 
-enum SortOption {
-  newest('新しい順'),
-  oldest('古い順'),
-  highReward('報酬額が高い順'),
-  lowReward('報酬額が低い順'),
-  soonest('開催日が近い順'),
-  latest('開催日が遠い順');
-
-  final String label;
-  const SortOption(this.label);
-}
-
 class _HomeScreenBaseState extends State<HomeScreenBase> {
-  ExperimentType? _selectedType;
-  SortOption _sortOption = SortOption.newest;
-  String _searchQuery = '';
-  final TextEditingController _searchController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
-  double _scrollOffset = 0.0;
-  bool _isHeaderVisible = true;
+  String _searchQuery = '';
+  ExperimentType? _selectedType;
   DateTime? _startDateFilter;
   DateTime? _endDateFilter;
-  bool _showOnlyAvailable = false; // 参加可能な実験のみ表示するフィルター
-  
+  SortOption _sortOption = SortOption.newest;
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
   List<Experiment> get filteredExperiments {
-    List<Experiment> filtered = List.from(widget.experiments);
-    debugPrint('HomeScreenBase: 初期実験数: ${filtered.length}, _showOnlyAvailable: $_showOnlyAvailable');
+    List<Experiment> filtered = widget.experiments;
     
-    // 参加可能な実験のみフィルター
-    if (_showOnlyAvailable && widget.currentUserId != null) {
-      debugPrint('参加可能フィルター有効');
-      final now = DateTime.now();
-      final beforeFilterCount = filtered.length;
+    // 参加可能な実験のみ表示
+    if (widget.showOnlyAvailable) {
       filtered = filtered.where((experiment) {
-        // 既に参加している実験は除外
-        if (experiment.participants.contains(widget.currentUserId)) {
-          debugPrint('除外: ${experiment.title} - 既に参加');
+        // 終了・募集中以外の実験は除外
+        if (experiment.status != ExperimentStatus.recruiting) {
           return false;
         }
         
         // 最大参加者数に達している実験は除外
         if (experiment.maxParticipants != null && 
             experiment.participants.length >= experiment.maxParticipants!) {
-          debugPrint('除外: ${experiment.title} - 参加者数上限');
-          return false;
-        }
-        
-        // 募集期間外の実験は除外
-        if (experiment.recruitmentEndDate != null && 
-            experiment.recruitmentEndDate!.isBefore(now)) {
-          debugPrint('除外: ${experiment.title} - 募集期間外 (募集終了: ${experiment.recruitmentEndDate})');
-          return false;
-        }
-        
-        // ステータスが募集中以外の実験は除外
-        if (experiment.status != ExperimentStatus.recruiting) {
-          debugPrint('除外: ${experiment.title} - ステータス: ${experiment.status.name}');
           return false;
         }
         
         return true;
       }).toList();
-      debugPrint('参加可能フィルター後: $beforeFilterCount -> ${filtered.length}');
     }
-    
-    // 検索フィルター
+
+    // 検索クエリでフィルタリング
     if (_searchQuery.isNotEmpty) {
-      final query = _searchQuery.toLowerCase();
       filtered = filtered.where((experiment) {
-        // タイトル、説明、研究室名、場所で検索
-        final titleMatch = experiment.title.toLowerCase().contains(query);
-        final descriptionMatch = experiment.description.toLowerCase().contains(query);
-        final labNameMatch = experiment.labName?.toLowerCase().contains(query) ?? false;
-        final locationMatch = experiment.location.toLowerCase().contains(query);
-        
-        // 報酬額での検索（数値として入力された場合）
-        final rewardMatch = int.tryParse(_searchQuery) != null 
-            ? experiment.reward.toString().contains(_searchQuery)
-            : false;
-        
-        return titleMatch || descriptionMatch || labNameMatch || locationMatch || rewardMatch;
+        final query = _searchQuery.toLowerCase();
+        return experiment.title.toLowerCase().contains(query) ||
+            experiment.description.toLowerCase().contains(query) ||
+            experiment.creatorId.toLowerCase().contains(query);
       }).toList();
     }
-    
-    // タイプフィルター
+
+    // 種別でフィルタリング
     if (_selectedType != null) {
-      filtered = filtered.where((e) => e.type == _selectedType).toList();
+      filtered = filtered.where((experiment) => experiment.type == _selectedType).toList();
     }
-    
-    // 日付フィルター
+
+    // 日付でフィルタリング
     if (_startDateFilter != null || _endDateFilter != null) {
       filtered = filtered.where((experiment) {
-        // 柔軟なスケジュールの場合
-        if (experiment.allowFlexibleSchedule) {
-          final expStart = experiment.experimentPeriodStart;
-          final expEnd = experiment.experimentPeriodEnd;
-          
-          if (expStart == null || expEnd == null) return false;
-          
-          // 期間が重なるかチェック
-          if (_startDateFilter != null && _endDateFilter != null) {
-            return !(expEnd.isBefore(_startDateFilter!) || expStart.isAfter(_endDateFilter!));
-          } else if (_startDateFilter != null) {
-            return !expEnd.isBefore(_startDateFilter!);
-          } else if (_endDateFilter != null) {
-            return !expStart.isAfter(_endDateFilter!);
-          }
-        } else {
-          // 固定日程の場合
-          final expDate = experiment.recruitmentStartDate;
-          if (expDate == null) return false;
-          
-          if (_startDateFilter != null && _endDateFilter != null) {
-            return expDate.isAfter(_startDateFilter!.subtract(const Duration(days: 1))) && 
-                   expDate.isBefore(_endDateFilter!.add(const Duration(days: 1)));
-          } else if (_startDateFilter != null) {
-            return !expDate.isBefore(_startDateFilter!);
-          } else if (_endDateFilter != null) {
-            return !expDate.isAfter(_endDateFilter!);
-          }
+        // 実験期間を取得
+        final experimentStart = experiment.recruitmentStartDate;
+        final experimentEnd = experiment.recruitmentEndDate;
+        if (experimentStart == null && experimentEnd == null) return true;
+        
+        // フィルター期間内に実験が存在するかチェック
+        if (_startDateFilter != null && _endDateFilter != null) {
+          // 期間指定の場合
+          return (experimentEnd == null || experimentEnd.isAfter(_startDateFilter!.subtract(const Duration(days: 1)))) &&
+                 (experimentStart == null || experimentStart.isBefore(_endDateFilter!.add(const Duration(days: 1))));
+        } else if (_startDateFilter != null) {
+          // 開始日のみ指定の場合
+          return experimentEnd == null || experimentEnd.isAfter(_startDateFilter!.subtract(const Duration(days: 1)));
+        } else if (_endDateFilter != null) {
+          // 終了日のみ指定の場合
+          return experimentStart == null || experimentStart.isBefore(_endDateFilter!.add(const Duration(days: 1)));
         }
         return true;
       }).toList();
     }
-    
-    // ソート処理
+
+    // ソート
     switch (_sortOption) {
       case SortOption.newest:
         filtered.sort((a, b) => b.createdAt.compareTo(a.createdAt));
         break;
-      case SortOption.oldest:
-        filtered.sort((a, b) => a.createdAt.compareTo(b.createdAt));
-        break;
-      case SortOption.highReward:
-        filtered.sort((a, b) => b.reward.compareTo(a.reward));
-        break;
-      case SortOption.lowReward:
-        filtered.sort((a, b) => a.reward.compareTo(b.reward));
-        break;
-      case SortOption.soonest:
+      case SortOption.deadline:
         filtered.sort((a, b) {
-          if (a.experimentDate == null && b.experimentDate == null) return 0;
-          if (a.experimentDate == null) return 1;
-          if (b.experimentDate == null) return -1;
-          return a.experimentDate!.compareTo(b.experimentDate!);
+          if (a.recruitmentEndDate == null) return 1;
+          if (b.recruitmentEndDate == null) return -1;
+          return a.recruitmentEndDate!.compareTo(b.recruitmentEndDate!);
         });
         break;
-      case SortOption.latest:
+      case SortOption.reward:
+        filtered.sort((a, b) => b.reward.compareTo(a.reward));
+        break;
+      case SortOption.duration:
         filtered.sort((a, b) {
-          if (a.experimentDate == null && b.experimentDate == null) return 0;
-          if (a.experimentDate == null) return -1;
-          if (b.experimentDate == null) return 1;
-          return b.experimentDate!.compareTo(a.experimentDate!);
+          if (a.duration == null) return 1;
+          if (b.duration == null) return -1;
+          return a.duration!.compareTo(b.duration!);
         });
         break;
     }
-    
-    debugPrint('最終的な実験数: ${filtered.length}');
+
     return filtered;
   }
 
-  @override
-  void initState() {
-    super.initState();
-    _scrollController.addListener(_onScroll);
-    // 初回起動を記録
-    PreferenceService.recordFirstLaunch();
+  Widget _buildTypeFilterChip(ExperimentType? type, String label) {
+    final isSelected = _selectedType == type;
+    return FilterChip(
+      label: Text(
+        label,
+        style: TextStyle(
+          fontSize: 11,
+          color: isSelected ? Colors.white : Colors.black87,
+        ),
+      ),
+      selected: isSelected,
+      onSelected: (bool selected) {
+        setState(() {
+          _selectedType = selected ? type : null;
+        });
+      },
+      backgroundColor: Colors.grey[200],
+      selectedColor: const Color(0xFF8E1728),
+      showCheckmark: false,
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 0),
+      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+      visualDensity: VisualDensity.compact,
+    );
   }
 
-  void _onScroll() {
-    final newOffset = _scrollController.offset;
-    // スクロール方向を検出して、ヘッダーの表示/非表示を切り替え
-    if (newOffset > _scrollOffset && newOffset > 100) {
-      // 下スクロール かつ 100px以上スクロールしている
-      if (_isHeaderVisible) {
-        setState(() {
-          _isHeaderVisible = false;
-        });
-      }
-    } else if (newOffset < _scrollOffset || newOffset <= 100) {
-      // 上スクロール または スクロール位置が100px以下
-      if (!_isHeaderVisible) {
-        setState(() {
-          _isHeaderVisible = true;
-        });
-      }
+  String _getDateFilterText() {
+    if (_startDateFilter == null && _endDateFilter == null) {
+      return 'すべての期間';
     }
-    _scrollOffset = newOffset;
+    
+    final dateFormat = (_startDateFilter?.month == _endDateFilter?.month)
+        ? 'M/d'
+        : 'M/d';
+    
+    if (_startDateFilter != null && _endDateFilter != null) {
+      if (_startDateFilter == _endDateFilter) {
+        return '${_startDateFilter!.month}/${_startDateFilter!.day}';
+      }
+      return '${_startDateFilter!.month}/${_startDateFilter!.day} - ${_endDateFilter!.month}/${_endDateFilter!.day}';
+    } else if (_startDateFilter != null) {
+      return '${_startDateFilter!.month}/${_startDateFilter!.day}以降';
+    } else {
+      return '${_endDateFilter!.month}/${_endDateFilter!.day}まで';
+    }
   }
 
-  @override
-  void dispose() {
-    _scrollController.dispose();
-    _searchController.dispose();
-    super.dispose();
-  }
-  
-  /// 日付範囲選択ダイアログを表示
-  Future<void> _selectDateRange() async {
-    final DateTimeRange? picked = await showDateRangePicker(
-      context: context,
-      firstDate: DateTime.now().subtract(const Duration(days: 365)),
-      lastDate: DateTime.now().add(const Duration(days: 365)),
-      initialDateRange: _startDateFilter != null && _endDateFilter != null
-          ? DateTimeRange(start: _startDateFilter!, end: _endDateFilter!)
-          : null,
-      builder: (context, child) {
-        return Theme(
-          data: Theme.of(context).copyWith(
-            colorScheme: const ColorScheme.light(
-              primary: Color(0xFF8E1728),
-              onPrimary: Colors.white,
+  Widget _buildDateFilterButton(String label, String buttonType) {
+    final isActive = _isDateButtonActive(buttonType);
+    
+    return Material(
+      color: isActive ? const Color(0xFF8E1728) : Colors.grey[200],
+      borderRadius: BorderRadius.circular(12),
+      child: InkWell(
+        onTap: () => _handleDateFilter(buttonType),
+        borderRadius: BorderRadius.circular(12),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+          child: Text(
+            label,
+            style: TextStyle(
+              fontSize: 11,
+              color: isActive ? Colors.white : Colors.black87,
             ),
           ),
-          child: child!,
-        );
-      },
+        ),
+      ),
     );
-    
-    if (picked != null) {
-      setState(() {
-        _startDateFilter = picked.start;
-        _endDateFilter = picked.end;
-      });
-    }
   }
-  
-  /// クイック日付選択
-  void _setQuickDateRange(String type) {
-    final now = DateTime.now();
-    final today = DateTime(now.year, now.month, now.day);
-    
+
+  void _handleDateFilter(String buttonType) {
     setState(() {
-      switch (type) {
+      final now = DateTime.now();
+      final today = DateTime(now.year, now.month, now.day);
+      final tomorrow = today.add(const Duration(days: 1));
+      final in3days = today.add(const Duration(days: 3));
+      final weekday = now.weekday;
+      final weekStart = today.subtract(Duration(days: weekday - 1));
+      final weekEnd = today.add(Duration(days: 7 - weekday));
+      
+      switch (buttonType) {
+        case 'reset':
+          _startDateFilter = null;
+          _endDateFilter = null;
+          break;
         case 'today':
           _startDateFilter = today;
           _endDateFilter = today;
           break;
         case 'tomorrow':
-          final tomorrow = today.add(const Duration(days: 1));
           _startDateFilter = tomorrow;
           _endDateFilter = tomorrow;
           break;
-        case 'in2days':
-          final in2days = today.add(const Duration(days: 2));
-          _startDateFilter = in2days;
-          _endDateFilter = in2days;
-          break;
         case 'in3days':
-          final in3days = today.add(const Duration(days: 3));
-          _startDateFilter = in3days;
+          _startDateFilter = today;
           _endDateFilter = in3days;
           break;
         case 'thisWeek':
-          final weekday = now.weekday;
-          _startDateFilter = today.subtract(Duration(days: weekday - 1));
-          _endDateFilter = today.add(Duration(days: 7 - weekday));
-          break;
-        case 'clear':
-          _startDateFilter = null;
-          _endDateFilter = null;
+          _startDateFilter = weekStart;
+          _endDateFilter = weekEnd;
           break;
       }
     });
   }
 
-  Widget _buildCompactFilterChip(String label, bool isSelected, VoidCallback onTap) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
-        decoration: BoxDecoration(
-          color: isSelected ? const Color(0xFF8E1728) : Colors.grey.shade200,
-          borderRadius: BorderRadius.circular(15),
-        ),
-        child: Text(
-          label,
-          style: TextStyle(
-            fontSize: 11,
-            fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-            color: isSelected ? Colors.white : Colors.grey.shade700,
-          ),
-        ),
-      ),
-    );
-  }
-  
-  Widget _buildDateChip(String label, String type) {
-    final isSelected = _checkDateSelection(type);
-    return Container(
-      margin: const EdgeInsets.only(right: 4),
-      height: 24,
-      child: Material(
-        color: isSelected 
-          ? const Color(0xFF8E1728).withOpacity(0.1)
-          : Colors.grey.shade100,
-        borderRadius: BorderRadius.circular(12),
-        child: InkWell(
-          onTap: () => _setQuickDateRange(type),
-          borderRadius: BorderRadius.circular(12),
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 0),
-            alignment: Alignment.center,
-            child: Text(
-              label,
-              style: TextStyle(
-                fontSize: 10,
-                fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
-                color: isSelected 
-                  ? const Color(0xFF8E1728)
-                  : Colors.grey.shade700,
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-  
-  bool _checkDateSelection(String type) {
-    if (_startDateFilter == null || _endDateFilter == null) return false;
+  bool _isDateButtonActive(String buttonType) {
+    if (_startDateFilter == null && _endDateFilter == null) {
+      return buttonType == 'reset';
+    }
     
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
+    final tomorrow = today.add(const Duration(days: 1));
+    final in3days = today.add(const Duration(days: 3));
     
-    switch (type) {
+    switch (buttonType) {
+      case 'reset':
+        return false;
       case 'today':
         return _startDateFilter == today && _endDateFilter == today;
       case 'tomorrow':
-        final tomorrow = today.add(const Duration(days: 1));
         return _startDateFilter == tomorrow && _endDateFilter == tomorrow;
-      case 'in2days':
-        final in2days = today.add(const Duration(days: 2));
-        return _startDateFilter == in2days && _endDateFilter == in2days;
       case 'in3days':
-        final in3days = today.add(const Duration(days: 3));
-        return _startDateFilter == in3days && _endDateFilter == in3days;
+        return _startDateFilter == today && _endDateFilter == in3days;
       case 'thisWeek':
         final weekday = now.weekday;
         final weekStart = today.subtract(Duration(days: weekday - 1));
@@ -390,442 +284,261 @@ class _HomeScreenBaseState extends State<HomeScreenBase> {
 
   @override
   Widget build(BuildContext context) {
-    // iPhoneのセーフエリアを考慮
     final mediaQuery = MediaQuery.of(context);
     final isSmallScreen = mediaQuery.size.width < 600;
     final safeAreaTop = mediaQuery.padding.top;
     
     return Scaffold(
-      body: Column(
+      backgroundColor: const Color(0xFFF5F5F5),
+      body: Stack(
         children: [
-          // 支援バナー（条件付きで表示）
-          const SupportBanner(),
-          // アプリバー部分（スクロールで隠れる）
-          AnimatedContainer(
-            duration: const Duration(milliseconds: 100), // アニメーション時間を短縮
-            height: _isHeaderVisible ? (isSmallScreen ? 70 + safeAreaTop : 70) : 0,
-            curve: Curves.easeInOut,
-            child: AppBar(
-              toolbarHeight: isSmallScreen ? 70 + safeAreaTop : 70,
-              titleSpacing: 0,
-              centerTitle: false,
-              flexibleSpace: SafeArea(
-                child: Container(),
-              ),
-              leading: IconButton(
-                icon: Container(
-                  width: 40,
-                  height: 40,
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    shape: BoxShape.circle,
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.1),
-                        blurRadius: 8,
-                        offset: const Offset(0, 2),
+          // 支援バナー
+          const Positioned(
+            top: 0,
+            left: 0,
+            right: 0,
+            child: SupportBanner(),
+          ),
+          // CustomScrollViewでスムーズなスクロールを実現
+          Padding(
+            padding: const EdgeInsets.only(top: 30), // バナーの高さ分
+            child: CustomScrollView(
+              controller: _scrollController,
+              slivers: [
+                // SliverAppBarで自動的に隠れるヘッダー
+                SliverAppBar(
+                  floating: false,
+                  pinned: false,
+                  snap: false,
+                  expandedHeight: isSmallScreen ? 250.0 : 230.0,
+                  toolbarHeight: 70.0,
+                  backgroundColor: Colors.white,
+                  elevation: 1,
+                  titleSpacing: 0,
+                  centerTitle: false,
+                  leading: IconButton(
+                    icon: Container(
+                      width: 40,
+                      height: 40,
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.1),
+                            blurRadius: 8,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      child: const Icon(
+                        Icons.science,
+                        size: 24,
+                        color: Color(0xFF8E1728),
+                      ),
+                    ),
+                    onPressed: () {},
+                  ),
+                  title: Padding(
+                    padding: const EdgeInsets.only(left: 8),
+                    child: Text(
+                      widget.title,
+                      style: const TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                  actions: [
+                    if (widget.userName != null) ...[
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8),
+                        child: Center(
+                          child: Row(
+                            children: [
+                              if (widget.isWasedaUser)
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                  decoration: BoxDecoration(
+                                    color: Colors.blue.withValues(alpha: 0.2),
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                  child: const Text(
+                                    '早稲田',
+                                    style: TextStyle(
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ),
+                              if (widget.isWasedaUser) const SizedBox(width: 4),
+                              Icon(Icons.person, size: 16, color: Colors.grey[600]),
+                              const SizedBox(width: 4),
+                              Text(
+                                widget.userName!,
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  color: Colors.grey[700],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
                       ),
                     ],
-                  ),
-                  child: const Icon(
-                    Icons.science,
-                    size: 24,
-                    color: Color(0xFF8E1728),
-                  ),
-                ),
-                onPressed: () {},
-              ),
-              title: Padding(
-                padding: const EdgeInsets.only(left: 8),
-                child: Text(
-                  widget.title,
-                  style: const TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-              actions: [
-                // ユーザー情報表示
-                if (widget.userName != null) ...[
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8),
-                    child: Center(
-                      child: Row(
-                        children: [
-                          if (widget.isWasedaUser)
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                              decoration: BoxDecoration(
-                                color: Colors.blue.withValues(alpha: 0.2),
-                                borderRadius: BorderRadius.circular(10),
-                              ),
-                              child: const Text(
-                                '早稲田',
-                                style: TextStyle(
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            )
-                          else
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                              decoration: BoxDecoration(
-                                color: Colors.grey.withValues(alpha: 0.2),
-                                borderRadius: BorderRadius.circular(10),
-                              ),
-                              child: const Text(
-                                'Google',
-                                style: TextStyle(
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ),
-                          const SizedBox(width: 6),
-                          Text(
-                            widget.userName!.split(' ')[0],
-                            style: const TextStyle(fontSize: 14),
-                          ),
-                        ],
+                    if (!widget.isDemo)
+                      IconButton(
+                        icon: const Icon(Icons.settings),
+                        onPressed: widget.onSettingsTap ?? () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(builder: (context) => const SettingsScreen()),
+                          );
+                        },
                       ),
-                    ),
-                  ),
-                ],
-                if (widget.onNavigateToSettings != null)
-                  IconButton(
-                    icon: const Icon(Icons.settings, size: 24),
-                    onPressed: widget.onNavigateToSettings,
-                    padding: const EdgeInsets.all(12),
-                  ),
-              ],
-            ),
-          ),
-          // 検索バー、日付フィルター、種別切り替えボタン、ソート選択
-          AnimatedContainer(
-            duration: const Duration(milliseconds: 100), // アニメーション時間を短縮
-            height: _isHeaderVisible ? (isSmallScreen ? 180 : 160) : 0,
-            curve: Curves.easeInOut,
-            child: SingleChildScrollView(
-              physics: const NeverScrollableScrollPhysics(),
-              child: Visibility( // OpacityをVisibilityに変更
-                visible: _isHeaderVisible,
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    // 参加可能な実験のみ表示ボタン
-                    Container(
-                      color: Colors.white,
-                      padding: EdgeInsets.only(
-                        left: 16, 
-                        right: 16, 
-                        top: isSmallScreen ? 8 : 4, 
-                        bottom: isSmallScreen ? 4 : 2
-                      ),
-                      child: Row(
-                        children: [
-                          Expanded(
-                            child: Material(
-                              color: _showOnlyAvailable 
-                                ? const Color(0xFF8E1728).withOpacity(0.1)
-                                : Colors.grey.shade100,
-                              borderRadius: BorderRadius.circular(20),
-                              child: InkWell(
-                                onTap: widget.currentUserId != null 
-                                  ? () {
-                                      setState(() {
-                                        _showOnlyAvailable = !_showOnlyAvailable;
-                                      });
-                                    }
-                                  : () {
-                                      ScaffoldMessenger.of(context).showSnackBar(
-                                        const SnackBar(
-                                          content: Text('ログインすると参加可能な実験を絞り込めます'),
-                                          duration: Duration(seconds: 2),
-                                        ),
-                                      );
-                                    },
-                                borderRadius: BorderRadius.circular(20),
-                                child: Container(
-                                  padding: const EdgeInsets.symmetric(vertical: 10),
-                                  child: Row(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      Icon(
-                                        _showOnlyAvailable ? Icons.check_circle : Icons.filter_alt,
-                                        size: 20,
-                                        color: _showOnlyAvailable 
-                                          ? const Color(0xFF8E1728) 
-                                          : Colors.grey.shade600,
-                                      ),
-                                      const SizedBox(width: 8),
-                                      Text(
-                                        '参加できる実験のみ表示',
-                                        style: TextStyle(
-                                          fontSize: 14,
-                                          fontWeight: _showOnlyAvailable ? FontWeight.bold : FontWeight.normal,
-                                          color: _showOnlyAvailable 
-                                            ? const Color(0xFF8E1728) 
-                                            : Colors.grey.shade700,
-                                        ),
-                                      ),
-                                      if (_showOnlyAvailable) ...[  
-                                        const SizedBox(width: 8),
-                                        Container(
-                                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                                          decoration: BoxDecoration(
-                                            color: const Color(0xFF8E1728),
-                                            borderRadius: BorderRadius.circular(10),
-                                          ),
-                                          child: Text(
-                                            '${filteredExperiments.length}件',
-                                            style: const TextStyle(
-                                              color: Colors.white,
-                                              fontSize: 12,
-                                              fontWeight: FontWeight.bold,
-                                            ),
-                                          ),
-                                        ),
-                                      ],
-                                    ],
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    // 検索バー
-                    Container(
-                      color: Colors.white,
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                      child: Row(
-                        children: [
-                          Expanded(
-                            child: Container(
-                              height: 40,
-                              decoration: BoxDecoration(
-                                color: Colors.grey.shade100,
-                                borderRadius: BorderRadius.circular(22),
-                                border: Border.all(color: Colors.grey.shade300, width: 1.5),
-                              ),
-                              child: TextField(
-                                controller: _searchController,
-                                onChanged: (value) {
-                                  setState(() {
-                                    _searchQuery = value;
-                                  });
-                                },
-                                decoration: InputDecoration(
-                                  hintText: '検索（タイトル、研究室、場所など）',
-                                  hintStyle: TextStyle(
-                                    fontSize: 14,
-                                    color: Colors.grey.shade600,
-                                  ),
-                                  prefixIcon: const Icon(
-                                    Icons.search,
-                                    size: 22,
-                                    color: Color(0xFF8E1728),
-                                  ),
-                                  suffixIcon: _searchQuery.isNotEmpty
-                                      ? IconButton(
-                                          icon: Icon(
-                                            Icons.clear,
-                                            size: 20,
-                                            color: Colors.grey.shade600,
-                                          ),
-                                          onPressed: () {
-                                            setState(() {
-                                              _searchController.clear();
-                                              _searchQuery = '';
-                                            });
-                                          },
-                                        )
-                                      : null,
-                                  border: InputBorder.none,
-                                  contentPadding: const EdgeInsets.symmetric(
-                                    horizontal: 16,
-                                    vertical: 10,
-                                  ),
-                                ),
-                                style: const TextStyle(fontSize: 14),
-                              ),
-                            ),
-                          ),
-                          if (_searchQuery.isNotEmpty) ...[
-                            const SizedBox(width: 8),
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 12,
-                                vertical: 6,
-                              ),
-                              decoration: BoxDecoration(
-                                color: const Color(0xFF8E1728),
-                                borderRadius: BorderRadius.circular(16),
-                              ),
-                              child: Text(
-                                '${filteredExperiments.length}件',
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ],
-                      ),
-                    ),
-                    // 日付フィルター
-                    Container(
-                      color: Colors.white,
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
-                      height: 32, // 固定高さを設定
-                      child: ListView(
-                        scrollDirection: Axis.horizontal,
-                        children: [
-                              // 日付範囲選択ボタン
+                  ],
+                  flexibleSpace: FlexibleSpaceBar(
+                    background: Column(
+                      children: [
+                        const SizedBox(height: 70), // AppBar部分のスペース
+                        // フィルター部分
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                          child: Column(
+                            children: [
+                              // 検索バー
                               Container(
-                                margin: const EdgeInsets.only(right: 6),
-                                child: OutlinedButton.icon(
-                                  onPressed: _selectDateRange,
-                                  icon: Icon(
-                                    Icons.calendar_today,
-                                    size: 14,
-                                    color: (_startDateFilter != null || _endDateFilter != null)
-                                        ? const Color(0xFF8E1728)
-                                        : Colors.grey[600],
-                                  ),
-                                  label: Text(
-                                    (_startDateFilter != null && _endDateFilter != null)
-                                        ? '${_startDateFilter!.month}/${_startDateFilter!.day}〜${_endDateFilter!.month}/${_endDateFilter!.day}'
-                                        : '期間で絞り込む',
-                                    style: TextStyle(
-                                      fontSize: 11,
-                                      color: (_startDateFilter != null || _endDateFilter != null)
-                                          ? const Color(0xFF8E1728)
-                                          : Colors.grey[700],
-                                    ),
-                                  ),
-                                  style: OutlinedButton.styleFrom(
-                                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                                    minimumSize: const Size(0, 28),
-                                    side: BorderSide(
-                                      color: (_startDateFilter != null || _endDateFilter != null)
-                                          ? const Color(0xFF8E1728)
-                                          : Colors.grey.shade300,
-                                    ),
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(14),
-                                    ),
+                                height: 40,
+                                decoration: BoxDecoration(
+                                  color: Colors.grey[100],
+                                  borderRadius: BorderRadius.circular(20),
+                                ),
+                                child: TextField(
+                                  onChanged: (value) {
+                                    setState(() {
+                                      _searchQuery = value;
+                                    });
+                                  },
+                                  style: const TextStyle(fontSize: 14),
+                                  decoration: InputDecoration(
+                                    hintText: '実験を検索...',
+                                    hintStyle: TextStyle(color: Colors.grey[600], fontSize: 14),
+                                    prefixIcon: const Icon(Icons.search, size: 20),
+                                    border: InputBorder.none,
+                                    contentPadding: const EdgeInsets.symmetric(vertical: 10),
                                   ),
                                 ),
                               ),
-                              // クイック選択ボタン（Chip風デザイン）
-                              _buildDateChip('今日', 'today'),
-                              _buildDateChip('明日', 'tomorrow'),
-                              _buildDateChip('2日後', 'in2days'),
-                              _buildDateChip('3日後', 'in3days'),
-                              _buildDateChip('今週', 'thisWeek'),
-                              // クリアボタン
-                              if (_startDateFilter != null || _endDateFilter != null)
-                                IconButton(
-                                  onPressed: () => _setQuickDateRange('clear'),
-                                  icon: const Icon(Icons.clear, size: 16),
-                                  tooltip: 'クリア',
-                                  padding: const EdgeInsets.all(4),
-                                  constraints: const BoxConstraints(
-                                    minWidth: 28,
-                                    minHeight: 28,
-                                  ),
-                                ),
-                            ],
-                      ),
-                    ),
-                    // タイプフィルターとソートを同じ行に配置
-                    Container(
-                      color: Colors.white,
-                      padding: const EdgeInsets.only(left: 16, right: 16, top: 4, bottom: 4),
-                      child: Row(
-                        children: [
-                          // タイプフィルター（コンパクト版）
-                          Expanded(
-                            child: SizedBox(
-                              height: 30,
-                              child: ListView(
+                              const SizedBox(height: 8),
+                              // 日付フィルターボタン
+                              SingleChildScrollView(
                                 scrollDirection: Axis.horizontal,
+                                child: Row(
+                                  children: [
+                                    _buildDateFilterButton('すべて', 'reset'),
+                                    const SizedBox(width: 4),
+                                    _buildDateFilterButton('今日', 'today'),
+                                    const SizedBox(width: 4),
+                                    _buildDateFilterButton('明日', 'tomorrow'),
+                                    const SizedBox(width: 4),
+                                    _buildDateFilterButton('3日以内', 'in3days'),
+                                    const SizedBox(width: 4),
+                                    _buildDateFilterButton('今週', 'thisWeek'),
+                                  ],
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              // 種別切り替えボタン
+                              SizedBox(
+                                height: 32,
+                                child: ListView(
+                                  scrollDirection: Axis.horizontal,
+                                  children: [
+                                    _buildTypeFilterChip(null, 'すべて'),
+                                    const SizedBox(width: 8),
+                                    ...ExperimentType.values.map((type) => 
+                                      Padding(
+                                        padding: const EdgeInsets.only(right: 8),
+                                        child: _buildTypeFilterChip(type, type.label),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              // ソート選択とフィルタ情報
+                              Row(
                                 children: [
-                                  _buildCompactFilterChip('すべて', _selectedType == null, () {
-                                    setState(() {
-                                      _selectedType = null;
-                                    });
-                                  }),
-                                  const SizedBox(width: 4),
-                                  ...ExperimentType.values.map((type) {
-                                    return Padding(
-                                      padding: const EdgeInsets.only(right: 4),
-                                      child: _buildCompactFilterChip(type.label, _selectedType == type, () {
-                                        setState(() {
-                                          _selectedType = _selectedType == type ? null : type;
-                                        });
-                                      }),
-                                    );
-                                  }),
+                                  Expanded(
+                                    child: SingleChildScrollView(
+                                      scrollDirection: Axis.horizontal,
+                                      child: Row(
+                                        children: [
+                                          if (_startDateFilter != null || _endDateFilter != null)
+                                            Container(
+                                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                              decoration: BoxDecoration(
+                                                color: const Color(0xFF8E1728).withValues(alpha: 0.1),
+                                                borderRadius: BorderRadius.circular(12),
+                                              ),
+                                              child: Row(
+                                                mainAxisSize: MainAxisSize.min,
+                                                children: [
+                                                  const Icon(Icons.calendar_today, size: 14, color: Color(0xFF8E1728)),
+                                                  const SizedBox(width: 4),
+                                                  Text(
+                                                    _getDateFilterText(),
+                                                    style: const TextStyle(fontSize: 11, color: Color(0xFF8E1728)),
+                                                  ),
+                                                ],
+                                              ),
+                                            ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                  Container(
+                                    height: 32,
+                                    padding: const EdgeInsets.symmetric(horizontal: 8),
+                                    decoration: BoxDecoration(
+                                      border: Border.all(color: Colors.grey[300]!),
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: DropdownButtonHideUnderline(
+                                      child: DropdownButton<SortOption>(
+                                        value: _sortOption,
+                                        icon: const Icon(Icons.arrow_drop_down, size: 20),
+                                        iconSize: 20,
+                                        style: const TextStyle(fontSize: 12, color: Colors.black87),
+                                        onChanged: (SortOption? newValue) {
+                                          if (newValue != null) {
+                                            setState(() {
+                                              _sortOption = newValue;
+                                            });
+                                          }
+                                        },
+                                        items: SortOption.values.map<DropdownMenuItem<SortOption>>((SortOption value) {
+                                          return DropdownMenuItem<SortOption>(
+                                            value: value,
+                                            child: Text(value.label, style: const TextStyle(fontSize: 11)),
+                                          );
+                                        }).toList(),
+                                      ),
+                                    ),
+                                  ),
                                 ],
                               ),
-                            ),
+                            ],
                           ),
-                          const SizedBox(width: 8),
-                          // ソート選択
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8),
-                            height: 30,
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(14),
-                              border: Border.all(color: Colors.grey.shade300),
-                              color: Colors.grey.shade50,
-                            ),
-                            child: DropdownButtonHideUnderline(
-                              child: DropdownButton<SortOption>(
-                                value: _sortOption,
-                                isDense: true,
-                                icon: const Icon(Icons.arrow_drop_down, size: 18, color: Color(0xFF8E1728)),
-                                style: const TextStyle(
-                                  fontSize: 11,
-                                  color: Colors.black87,
-                                ),
-                                onChanged: (SortOption? newValue) {
-                                  if (newValue != null) {
-                                    setState(() {
-                                      _sortOption = newValue;
-                                    });
-                                  }
-                                },
-                                items: SortOption.values.map<DropdownMenuItem<SortOption>>((SortOption value) {
-                                  return DropdownMenuItem<SortOption>(
-                                    value: value,
-                                    child: Text(value.label, style: const TextStyle(fontSize: 11)),
-                                  );
-                                }).toList(),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
+                        ),
+                      ],
                     ),
-                  ],
+                  ),
                 ),
-              ),
-            ),
-          ),
-          // 実験リスト（レスポンシブグリッド）
-          Expanded(
-            child: Container(
-              color: const Color(0xFFF5F5F5),
-              child: filteredExperiments.isEmpty
-                  ? Center(
+                // 実験カードのグリッド
+                if (filteredExperiments.isEmpty)
+                  SliverFillRemaining(
+                    child: Center(
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
@@ -847,107 +560,54 @@ class _HomeScreenBaseState extends State<HomeScreenBase> {
                           ),
                         ],
                       ),
-                    )
-                  : LayoutBuilder(
-                      builder: (context, constraints) {
-                        
-                        return GridView.builder(
-                          controller: _scrollController,
-                          padding: EdgeInsets.only(
-                            left: 12,
-                            right: 12,
-                            top: 12,
-                            bottom: 12,
-                          ),
-                          gridDelegate: SliverGridDelegateWithMaxCrossAxisExtent(
-                            maxCrossAxisExtent: 600, // カード最大幅を600pxに設定
-                            crossAxisSpacing: 4, // 列間隔を4pxに設定
-                            mainAxisSpacing: 4, // 行間隔を4pxに設定
-                            mainAxisExtent: 230, // カードの固定高さを230pxに設定
-                          ),
-                          itemCount: filteredExperiments.length,
-                          addAutomaticKeepAlives: false, // パフォーマンス改善
-                          addRepaintBoundaries: false, // パフォーマンス改善
-                          physics: ClampingScrollPhysics(),
-                          itemBuilder: (context, index) {
-                            final experiment = filteredExperiments[index];
-                            return RepaintBoundary( // 個別に再描画境界を設定
-                              child: ExperimentCard(
-                                experiment: experiment,
-                                isDemo: widget.isDemo,
-                                currentUserId: widget.currentUserId,
-                              ),
-                            );
-                          },
-                        );
-                      },
                     ),
+                  )
+                else
+                  SliverPadding(
+                    padding: const EdgeInsets.all(12),
+                    sliver: SliverGrid(
+                      gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+                        maxCrossAxisExtent: 600,
+                        crossAxisSpacing: 4,
+                        mainAxisSpacing: 4,
+                        mainAxisExtent: 230,
+                      ),
+                      delegate: SliverChildBuilderDelegate(
+                        (context, index) {
+                          final experiment = filteredExperiments[index];
+                          return RepaintBoundary(
+                            child: ExperimentCard(
+                              experiment: experiment,
+                              isDemo: widget.isDemo,
+                              currentUserId: widget.currentUserId,
+                            ),
+                          );
+                        },
+                        childCount: filteredExperiments.length,
+                        addAutomaticKeepAlives: false,
+                        addRepaintBoundaries: false,
+                      ),
+                    ),
+                  ),
+              ],
             ),
           ),
         ],
       ),
-      floatingActionButton: AnimatedSlide(
-        duration: const Duration(milliseconds: 100), // アニメーション時間を短縮
-        offset: _isHeaderVisible ? Offset.zero : const Offset(0, 2),
-        child: Visibility( // OpacityをVisibilityに変更
-          visible: _isHeaderVisible,
-          child: SizedBox(
-            height: 64,
-            child: FloatingActionButton.extended(
+      floatingActionButton: widget.canCreateExperiment
+          ? FloatingActionButton.extended(
               heroTag: "create_experiment_fab",
-              onPressed: widget.canCreateExperiment
-                  ? widget.onCreateExperiment ?? () {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('実験作成機能は準備中です'),
-                          backgroundColor: Colors.orange,
-                          duration: Duration(seconds: 3),
-                        ),
-                      );
-                    }
-                  : () {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('実験募集は早稲田大学のメールアカウントでログインした方のみご利用いただけます'),
-                          backgroundColor: Colors.orange,
-                          duration: Duration(seconds: 3),
-                        ),
-                      );
-                    },
-              icon: Icon(
-                Icons.add,
-                size: 24,
-                color: widget.canCreateExperiment ? Colors.white : Colors.white70,
-              ),
-              label: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    '実験を募集',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      color: widget.canCreateExperiment ? Colors.white : Colors.white70,
-                    ),
-                  ),
-                  if (!widget.canCreateExperiment)
-                    const Text(
-                      '早稲田メール限定',
-                      style: TextStyle(
-                        fontSize: 10,
-                        color: Colors.white70,
-                      ),
-                    ),
-                ],
-              ),
-              backgroundColor: widget.canCreateExperiment
-                  ? const Color(0xFF8E1728)
-                  : Colors.grey,
-              elevation: widget.canCreateExperiment ? 6 : 2,
-            ),
-          ),
-        ),
-      ),
+              onPressed: widget.onCreateExperiment ?? () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const CreateExperimentScreen()),
+                );
+              },
+              backgroundColor: const Color(0xFF8E1728),
+              label: const Text('実験を作成'),
+              icon: const Icon(Icons.add),
+            )
+          : null,
     );
   }
 }
