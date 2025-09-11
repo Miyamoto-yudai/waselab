@@ -402,10 +402,13 @@ class _HomeScreenBaseState extends State<HomeScreenBase> {
           const SupportBanner(),
           // AppBar
           AnimatedContainer(
-            duration: const Duration(milliseconds: 100),
+            duration: const Duration(milliseconds: 300),
             height: _isHeaderVisible ? (isSmallScreen ? 70 + safeAreaTop : 70) : 0,
             curve: Curves.easeInOut,
-            child: AppBar(
+            child: AnimatedOpacity(
+              duration: const Duration(milliseconds: 300),
+              opacity: _isHeaderVisible ? 1.0 : 0.0,
+              child: AppBar(
               toolbarHeight: isSmallScreen ? 70 + safeAreaTop : 70,
               titleSpacing: 0,
               centerTitle: false,
@@ -501,16 +504,18 @@ class _HomeScreenBaseState extends State<HomeScreenBase> {
                   ),
               ],
             ),
+            ),
           ),
           // 検索バー、日付フィルター、種別切り替えボタン、ソート選択
           AnimatedContainer(
-            duration: const Duration(milliseconds: 100),
+            duration: const Duration(milliseconds: 300),
             height: _isHeaderVisible ? (isSmallScreen ? 180 : 160) : 0,
             curve: Curves.easeInOut,
-            child: SingleChildScrollView(
-              physics: const NeverScrollableScrollPhysics(),
-              child: Visibility(
-                visible: _isHeaderVisible,
+            child: AnimatedOpacity(
+              duration: const Duration(milliseconds: 300),
+              opacity: _isHeaderVisible ? 1.0 : 0.0,
+              child: SingleChildScrollView(
+                physics: const NeverScrollableScrollPhysics(),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
@@ -887,10 +892,11 @@ class _HomeScreenBaseState extends State<HomeScreenBase> {
         ],
       ),
       floatingActionButton: AnimatedSlide(
-        duration: const Duration(milliseconds: 100), // アニメーション時間を短縮
+        duration: const Duration(milliseconds: 300),
         offset: _isHeaderVisible ? Offset.zero : const Offset(0, 2),
-        child: Visibility( // OpacityをVisibilityに変更
-          visible: _isHeaderVisible,
+        child: AnimatedOpacity(
+          duration: const Duration(milliseconds: 300),
+          opacity: _isHeaderVisible ? 1.0 : 0.0,
           child: SizedBox(
             height: 64,
             child: FloatingActionButton.extended(
