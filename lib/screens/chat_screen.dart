@@ -127,6 +127,16 @@ class _ChatScreenState extends State<ChatScreen> {
             'よろしくお願いいたします。',
       },
       {
+        'type': 'thanks',
+        'label': 'お礼',
+        'icon': Icons.favorite,
+        'template': 'お世話になっております。$userInfoです。\n\n'
+            '先日は実験でお世話になり、\n'
+            '誠にありがとうございました。\n\n'
+            '貴重な経験をさせていただき、大変勉強になりました。\n'
+            '今後ともどうぞよろしくお願いいたします。',
+      },
+      {
         'type': 'schedule',
         'label': '日程調整',
         'icon': Icons.calendar_today,
@@ -139,14 +149,22 @@ class _ChatScreenState extends State<ChatScreen> {
             'ご検討のほど、よろしくお願いいたします。',
       },
       {
-        'type': 'thanks',
-        'label': 'お礼',
-        'icon': Icons.favorite,
+        'type': 'requirements',
+        'label': '参加条件',
+        'icon': Icons.checklist,
         'template': 'お世話になっております。$userInfoです。\n\n'
-            '先日は実験でお世話になり、\n'
-            '誠にありがとうございました。\n\n'
-            '貴重な経験をさせていただき、大変勉強になりました。\n'
-            '今後ともどうぞよろしくお願いいたします。',
+            '実験への参加を検討しております。\n'
+            '参加条件について確認させていただけますでしょうか。\n\n'
+            'ご確認のほど、よろしくお願いいたします。',
+      },
+      {
+        'type': 'access',
+        'label': 'アクセス',
+        'icon': Icons.location_on,
+        'template': 'お世話になっております。$userInfoです。\n\n'
+            '実験会場へのアクセスについて、\n'
+            '詳細を教えていただけますでしょうか。\n\n'
+            'よろしくお願いいたします。',
       },
     ];
   }
@@ -608,24 +626,28 @@ class _ChatScreenState extends State<ChatScreen> {
                           mainAxisAlignment: isMe ? MainAxisAlignment.end : MainAxisAlignment.start,
                           children: [
                             Flexible(
-                              child: Container(
-                                constraints: BoxConstraints(
-                                  maxWidth: MediaQuery.of(context).size.width * 0.75,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: message.isDeleted
-                                      ? Colors.grey.shade300
-                                      : isMe
-                                          ? const Color(0xFF8E1728)
-                                          : Colors.white,
-                                  border: isMe || message.isDeleted
-                                      ? null
-                                      : Border.all(color: Colors.grey.shade300),
-                                  borderRadius: BorderRadius.circular(16),
-                                ),
-                                child: ClipRRect(
-                                  borderRadius: BorderRadius.circular(16),
-                                  child: Column(
+                              child: GestureDetector(
+                                onTap: message.replyToMessageId != null
+                                    ? () => _jumpToReplyMessage(message.replyToMessageId)
+                                    : null,
+                                child: Container(
+                                  constraints: BoxConstraints(
+                                    maxWidth: MediaQuery.of(context).size.width * 0.75,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: message.isDeleted
+                                        ? Colors.grey.shade300
+                                        : isMe
+                                            ? const Color(0xFF8E1728)
+                                            : Colors.white,
+                                    border: isMe || message.isDeleted
+                                        ? null
+                                        : Border.all(color: Colors.grey.shade300),
+                                    borderRadius: BorderRadius.circular(16),
+                                  ),
+                                  child: ClipRRect(
+                                    borderRadius: BorderRadius.circular(16),
+                                    child: Column(
                                     crossAxisAlignment: CrossAxisAlignment.start,
                                     children: [
                                       // Discord風リプライ表示
@@ -734,7 +756,8 @@ class _ChatScreenState extends State<ChatScreen> {
                                 ),
                               ),
                             ),
-                          ],
+                          ),
+                        ],
                         ),
                       ),
                     );
