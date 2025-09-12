@@ -639,7 +639,7 @@ class _HistoryScreenState extends State<HistoryScreen> with TickerProviderStateM
                       ],
                     ),
                     // アンケートボタンを追加
-                    if (!isMyExperiment && (experiment.preSurveyUrl != null || experiment.experimentSurveyUrl != null)) ...[
+                    if (!isMyExperiment && (experiment.preSurveyUrl != null || experiment.postSurveyUrl != null || experiment.experimentSurveyUrl != null)) ...[
                       const SizedBox(width: 4),
                       IconButton(
                         onPressed: () => _showSurveyUrlsDialog(experiment),
@@ -827,24 +827,24 @@ class _HistoryScreenState extends State<HistoryScreen> with TickerProviderStateM
                           ),
                         ),
                       ],
-                      if (experiment.surveyUrl != null && experiment.type != ExperimentType.survey) ...[
+                      if (experiment.postSurveyUrl != null) ...[
                         const SizedBox(height: 4),
                         InkWell(
-                          onTap: () => _showSurveyUrlDialog('事後アンケート', experiment.surveyUrl!),
+                          onTap: () => _showSurveyUrlDialog('事後アンケート', experiment.postSurveyUrl!),
                           child: Container(
                             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                             decoration: BoxDecoration(
-                              color: Colors.indigo.withValues(alpha: 0.1),
+                              color: Colors.deepOrange.withValues(alpha: 0.1),
                               borderRadius: BorderRadius.circular(8),
                             ),
                             child: Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                Icon(Icons.quiz, size: 12, color: Colors.indigo.shade700),
+                                Icon(Icons.fact_check_outlined, size: 12, color: Colors.deepOrange.shade700),
                                 const SizedBox(width: 4),
                                 Text(
                                   '事後アンケート',
-                                  style: TextStyle(fontSize: 11, color: Colors.indigo.shade700),
+                                  style: TextStyle(fontSize: 11, color: Colors.deepOrange.shade700),
                                 ),
                               ],
                             ),
@@ -1670,8 +1670,90 @@ class _HistoryScreenState extends State<HistoryScreen> with TickerProviderStateM
                     ],
                   ),
                 ),
+                const SizedBox(height: 16),
               ],
-              if (experiment.preSurveyUrl == null && experiment.experimentSurveyUrl == null) ...[
+              // 事後アンケート
+              if (experiment.postSurveyUrl != null && experiment.postSurveyUrl!.isNotEmpty) ...[
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.deepOrange.shade50,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Colors.deepOrange.shade200),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Icon(Icons.fact_check_outlined, size: 18, color: Colors.deepOrange.shade700),
+                          const SizedBox(width: 8),
+                          Text(
+                            '事後アンケート',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              color: Colors.deepOrange.shade700,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: Text(
+                          experiment.postSurveyUrl!,
+                          style: const TextStyle(fontSize: 12, color: Colors.blue),
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: OutlinedButton.icon(
+                              onPressed: () {
+                                Clipboard.setData(ClipboardData(text: experiment.postSurveyUrl!));
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text('URLをコピーしました'),
+                                    duration: Duration(seconds: 1),
+                                  ),
+                                );
+                              },
+                              icon: const Icon(Icons.copy, size: 14),
+                              label: const Text('コピー', style: TextStyle(fontSize: 12)),
+                              style: OutlinedButton.styleFrom(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: ElevatedButton.icon(
+                              onPressed: () async {
+                                final url = Uri.parse(experiment.postSurveyUrl!);
+                                if (await canLaunchUrl(url)) {
+                                  await launchUrl(url, mode: LaunchMode.externalApplication);
+                                }
+                              },
+                              icon: const Icon(Icons.open_in_new, size: 14),
+                              label: const Text('開く', style: TextStyle(fontSize: 12)),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.deepOrange,
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+              if (experiment.preSurveyUrl == null && experiment.experimentSurveyUrl == null && experiment.postSurveyUrl == null) ...[
                 Container(
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(

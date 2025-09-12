@@ -436,12 +436,12 @@ class _ExperimentDetailBaseState extends State<ExperimentDetailBase> {
                             ),
                           ),
                         ),
-                        // アンケート有無の表示
+                        // 事前アンケート有無の表示
                         if (widget.experiment.preSurveyUrl != null && widget.experiment.preSurveyUrl!.isNotEmpty) ...[
                           const SizedBox(width: 8),
                           Container(
                             padding: const EdgeInsets.symmetric(
-                              horizontal: 12,
+                              horizontal: 8,
                               vertical: 4,
                             ),
                             decoration: BoxDecoration(
@@ -465,6 +465,43 @@ class _ExperimentDetailBaseState extends State<ExperimentDetailBase> {
                                   '事前アンケートあり',
                                   style: TextStyle(
                                     color: Colors.purple[700],
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 12,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                        // 事後アンケート有無の表示
+                        if (widget.experiment.postSurveyUrl != null && widget.experiment.postSurveyUrl!.isNotEmpty) ...[
+                          const SizedBox(width: 8),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 4,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.deepOrange.withValues(alpha: 0.2),
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(
+                                color: Colors.deepOrange.withValues(alpha: 0.3),
+                                width: 1,
+                              ),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  Icons.fact_check_outlined,
+                                  size: 14,
+                                  color: Colors.deepOrange[700],
+                                ),
+                                const SizedBox(width: 4),
+                                Text(
+                                  '事後アンケートあり',
+                                  style: TextStyle(
+                                    color: Colors.deepOrange[700],
                                     fontWeight: FontWeight.bold,
                                     fontSize: 12,
                                   ),

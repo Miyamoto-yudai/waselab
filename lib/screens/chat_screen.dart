@@ -1,8 +1,8 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../services/message_service.dart';
 import '../services/auth_service.dart';
-import '../services/user_service.dart';
 import '../models/message.dart';
 import '../models/app_user.dart';
 import '../widgets/user_detail_dialog.dart';
@@ -26,7 +26,6 @@ class ChatScreen extends StatefulWidget {
 class _ChatScreenState extends State<ChatScreen> {
   final MessageService _messageService = MessageService();
   final AuthService _authService = AuthService();
-  final UserService _userService = UserService();
   final TextEditingController _messageController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
   final Map<String, GlobalKey> _messageKeys = {};
@@ -43,6 +42,8 @@ class _ChatScreenState extends State<ChatScreen> {
   Message? _replyingToMessage;
   String? _highlightedMessageId;
   List<Message> _messages = [];
+  StreamSubscription<List<Message>>? _messageSubscription;
+  bool _isLoadingMessages = true;
 
   @override
   void initState() {
@@ -51,6 +52,43 @@ class _ChatScreenState extends State<ChatScreen> {
     _getCurrentUser();
     if (widget.conversationId != null && widget.conversationId!.isNotEmpty) {
       _markMessagesAsRead();
+    }
+    _startListeningToMessages();
+  }
+  
+  void _startListeningToMessages() {
+    if (_actualConversationId != null && _actualConversationId!.isNotEmpty) {
+      _messageSubscription = _messageService.getConversationMessages(_actualConversationId!).listen((messages) {
+        if (mounted) {
+          // 前回のメッセージIDリストを保持
+          final oldMessageIds = _messages.map((m) => m.id).toSet();
+          final newMessageIds = messages.map((m) => m.id).toSet();
+          
+          // 新しく追加されたメッセージがあるかチェック
+          final hasNewMessages = newMessageIds.difference(oldMessageIds).isNotEmpty;
+          final isUserMessage = hasNewMessages && messages.isNotEmpty && 
+                               messages.last.senderId == _currentUserId;
+          
+          setState(() {
+            _messages = messages;
+            _isLoadingMessages = false;
+            
+            // 新しいメッセージのGlobalKeyを追加
+            for (final message in _messages) {
+              _messageKeys[message.id] ??= GlobalKey();
+            }
+          });
+          
+          // ユーザーが新しいメッセージを送信した場合のみスクロール
+          if (hasNewMessages && isUserMessage && _messages.isNotEmpty) {
+            _scrollToBottom();
+          }
+        }
+      });
+    } else {
+      setState(() {
+        _isLoadingMessages = false;
+      });
     }
   }
 
@@ -202,12 +240,12 @@ class _ChatScreenState extends State<ChatScreen> {
           setState(() {
             _actualConversationId = conversationId;
           });
+          _startListeningToMessages();
         }
         _cancelReply();
       }
       
       _messageController.clear();
-      _scrollToBottom();
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -238,32 +276,63 @@ class _ChatScreenState extends State<ChatScreen> {
     });
   }
 
+  // ジャンプ処理のデバウンス用
+  DateTime? _lastJumpTime;
+  
   // リプライ元へジャンプ
   void _jumpToReplyMessage(String? replyToMessageId) {
     if (replyToMessageId == null) return;
     
-    final key = _messageKeys[replyToMessageId];
-    if (key?.currentContext != null) {
-      Scrollable.ensureVisible(
-        key!.currentContext!,
-        duration: const Duration(milliseconds: 300),
-        curve: Curves.easeInOut,
-      );
-      
-      // ハイライト表示
-      setState(() {
-        _highlightedMessageId = replyToMessageId;
-      });
-      
-      // 2秒後にハイライトを解除
-      Future.delayed(const Duration(seconds: 2), () {
-        if (mounted) {
-          setState(() {
-            _highlightedMessageId = null;
-          });
-        }
-      });
+    // デバウンス処理：連続クリックを防ぐ
+    final now = DateTime.now();
+    if (_lastJumpTime != null && 
+        now.difference(_lastJumpTime!).inMilliseconds < 500) {
+      return;
     }
+    _lastJumpTime = now;
+    
+    // リプライ元メッセージが現在のリストに存在するか確認
+    final hasMessage = _messages.any((msg) => msg.id == replyToMessageId);
+    
+    if (!hasMessage) {
+      // メッセージが見つからない場合
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('リプライ元のメッセージが見つかりません'),
+          backgroundColor: Colors.orange,
+          duration: Duration(seconds: 2),
+        ),
+      );
+      return;
+    }
+    
+    // GlobalKeyを取得
+    final key = _messageKeys[replyToMessageId];
+    if (key?.currentContext == null) {
+      return;
+    }
+    
+    // ハイライト表示を先に設定
+    setState(() {
+      _highlightedMessageId = replyToMessageId;
+    });
+    
+    // スクロール処理
+    Scrollable.ensureVisible(
+      key!.currentContext!,
+      duration: const Duration(milliseconds: 400),
+      curve: Curves.easeInOut,
+      alignment: 0.3, // メッセージを画面上部寄りに表示
+    );
+    
+    // 3秒後にハイライトを解除
+    Future.delayed(const Duration(seconds: 3), () {
+      if (mounted && _highlightedMessageId == replyToMessageId) {
+        setState(() {
+          _highlightedMessageId = null;
+        });
+      }
+    });
   }
 
   // メッセージ長押しメニュー
@@ -539,24 +608,15 @@ class _ChatScreenState extends State<ChatScreen> {
       body: Column(
         children: [
           Expanded(
-            child: StreamBuilder<List<Message>>(
-              stream: _actualConversationId != null && _actualConversationId!.isNotEmpty
-                  ? _messageService.getConversationMessages(_actualConversationId!)
-                  : Stream.value([]),
-              builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(
+            child: _isLoadingMessages
+                ? const Center(
                     child: CircularProgressIndicator(
                       valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF8E1728)),
                     ),
-                  );
-                }
-
-                _messages = snapshot.data ?? [];
-
-                if (_messages.isEmpty) {
-                  return Center(
-                    child: Column(
+                  )
+                : _messages.isEmpty
+                    ? Center(
+                        child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         Icon(Icons.chat_bubble_outline, size: 64, color: Colors.grey[400]),
@@ -590,15 +650,8 @@ class _ChatScreenState extends State<ChatScreen> {
                         ),
                       ],
                     ),
-                  );
-                }
-
-                // GlobalKeyを更新
-                for (final message in _messages) {
-                  _messageKeys[message.id] ??= GlobalKey();
-                }
-
-                return ListView.builder(
+                  )
+                : ListView.builder(
                   controller: _scrollController,
                   padding: const EdgeInsets.all(16),
                   itemCount: _messages.length,
@@ -608,7 +661,6 @@ class _ChatScreenState extends State<ChatScreen> {
                     final isHighlighted = message.id == _highlightedMessageId;
 
                     return GestureDetector(
-                      key: _messageKeys[message.id],
                       onLongPress: () => _showMessageOptions(context, message),
                       child: AnimatedContainer(
                         duration: const Duration(milliseconds: 300),
@@ -626,33 +678,30 @@ class _ChatScreenState extends State<ChatScreen> {
                           mainAxisAlignment: isMe ? MainAxisAlignment.end : MainAxisAlignment.start,
                           children: [
                             Flexible(
-                              child: GestureDetector(
-                                onTap: message.replyToMessageId != null
-                                    ? () => _jumpToReplyMessage(message.replyToMessageId)
-                                    : null,
-                                child: Container(
-                                  constraints: BoxConstraints(
-                                    maxWidth: MediaQuery.of(context).size.width * 0.75,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: message.isDeleted
-                                        ? Colors.grey.shade300
-                                        : isMe
-                                            ? const Color(0xFF8E1728)
-                                            : Colors.white,
-                                    border: isMe || message.isDeleted
-                                        ? null
-                                        : Border.all(color: Colors.grey.shade300),
-                                    borderRadius: BorderRadius.circular(16),
-                                  ),
-                                  child: ClipRRect(
-                                    borderRadius: BorderRadius.circular(16),
-                                    child: Column(
+                              child: Container(
+                                constraints: BoxConstraints(
+                                  maxWidth: MediaQuery.of(context).size.width * 0.75,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: message.isDeleted
+                                      ? Colors.grey.shade300
+                                      : isMe
+                                          ? const Color(0xFF8E1728)
+                                          : Colors.white,
+                                  border: isMe || message.isDeleted
+                                      ? null
+                                      : Border.all(color: Colors.grey.shade300),
+                                  borderRadius: BorderRadius.circular(16),
+                                ),
+                                child: ClipRRect(
+                                  borderRadius: BorderRadius.circular(16),
+                                  child: Column(
                                     crossAxisAlignment: CrossAxisAlignment.start,
                                     children: [
                                       // Discord風リプライ表示
                                       if (message.replyToContent != null && !message.isDeleted)
                                         GestureDetector(
+                                          behavior: HitTestBehavior.opaque,
                                           onTap: () => _jumpToReplyMessage(message.replyToMessageId),
                                           child: Container(
                                             padding: const EdgeInsets.only(
@@ -715,56 +764,54 @@ class _ChatScreenState extends State<ChatScreen> {
                                           ),
                                         ),
                                       // メッセージ本体
-                                      Padding(
+                                      Container(
+                                        key: _messageKeys[message.id],
                                         padding: const EdgeInsets.symmetric(
                                           horizontal: 12,
                                           vertical: 8,
                                         ),
                                         child: Column(
-                                          crossAxisAlignment: CrossAxisAlignment.start,
-                                          children: [
-                                            Text(
-                                              message.isDeleted 
-                                                  ? 'このメッセージは削除されました' 
-                                                  : message.content,
-                                              style: TextStyle(
-                                                color: message.isDeleted
-                                                    ? Colors.grey.shade600
-                                                    : isMe
-                                                        ? Colors.white
-                                                        : Colors.black87,
-                                                fontStyle: message.isDeleted 
-                                                    ? FontStyle.italic 
-                                                    : null,
-                                              ),
-                                            ),
-                                            if (message.isEdited && !message.isDeleted)
+                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                            children: [
                                               Text(
-                                                '(編集済み)',
+                                                message.isDeleted 
+                                                    ? 'このメッセージは削除されました' 
+                                                    : message.content,
                                                 style: TextStyle(
-                                                  fontSize: 10,
-                                                  color: isMe 
-                                                      ? Colors.white70 
-                                                      : Colors.grey,
+                                                  color: message.isDeleted
+                                                      ? Colors.grey.shade600
+                                                      : isMe
+                                                          ? Colors.white
+                                                          : Colors.black87,
+                                                  fontStyle: message.isDeleted 
+                                                      ? FontStyle.italic 
+                                                      : null,
                                                 ),
                                               ),
-                                          ],
-                                        ),
+                                              if (message.isEdited && !message.isDeleted)
+                                                Text(
+                                                  '(編集済み)',
+                                                  style: TextStyle(
+                                                    fontSize: 10,
+                                                    color: isMe 
+                                                        ? Colors.white70 
+                                                        : Colors.grey,
+                                                  ),
+                                                ),
+                                            ],
+                                          ),
                                       ),
                                     ],
                                   ),
                                 ),
                               ),
                             ),
-                          ),
-                        ],
+                          ],
                         ),
                       ),
                     );
                   },
-                );
-              },
-            ),
+                ),
           ),
           // 編集中/リプライ中の表示
           if (_editingMessage != null || _replyingToMessage != null)
@@ -916,6 +963,7 @@ class _ChatScreenState extends State<ChatScreen> {
   void dispose() {
     _messageController.dispose();
     _scrollController.dispose();
+    _messageSubscription?.cancel();
     super.dispose();
   }
 }

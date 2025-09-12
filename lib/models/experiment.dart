@@ -86,6 +86,8 @@ class Experiment {
   final String? preSurveyUrl; // 事前アンケートURL
   final String? preSurveyTemplateId; // 事前アンケートテンプレートID
   final String? experimentSurveyTemplateId; // 実験アンケートテンプレートID
+  final String? postSurveyUrl; // 事後アンケートURL
+  final String? postSurveyTemplateId; // 事後アンケートテンプレートID
   
   // 旧フィールドとの互換性のため
   DateTime? get experimentDate => recruitmentStartDate;
@@ -130,6 +132,8 @@ class Experiment {
     this.preSurveyUrl,
     this.preSurveyTemplateId,
     this.experimentSurveyTemplateId,
+    this.postSurveyUrl,
+    this.postSurveyTemplateId,
   }) : scheduleType = scheduleType ?? (allowFlexibleSchedule ? ScheduleType.individual : ScheduleType.fixed);
 
   /// FirestoreのドキュメントからExperimentを作成
@@ -194,6 +198,8 @@ class Experiment {
       preSurveyUrl: data['preSurveyUrl'],
       preSurveyTemplateId: data['preSurveyTemplateId'],
       experimentSurveyTemplateId: data['experimentSurveyTemplateId'],
+      postSurveyUrl: data['postSurveyUrl'],
+      postSurveyTemplateId: data['postSurveyTemplateId'],
       participantEvaluations: data['participantEvaluations'] != null
         ? Map<String, Map<String, dynamic>>.from(
             (data['participantEvaluations'] as Map).map(
@@ -257,6 +263,8 @@ class Experiment {
       'preSurveyUrl': preSurveyUrl,
       'preSurveyTemplateId': preSurveyTemplateId,
       'experimentSurveyTemplateId': experimentSurveyTemplateId,
+      'postSurveyUrl': postSurveyUrl,
+      'postSurveyTemplateId': postSurveyTemplateId,
     };
   }
 
