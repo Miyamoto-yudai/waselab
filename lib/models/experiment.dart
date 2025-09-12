@@ -83,10 +83,14 @@ class Experiment {
   final DateTime? actualStartDate; // 実際の実験開始日
   final String? surveyUrl; // アンケートURL（アンケートタイプの実験用）
   final List<String> consentItems; // 特別な同意項目リスト
+  final String? preSurveyUrl; // 事前アンケートURL
+  final String? preSurveyTemplateId; // 事前アンケートテンプレートID
+  final String? experimentSurveyTemplateId; // 実験アンケートテンプレートID
   
   // 旧フィールドとの互換性のため
   DateTime? get experimentDate => recruitmentStartDate;
   DateTime? get endDate => recruitmentEndDate;
+  String? get experimentSurveyUrl => surveyUrl; // surveyUrlを実験アンケートURLとして扱う
 
   Experiment({
     required this.id,
@@ -123,6 +127,9 @@ class Experiment {
     this.actualStartDate,
     this.surveyUrl,
     this.consentItems = const [],
+    this.preSurveyUrl,
+    this.preSurveyTemplateId,
+    this.experimentSurveyTemplateId,
   }) : scheduleType = scheduleType ?? (allowFlexibleSchedule ? ScheduleType.individual : ScheduleType.fixed);
 
   /// FirestoreのドキュメントからExperimentを作成
@@ -184,6 +191,9 @@ class Experiment {
       actualStartDate: (data['actualStartDate'] as Timestamp?)?.toDate(),
       surveyUrl: data['surveyUrl'],
       consentItems: List<String>.from(data['consentItems'] ?? []),
+      preSurveyUrl: data['preSurveyUrl'],
+      preSurveyTemplateId: data['preSurveyTemplateId'],
+      experimentSurveyTemplateId: data['experimentSurveyTemplateId'],
       participantEvaluations: data['participantEvaluations'] != null
         ? Map<String, Map<String, dynamic>>.from(
             (data['participantEvaluations'] as Map).map(
@@ -244,6 +254,9 @@ class Experiment {
         : null,
       'surveyUrl': surveyUrl,
       'consentItems': consentItems,
+      'preSurveyUrl': preSurveyUrl,
+      'preSurveyTemplateId': preSurveyTemplateId,
+      'experimentSurveyTemplateId': experimentSurveyTemplateId,
     };
   }
 

@@ -436,6 +436,79 @@ class _ExperimentDetailBaseState extends State<ExperimentDetailBase> {
                             ),
                           ),
                         ),
+                        // アンケート有無の表示
+                        if (widget.experiment.preSurveyUrl != null && widget.experiment.preSurveyUrl!.isNotEmpty) ...[
+                          const SizedBox(width: 8),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 4,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.purple.withValues(alpha: 0.2),
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(
+                                color: Colors.purple.withValues(alpha: 0.3),
+                                width: 1,
+                              ),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  Icons.assignment_outlined,
+                                  size: 14,
+                                  color: Colors.purple[700],
+                                ),
+                                const SizedBox(width: 4),
+                                Text(
+                                  '事前アンケートあり',
+                                  style: TextStyle(
+                                    color: Colors.purple[700],
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 12,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                        if (widget.experiment.experimentSurveyUrl != null && widget.experiment.experimentSurveyUrl!.isNotEmpty) ...[
+                          const SizedBox(width: 8),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 4,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.indigo.withValues(alpha: 0.2),
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(
+                                color: Colors.indigo.withValues(alpha: 0.3),
+                                width: 1,
+                              ),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  Icons.quiz_outlined,
+                                  size: 14,
+                                  color: Colors.indigo[700],
+                                ),
+                                const SizedBox(width: 4),
+                                Text(
+                                  '事後アンケートあり',
+                                  style: TextStyle(
+                                    color: Colors.indigo[700],
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 12,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
                       ],
                     ),
                   ],

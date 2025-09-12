@@ -5,7 +5,9 @@ import '../services/auth_service.dart';
 import '../services/user_service.dart';
 import '../models/message.dart';
 import '../models/app_user.dart';
+import '../widgets/custom_circle_avatar.dart';
 import '../widgets/user_detail_dialog.dart';
+import '../models/avatar_design.dart';
 
 class ChatScreen extends StatefulWidget {
   final String? conversationId;
@@ -29,11 +31,10 @@ class _ChatScreenState extends State<ChatScreen> {
   final UserService _userService = UserService();
   final TextEditingController _messageController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
-  final Map<String, GlobalKey> _messageKeys = {};
-  
   String? _currentUserId;
   String? _currentUserName;
   AppUser? _currentAppUser;
+  AppUser? _otherUser;
   String? _actualConversationId;
   bool _isSending = false;
   bool _showTemplates = false;
@@ -41,14 +42,14 @@ class _ChatScreenState extends State<ChatScreen> {
   // 編集・リプライ関連
   Message? _editingMessage;
   Message? _replyingToMessage;
-  String? _highlightedMessageId;
-  List<Message> _messages = [];
+  String? _originalContent;
 
   @override
   void initState() {
     super.initState();
     _actualConversationId = widget.conversationId;
     _getCurrentUser();
+    _getOtherUser();
     if (widget.conversationId != null && widget.conversationId!.isNotEmpty) {
       _markMessagesAsRead();
     }
@@ -66,89 +67,19 @@ class _ChatScreenState extends State<ChatScreen> {
     }
   }
 
-  void _markMessagesAsRead() {
-    if (_currentUserId != null && _actualConversationId != null && _actualConversationId!.isNotEmpty) {
-      _messageService.markMessagesAsRead(_actualConversationId!, _currentUserId!);
-    }
-  }
-
-  // テンプレート関連
-  void _selectTemplate(String templateType) {
-    final templates = _getQuickTemplates();
-    final selected = templates.firstWhere(
-      (t) => t['type'] == templateType,
-      orElse: () => <String, dynamic>{},
-    );
-    if (selected.isNotEmpty) {
-      _messageController.text = selected['template'] as String;
+  Future<void> _getOtherUser() async {
+    final user = await _userService.getUserById(widget.otherUserId);
+    if (mounted) {
       setState(() {
-        _showTemplates = false;
+        _otherUser = user;
       });
     }
   }
 
-  List<Map<String, dynamic>> _getQuickTemplates() {
-    final userInfo = _currentAppUser?.name ?? '[お名前]';
-    String affiliation = '';
-    
-    if (_currentAppUser != null && _currentAppUser!.isWasedaUser) {
-      affiliation = '早稲田大学';
-      if (_currentAppUser!.department != null) {
-        affiliation += _currentAppUser!.department!;
-      }
-      if (_currentAppUser!.grade != null) {
-        affiliation += _currentAppUser!.grade!;
-      }
-      affiliation += 'の';
+  void _markMessagesAsRead() {
+    if (_currentUserId != null && _actualConversationId != null && _actualConversationId!.isNotEmpty) {
+      _messageService.markMessagesAsRead(_actualConversationId!, _currentUserId!);
     }
-    
-    return [
-      {
-        'type': 'intro',
-        'label': '自己紹介',
-        'icon': Icons.person_outline,
-        'template': 'お世話になっております。\n'
-            '$affiliation$userInfoと申します。\n\n'
-            '実験を拝見し、大変興味を持ちました。\n'
-            'ぜひ参加させていただきたく、ご連絡差し上げました。\n\n'
-            '実験の詳細について、いくつかお伺いしたいことがございます。\n'
-            'お忙しいところ恐れ入りますが、ご教示いただけますと幸いです。\n\n'
-            'どうぞよろしくお願いいたします。',
-      },
-      {
-        'type': 'question',
-        'label': '質問',
-        'icon': Icons.help_outline,
-        'template': 'お世話になっております。$userInfoです。\n\n'
-            '実験について、以下の点をお伺いできますでしょうか。\n\n'
-            '1. \n'
-            '2. \n\n'
-            'お手数をおかけしますが、ご回答いただけますと幸いです。\n'
-            'よろしくお願いいたします。',
-      },
-      {
-        'type': 'schedule',
-        'label': '日程調整',
-        'icon': Icons.calendar_today,
-        'template': 'お世話になっております。$userInfoです。\n\n'
-            '実験に参加させていただきたく存じます。\n\n'
-            '私の参加可能な日時は以下の通りです：\n'
-            '・\n'
-            '・\n\n'
-            '上記の中でご都合のよろしい日時はございますでしょうか。\n'
-            'ご検討のほど、よろしくお願いいたします。',
-      },
-      {
-        'type': 'thanks',
-        'label': 'お礼',
-        'icon': Icons.favorite,
-        'template': 'お世話になっております。$userInfoです。\n\n'
-            '先日は実験でお世話になり、\n'
-            '誠にありがとうございました。\n\n'
-            '貴重な経験をさせていただき、大変勉強になりました。\n'
-            '今後ともどうぞよろしくお願いいたします。',
-      },
-    ];
   }
 
   Future<void> _sendMessage() async {
@@ -220,35 +151,13 @@ class _ChatScreenState extends State<ChatScreen> {
     });
   }
 
-  // リプライ元へジャンプ
-  void _jumpToReplyMessage(String? replyToMessageId) {
-    if (replyToMessageId == null) return;
-    
-    final key = _messageKeys[replyToMessageId];
-    if (key?.currentContext != null) {
-      Scrollable.ensureVisible(
-        key!.currentContext!,
-        duration: const Duration(milliseconds: 300),
-        curve: Curves.easeInOut,
-      );
-      
-      // ハイライト表示
-      setState(() {
-        _highlightedMessageId = replyToMessageId;
-      });
-      
-      // 2秒後にハイライトを解除
-      Future.delayed(const Duration(seconds: 2), () {
-        if (mounted) {
-          setState(() {
-            _highlightedMessageId = null;
-          });
-        }
-      });
-    }
+  String _formatTime(DateTime dateTime) {
+    final hour = dateTime.hour.toString().padLeft(2, '0');
+    final minute = dateTime.minute.toString().padLeft(2, '0');
+    return '$hour:$minute';
   }
 
-  // メッセージ長押しメニュー
+  // メッセージ長押しメニューを表示
   void _showMessageOptions(BuildContext context, Message message) {
     final isMe = message.senderId == _currentUserId;
     
@@ -259,6 +168,7 @@ class _ChatScreenState extends State<ChatScreen> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
+            // コピー
             ListTile(
               leading: const Icon(Icons.copy),
               title: const Text('コピー'),
@@ -273,6 +183,7 @@ class _ChatScreenState extends State<ChatScreen> {
                 );
               },
             ),
+            // リプライ
             if (!message.isDeleted)
               ListTile(
                 leading: const Icon(Icons.reply),
@@ -282,6 +193,7 @@ class _ChatScreenState extends State<ChatScreen> {
                   _startReply(message);
                 },
               ),
+            // 転送
             if (!message.isDeleted)
               ListTile(
                 leading: const Icon(Icons.forward),
@@ -291,6 +203,7 @@ class _ChatScreenState extends State<ChatScreen> {
                   _forwardMessage(message);
                 },
               ),
+            // 編集（自分のメッセージのみ）
             if (isMe && !message.isDeleted)
               ListTile(
                 leading: const Icon(Icons.edit),
@@ -300,6 +213,7 @@ class _ChatScreenState extends State<ChatScreen> {
                   _startEdit(message);
                 },
               ),
+            // 削除（自分のメッセージのみ）
             if (isMe && !message.isDeleted)
               ListTile(
                 leading: const Icon(Icons.delete, color: Colors.red),
@@ -315,21 +229,26 @@ class _ChatScreenState extends State<ChatScreen> {
     );
   }
 
+  // 編集開始
   void _startEdit(Message message) {
     setState(() {
       _editingMessage = message;
+      _originalContent = message.content;
       _messageController.text = message.content;
       _replyingToMessage = null;
     });
   }
 
+  // 編集キャンセル
   void _cancelEdit() {
     setState(() {
       _editingMessage = null;
+      _originalContent = null;
       _messageController.clear();
     });
   }
 
+  // リプライ開始
   void _startReply(Message message) {
     setState(() {
       _replyingToMessage = message;
@@ -337,18 +256,20 @@ class _ChatScreenState extends State<ChatScreen> {
     });
   }
 
+  // リプライキャンセル
   void _cancelReply() {
     setState(() {
       _replyingToMessage = null;
     });
   }
 
+  // メッセージ削除確認
   void _confirmDelete(Message message) {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('メッセージを削除'),
-        content: const Text('このメッセージを削除しますか？'),
+        content: const Text('このメッセージを削除しますか？\n削除されたメッセージは「削除されました」と表示されます。'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
@@ -369,6 +290,7 @@ class _ChatScreenState extends State<ChatScreen> {
     );
   }
 
+  // メッセージ削除
   Future<void> _deleteMessage(Message message) async {
     try {
       await _messageService.deleteMessage(message.id);
@@ -392,10 +314,12 @@ class _ChatScreenState extends State<ChatScreen> {
     }
   }
 
+  // メッセージ転送
   void _forwardMessage(Message message) {
     _showForwardDialog(message);
   }
-
+  
+  // 転送先選択ダイアログ
   Future<void> _showForwardDialog(Message message) async {
     final conversations = await _messageService.getUserConversations(_currentUserId!).first;
     
@@ -409,7 +333,9 @@ class _ChatScreenState extends State<ChatScreen> {
           width: double.maxFinite,
           height: 300,
           child: conversations.isEmpty
-              ? const Center(child: Text('転送先がありません'))
+              ? const Center(
+                  child: Text('転送先がありません'),
+                )
               : ListView.builder(
                   shrinkWrap: true,
                   itemCount: conversations.length,
@@ -419,6 +345,7 @@ class _ChatScreenState extends State<ChatScreen> {
                         .firstWhere((id) => id != _currentUserId);
                     final otherUserName = conversation.participantNames[otherUserId] ?? 'Unknown';
                     
+                    // 現在の会話相手を除外
                     if (otherUserId == widget.otherUserId) {
                       return const SizedBox.shrink();
                     }
@@ -432,6 +359,11 @@ class _ChatScreenState extends State<ChatScreen> {
                         ),
                       ),
                       title: Text(otherUserName),
+                      subtitle: Text(
+                        conversation.lastMessage ?? 'メッセージなし',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
                       onTap: () async {
                         Navigator.pop(context);
                         await _sendForwardedMessage(message, otherUserId, otherUserName);
@@ -449,7 +381,8 @@ class _ChatScreenState extends State<ChatScreen> {
       ),
     );
   }
-
+  
+  // 転送メッセージを送信
   Future<void> _sendForwardedMessage(Message originalMessage, String receiverId, String receiverName) async {
     try {
       final originalSenderName = originalMessage.senderId == _currentUserId 
@@ -534,76 +467,26 @@ class _ChatScreenState extends State<ChatScreen> {
                   );
                 }
 
-                _messages = snapshot.data ?? [];
+                final messages = snapshot.data ?? [];
 
-                if (_messages.isEmpty) {
-                  return Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(Icons.chat_bubble_outline, size: 64, color: Colors.grey[400]),
-                        const SizedBox(height: 16),
-                        const Text(
-                          'メッセージを開始しましょう',
-                          style: TextStyle(
-                            color: Colors.grey,
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                          decoration: BoxDecoration(
-                            color: Colors.blue.withValues(alpha: 0.1),
-                            borderRadius: BorderRadius.circular(20),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(Icons.lightbulb_outline, size: 16, color: Colors.blue[700]),
-                              const SizedBox(width: 4),
-                              Text(
-                                '下のテンプレートボタンから始められます',
-                                style: TextStyle(color: Colors.blue[700], fontSize: 14),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
+                if (messages.isEmpty) {
+                  return const Center(
+                    child: Text('メッセージを開始しましょう'),
                   );
-                }
-
-                // GlobalKeyを更新
-                for (final message in _messages) {
-                  _messageKeys[message.id] ??= GlobalKey();
                 }
 
                 return ListView.builder(
                   controller: _scrollController,
                   padding: const EdgeInsets.all(16),
-                  itemCount: _messages.length,
+                  itemCount: messages.length,
                   itemBuilder: (context, index) {
-                    final message = _messages[index];
+                    final message = messages[index];
                     final isMe = message.senderId == _currentUserId;
-                    final isHighlighted = message.id == _highlightedMessageId;
 
                     return GestureDetector(
-                      key: _messageKeys[message.id],
                       onLongPress: () => _showMessageOptions(context, message),
-                      child: AnimatedContainer(
-                        duration: const Duration(milliseconds: 300),
+                      child: Container(
                         margin: const EdgeInsets.symmetric(vertical: 4),
-                        padding: isHighlighted 
-                            ? const EdgeInsets.all(4)
-                            : EdgeInsets.zero,
-                        decoration: isHighlighted
-                            ? BoxDecoration(
-                                color: Colors.amber.withValues(alpha: 0.2),
-                                borderRadius: BorderRadius.circular(8),
-                              )
-                            : null,
                         child: Row(
                           mainAxisAlignment: isMe ? MainAxisAlignment.end : MainAxisAlignment.start,
                           children: [
@@ -612,125 +495,91 @@ class _ChatScreenState extends State<ChatScreen> {
                                 constraints: BoxConstraints(
                                   maxWidth: MediaQuery.of(context).size.width * 0.75,
                                 ),
-                                decoration: BoxDecoration(
-                                  color: message.isDeleted
-                                      ? Colors.grey.shade300
-                                      : isMe
-                                          ? const Color(0xFF8E1728)
-                                          : Colors.white,
-                                  border: isMe || message.isDeleted
-                                      ? null
-                                      : Border.all(color: Colors.grey.shade300),
-                                  borderRadius: BorderRadius.circular(16),
-                                ),
-                                child: ClipRRect(
-                                  borderRadius: BorderRadius.circular(16),
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      // Discord風リプライ表示
-                                      if (message.replyToContent != null && !message.isDeleted)
-                                        GestureDetector(
-                                          onTap: () => _jumpToReplyMessage(message.replyToMessageId),
-                                          child: Container(
-                                            padding: const EdgeInsets.only(
-                                              left: 12,
-                                              right: 12,
-                                              top: 8,
-                                              bottom: 4,
-                                            ),
-                                            decoration: BoxDecoration(
-                                              border: Border(
-                                                left: BorderSide(
-                                                  color: isMe 
-                                                      ? Colors.white.withValues(alpha: 0.5)
-                                                      : Colors.grey.shade400,
-                                                  width: 2,
-                                                ),
-                                              ),
-                                            ),
-                                            child: Column(
-                                              crossAxisAlignment: CrossAxisAlignment.start,
-                                              children: [
-                                                Row(
-                                                  children: [
-                                                    Icon(
-                                                      Icons.reply,
-                                                      size: 12,
-                                                      color: isMe 
-                                                          ? Colors.white.withValues(alpha: 0.7)
-                                                          : Colors.grey,
-                                                    ),
-                                                    const SizedBox(width: 4),
-                                                    Text(
-                                                      message.replyToSenderId == _currentUserId 
-                                                          ? 'あなた' 
-                                                          : widget.otherUserName,
-                                                      style: TextStyle(
-                                                        fontSize: 11,
-                                                        fontWeight: FontWeight.bold,
-                                                        color: isMe 
-                                                            ? Colors.white.withValues(alpha: 0.8)
-                                                            : Colors.grey.shade700,
-                                                      ),
-                                                    ),
-                                                  ],
-                                                ),
-                                                const SizedBox(height: 2),
-                                                Text(
-                                                  message.replyToContent!,
-                                                  style: TextStyle(
-                                                    fontSize: 11,
-                                                    color: isMe 
-                                                        ? Colors.white.withValues(alpha: 0.7)
-                                                        : Colors.grey.shade600,
-                                                  ),
-                                                  maxLines: 1,
-                                                  overflow: TextOverflow.ellipsis,
-                                                ),
-                                              ],
-                                            ),
-                                          ),
-                                        ),
-                                      // メッセージ本体
-                                      Padding(
-                                        padding: const EdgeInsets.symmetric(
-                                          horizontal: 12,
-                                          vertical: 8,
+                                child: Column(
+                                  crossAxisAlignment: isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+                                  children: [
+                                    // リプライ表示
+                                    if (message.replyToContent != null)
+                                      Container(
+                                        margin: const EdgeInsets.only(bottom: 4),
+                                        padding: const EdgeInsets.all(8),
+                                        decoration: BoxDecoration(
+                                          color: Colors.grey.withValues(alpha: 0.2),
+                                          borderRadius: BorderRadius.circular(8),
                                         ),
                                         child: Column(
                                           crossAxisAlignment: CrossAxisAlignment.start,
                                           children: [
                                             Text(
-                                              message.isDeleted 
-                                                  ? 'このメッセージは削除されました' 
-                                                  : message.content,
-                                              style: TextStyle(
-                                                color: message.isDeleted
-                                                    ? Colors.grey.shade600
-                                                    : isMe
-                                                        ? Colors.white
-                                                        : Colors.black87,
-                                                fontStyle: message.isDeleted 
-                                                    ? FontStyle.italic 
-                                                    : null,
+                                              message.replyToSenderId == _currentUserId ? 'あなた' : widget.otherUserName,
+                                              style: const TextStyle(
+                                                fontWeight: FontWeight.bold,
+                                                fontSize: 12,
                                               ),
                                             ),
-                                            if (message.isEdited && !message.isDeleted)
-                                              Text(
-                                                '(編集済み)',
-                                                style: TextStyle(
-                                                  fontSize: 10,
-                                                  color: isMe 
-                                                      ? Colors.white70 
-                                                      : Colors.grey,
-                                                ),
-                                              ),
+                                            Text(
+                                              message.replyToContent!,
+                                              style: const TextStyle(fontSize: 12),
+                                              maxLines: 2,
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
                                           ],
                                         ),
                                       ),
-                                    ],
-                                  ),
+                                    // メッセージ本体
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 12,
+                                        vertical: 8,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: message.isDeleted
+                                            ? Colors.grey.shade300
+                                            : isMe
+                                                ? const Color(0xFF8E1728)
+                                                : Colors.white,
+                                        border: isMe || message.isDeleted
+                                            ? null
+                                            : Border.all(color: Colors.grey.shade300),
+                                        borderRadius: BorderRadius.circular(16),
+                                      ),
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            message.isDeleted ? 'このメッセージは削除されました' : message.content,
+                                            style: TextStyle(
+                                              color: message.isDeleted
+                                                  ? Colors.grey.shade600
+                                                  : isMe
+                                                      ? Colors.white
+                                                      : Colors.black87,
+                                              fontStyle: message.isDeleted ? FontStyle.italic : null,
+                                            ),
+                                          ),
+                                          if (message.isEdited && !message.isDeleted)
+                                            Text(
+                                              '(編集済み)',
+                                              style: TextStyle(
+                                                fontSize: 10,
+                                                color: isMe ? Colors.white70 : Colors.grey,
+                                              ),
+                                            ),
+                                        ],
+                                      ),
+                                    ),
+                                    // 時刻
+                                    Padding(
+                                      padding: const EdgeInsets.only(top: 2),
+                                      child: Text(
+                                        _formatTime(message.createdAt),
+                                        style: const TextStyle(
+                                          fontSize: 10,
+                                          color: Colors.grey,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               ),
                             ),
@@ -783,42 +632,6 @@ class _ChatScreenState extends State<ChatScreen> {
                 ],
               ),
             ),
-          // テンプレート表示
-          AnimatedContainer(
-            duration: const Duration(milliseconds: 200),
-            height: _showTemplates ? 50 : 0,
-            child: _showTemplates
-                ? Container(
-                    color: Colors.grey[50],
-                    padding: const EdgeInsets.symmetric(vertical: 8),
-                    child: ListView(
-                      scrollDirection: Axis.horizontal,
-                      padding: const EdgeInsets.symmetric(horizontal: 8),
-                      children: _getQuickTemplates()
-                          .map((template) => Padding(
-                                padding: const EdgeInsets.symmetric(horizontal: 4),
-                                child: ActionChip(
-                                  avatar: Icon(
-                                    template['icon'] as IconData,
-                                    size: 18,
-                                    color: const Color(0xFF8E1728),
-                                  ),
-                                  label: Text(
-                                    template['label'] as String,
-                                    style: const TextStyle(
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.w500,
-                                    ),
-                                  ),
-                                  backgroundColor: Colors.white,
-                                  onPressed: () => _selectTemplate(template['type'] as String),
-                                ),
-                              ))
-                          .toList(),
-                    ),
-                  )
-                : null,
-          ),
           // 入力フィールド
           Container(
             decoration: BoxDecoration(
@@ -835,18 +648,6 @@ class _ChatScreenState extends State<ChatScreen> {
             child: SafeArea(
               child: Row(
                 children: [
-                  IconButton(
-                    icon: Icon(
-                      _showTemplates ? Icons.expand_more : Icons.expand_less,
-                      color: Colors.grey[700],
-                    ),
-                    onPressed: () {
-                      setState(() {
-                        _showTemplates = !_showTemplates;
-                      });
-                    },
-                    tooltip: 'テンプレート',
-                  ),
                   Expanded(
                     child: TextField(
                       controller: _messageController,
@@ -887,12 +688,5 @@ class _ChatScreenState extends State<ChatScreen> {
         ],
       ),
     );
-  }
-
-  @override
-  void dispose() {
-    _messageController.dispose();
-    _scrollController.dispose();
-    super.dispose();
   }
 }

@@ -41,6 +41,9 @@ class MessageService {
     required String content,
     required String senderName,
     required String receiverName,
+    String? replyToMessageId,
+    String? replyToContent,
+    String? replyToSenderId,
   }) async {
     print('=== sendMessage called ===');
     print('From: $senderId ($senderName)');
@@ -64,6 +67,9 @@ class MessageService {
       content: content,
       createdAt: DateTime.now(),
       isRead: false,
+      replyToMessageId: replyToMessageId,
+      replyToContent: replyToContent,
+      replyToSenderId: replyToSenderId,
     );
 
     print('Adding message to Firestore...');
@@ -80,6 +86,94 @@ class MessageService {
     // プッシュ通知はFCMサービス側で処理される
 
     return conversationId;
+  }
+
+  /// メッセージを編集
+  Future<void> editMessage(String messageId, String newContent) async {
+    try {
+      // メッセージが存在するか確認
+      final doc = await _firestore.collection('messages').doc(messageId).get();
+      if (!doc.exists) {
+        throw Exception('メッセージが見つかりません');
+      }
+      
+      await _firestore.collection('messages').doc(messageId).update({
+        'content': newContent,
+        'isEdited': true,
+        'editedAt': Timestamp.fromDate(DateTime.now()),
+      });
+    } catch (e) {
+      print('Error editing message: $e');
+      throw e;
+    }
+  }
+
+  /// メッセージを削除（論理削除）
+  Future<void> deleteMessage(String messageId) async {
+    try {
+      // メッセージが存在するか確認
+      final doc = await _firestore.collection('messages').doc(messageId).get();
+      if (!doc.exists) {
+        throw Exception('メッセージが見つかりません');
+      }
+      
+      await _firestore.collection('messages').doc(messageId).update({
+        'isDeleted': true,
+        'content': '', // 内容をクリア
+      });
+    } catch (e) {
+      print('Error deleting message: $e');
+      throw e;
+    }
+  }
+  
+  /// メッセージを転送
+  Future<String> forwardMessage({
+    required String originalMessageId,
+    required String senderId,
+    required String receiverId,
+    required String senderName,
+    required String receiverName,
+    required String forwardedContent,
+    String? originalSenderName,
+  }) async {
+    try {
+      final conversationId = await getOrCreateConversation(
+        senderId,
+        receiverId,
+        senderName,
+        receiverName,
+      );
+      
+      // 転送メッセージの作成
+      final forwardMessage = '「転送メッセージ」\n'
+          '${originalSenderName != null ? "$originalSenderNameさんから：\n" : ""}'
+          '$forwardedContent';
+      
+      final message = Message(
+        id: '',
+        senderId: senderId,
+        receiverId: receiverId,
+        conversationId: conversationId,
+        content: forwardMessage,
+        createdAt: DateTime.now(),
+        isRead: false,
+      );
+      
+      await _firestore.collection('messages').add(message.toFirestore());
+      
+      // 会話の最終メッセージを更新
+      await _firestore.collection('conversations').doc(conversationId).update({
+        'lastMessage': forwardMessage,
+        'lastMessageTime': Timestamp.fromDate(DateTime.now()),
+        'unreadCounts.$receiverId': FieldValue.increment(1),
+      });
+      
+      return conversationId;
+    } catch (e) {
+      print('Error forwarding message: $e');
+      throw e;
+    }
   }
 
   Future<String> getOrCreateConversation(

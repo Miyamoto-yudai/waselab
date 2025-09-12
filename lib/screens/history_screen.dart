@@ -638,6 +638,24 @@ class _HistoryScreenState extends State<HistoryScreen> with TickerProviderStateM
                         ],
                       ],
                     ),
+                    // アンケートボタンを追加
+                    if (!isMyExperiment && (experiment.preSurveyUrl != null || experiment.experimentSurveyUrl != null)) ...[
+                      const SizedBox(width: 4),
+                      IconButton(
+                        onPressed: () => _showSurveyUrlsDialog(experiment),
+                        icon: const Icon(
+                          Icons.quiz_outlined,
+                          size: 20,
+                          color: Colors.purple,
+                        ),
+                        tooltip: 'アンケートURLを確認',
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints(
+                          minWidth: 32,
+                          minHeight: 32,
+                        ),
+                      ),
+                    ],
                     const SizedBox(width: 4),
                     Icon(
                       Icons.arrow_forward_ios,
@@ -783,6 +801,57 @@ class _HistoryScreenState extends State<HistoryScreen> with TickerProviderStateM
                           ),
                       ],
                     ),
+                    // アンケートURLの表示
+                    if (isParticipant && !isMyExperiment) ...[
+                      if (experiment.preSurveyUrl != null) ...[
+                        const SizedBox(height: 4),
+                        InkWell(
+                          onTap: () => _showSurveyUrlDialog('事前アンケート', experiment.preSurveyUrl!),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: Colors.purple.withValues(alpha: 0.1),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(Icons.fact_check, size: 12, color: Colors.purple.shade700),
+                                const SizedBox(width: 4),
+                                Text(
+                                  '事前アンケート',
+                                  style: TextStyle(fontSize: 11, color: Colors.purple.shade700),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
+                      if (experiment.surveyUrl != null && experiment.type != ExperimentType.survey) ...[
+                        const SizedBox(height: 4),
+                        InkWell(
+                          onTap: () => _showSurveyUrlDialog('事後アンケート', experiment.surveyUrl!),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: Colors.indigo.withValues(alpha: 0.1),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(Icons.quiz, size: 12, color: Colors.indigo.shade700),
+                                const SizedBox(width: 4),
+                                Text(
+                                  '事後アンケート',
+                                  style: TextStyle(fontSize: 11, color: Colors.indigo.shade700),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
+                    ],
                   ],
                 ),
               ),
@@ -880,7 +949,7 @@ class _HistoryScreenState extends State<HistoryScreen> with TickerProviderStateM
                         borderRadius: BorderRadius.circular(20),
                         child: InkWell(
                           onTap: () {
-                            _showSurveyUrlDialog(experiment);
+                            _showSurveyUrlDialogForExperiment(experiment);
                           },
                           borderRadius: BorderRadius.circular(20),
                           child: Container(
@@ -1077,7 +1146,7 @@ class _HistoryScreenState extends State<HistoryScreen> with TickerProviderStateM
     return const SizedBox.shrink();
   }
 
-  Future<void> _showSurveyUrlDialog(Experiment experiment) async {
+  Future<void> _showSurveyUrlDialogForExperiment(Experiment experiment) async {
     await showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -1270,6 +1339,71 @@ class _HistoryScreenState extends State<HistoryScreen> with TickerProviderStateM
     }
   }
 
+  /// アンケートURLダイアログを表示
+  void _showSurveyUrlDialog(String title, String surveyUrl) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(title),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('アンケートURL:', style: TextStyle(fontWeight: FontWeight.bold)),
+            const SizedBox(height: 8),
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Colors.grey.shade100,
+                borderRadius: BorderRadius.circular(4),
+              ),
+              child: SelectableText(
+                surveyUrl,
+                style: const TextStyle(fontSize: 12),
+              ),
+            ),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: () {
+                      Clipboard.setData(ClipboardData(text: surveyUrl));
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('URLをコピーしました')),
+                      );
+                    },
+                    icon: const Icon(Icons.copy, size: 16),
+                    label: const Text('コピー'),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: ElevatedButton.icon(
+                    onPressed: () async {
+                      final url = Uri.parse(surveyUrl);
+                      if (await canLaunchUrl(url)) {
+                        await launchUrl(url, mode: LaunchMode.externalApplication);
+                      }
+                    },
+                    icon: const Icon(Icons.open_in_new, size: 16),
+                    label: const Text('開く'),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('閉じる'),
+          ),
+        ],
+      ),
+    );
+  }
+
   IconData _getTypeIcon(ExperimentType type) {
     switch (type) {
       case ExperimentType.online:
@@ -1357,6 +1491,212 @@ class _HistoryScreenState extends State<HistoryScreen> with TickerProviderStateM
     return experiment.isScheduledFuture(_currentUser?.uid ?? '');
   }
   
+  /// アンケートURL表示ダイアログ
+  void _showSurveyUrlsDialog(Experiment experiment) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Row(
+          children: [
+            Icon(Icons.quiz, color: Colors.purple),
+            SizedBox(width: 8),
+            Text('アンケートURL'),
+          ],
+        ),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // 事前アンケート
+              if (experiment.preSurveyUrl != null && experiment.preSurveyUrl!.isNotEmpty) ...[
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.purple.shade50,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Colors.purple.shade200),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Icon(Icons.assignment_outlined, size: 18, color: Colors.purple.shade700),
+                          const SizedBox(width: 8),
+                          Text(
+                            '事前アンケート',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              color: Colors.purple.shade700,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: Text(
+                          experiment.preSurveyUrl!,
+                          style: const TextStyle(fontSize: 12, color: Colors.blue),
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: OutlinedButton.icon(
+                              onPressed: () {
+                                Clipboard.setData(ClipboardData(text: experiment.preSurveyUrl!));
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text('URLをコピーしました'),
+                                    duration: Duration(seconds: 1),
+                                  ),
+                                );
+                              },
+                              icon: const Icon(Icons.copy, size: 14),
+                              label: const Text('コピー', style: TextStyle(fontSize: 12)),
+                              style: OutlinedButton.styleFrom(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: ElevatedButton.icon(
+                              onPressed: () async {
+                                final url = Uri.parse(experiment.preSurveyUrl!);
+                                if (await canLaunchUrl(url)) {
+                                  await launchUrl(url, mode: LaunchMode.externalApplication);
+                                }
+                              },
+                              icon: const Icon(Icons.open_in_new, size: 14),
+                              label: const Text('開く', style: TextStyle(fontSize: 12)),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.purple,
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 12),
+              ],
+              // 事後アンケート
+              if (experiment.experimentSurveyUrl != null && experiment.experimentSurveyUrl!.isNotEmpty) ...[
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.indigo.shade50,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Colors.indigo.shade200),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Icon(Icons.quiz_outlined, size: 18, color: Colors.indigo.shade700),
+                          const SizedBox(width: 8),
+                          Text(
+                            '事後アンケート',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              color: Colors.indigo.shade700,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: Text(
+                          experiment.experimentSurveyUrl!,
+                          style: const TextStyle(fontSize: 12, color: Colors.blue),
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: OutlinedButton.icon(
+                              onPressed: () {
+                                Clipboard.setData(ClipboardData(text: experiment.experimentSurveyUrl!));
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text('URLをコピーしました'),
+                                    duration: Duration(seconds: 1),
+                                  ),
+                                );
+                              },
+                              icon: const Icon(Icons.copy, size: 14),
+                              label: const Text('コピー', style: TextStyle(fontSize: 12)),
+                              style: OutlinedButton.styleFrom(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: ElevatedButton.icon(
+                              onPressed: () async {
+                                final url = Uri.parse(experiment.experimentSurveyUrl!);
+                                if (await canLaunchUrl(url)) {
+                                  await launchUrl(url, mode: LaunchMode.externalApplication);
+                                }
+                              },
+                              icon: const Icon(Icons.open_in_new, size: 14),
+                              label: const Text('開く', style: TextStyle(fontSize: 12)),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.indigo,
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+              if (experiment.preSurveyUrl == null && experiment.experimentSurveyUrl == null) ...[
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade100,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Text(
+                    'アンケートURLが設定されていません',
+                    style: TextStyle(color: Colors.grey),
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('閉じる'),
+          ),
+        ],
+      ),
+    );
+  }
+
   /// 予約がキャンセル可能かどうかを判定（予約システム使用時）
   bool _canCancelReservation(Experiment experiment) {
     // 実験に対する予約を検索

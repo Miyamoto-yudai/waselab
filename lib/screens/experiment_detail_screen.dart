@@ -202,6 +202,98 @@ class _ExperimentDetailScreenState extends State<ExperimentDetailScreen> {
     }
   }
 
+  /// 事前アンケートダイアログを表示
+  Future<void> _showPreSurveyDialogForReservation(String surveyUrl) async {
+    await showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        title: const Row(
+          children: [
+            Icon(Icons.fact_check, color: Colors.purple),
+            SizedBox(width: 8),
+            Text('事前アンケートのお願い'),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('実験参加前に事前アンケートへの回答をお願いします。'),
+            const SizedBox(height: 16),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.purple.shade50,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.purple.shade300),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'アンケートURL:',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: Colors.purple.shade700,
+                      fontSize: 12,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    surveyUrl,
+                    style: const TextStyle(fontSize: 12, color: Colors.blue),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: () {
+                      Clipboard.setData(ClipboardData(text: surveyUrl));
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('URLをコピーしました'),
+                        ),
+                      );
+                    },
+                    icon: const Icon(Icons.copy, size: 16),
+                    label: const Text('URLをコピー'),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: ElevatedButton.icon(
+                    onPressed: () async {
+                      final url = Uri.parse(surveyUrl);
+                      if (await canLaunchUrl(url)) {
+                        await launchUrl(url, mode: LaunchMode.externalApplication);
+                      }
+                    },
+                    icon: const Icon(Icons.open_in_new, size: 16),
+                    label: const Text('開く'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.purple,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('閉じる'),
+          ),
+        ],
+      ),
+    );
+  }
+
   /// URLなしアンケート参加完了ダイアログ
   Future<void> _showNoUrlDialog() async {
     await showDialog(
@@ -386,6 +478,157 @@ class _ExperimentDetailScreenState extends State<ExperimentDetailScreen> {
               ),
             ),
           ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('閉じる'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// 事前アンケート案内ダイアログ
+  Future<void> _showPreSurveyDialog(Experiment experiment) async {
+    await showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        title: const Row(
+          children: [
+            Icon(Icons.check_circle, color: Colors.green),
+            SizedBox(width: 8),
+            Text('参加完了'),
+          ],
+        ),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text('実験への参加申請が完了しました。'),
+              const SizedBox(height: 16),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.purple.shade50,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.purple.shade300),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(Icons.assignment, size: 20, color: Colors.purple.shade700),
+                        const SizedBox(width: 8),
+                        Text(
+                          '事前アンケートに回答してください',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            color: Colors.purple.shade700,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    const Text(
+                      '参加前に必要な情報を確認させていただきます。',
+                      style: TextStyle(fontSize: 12),
+                    ),
+                    const SizedBox(height: 12),
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(4),
+                        border: Border.all(color: Colors.purple.shade200),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'URL:',
+                            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            experiment.preSurveyUrl ?? '',
+                            style: const TextStyle(fontSize: 12, color: Colors.blue),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: OutlinedButton.icon(
+                            onPressed: () {
+                              Clipboard.setData(ClipboardData(text: experiment.preSurveyUrl ?? ''));
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text('URLをコピーしました'),
+                                  duration: Duration(seconds: 1),
+                                ),
+                              );
+                            },
+                            icon: const Icon(Icons.copy, size: 16),
+                            label: const Text('コピー'),
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: Colors.purple.shade700,
+                              side: BorderSide(color: Colors.purple.shade300),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: ElevatedButton.icon(
+                            onPressed: () async {
+                              final url = Uri.parse(experiment.preSurveyUrl ?? '');
+                              if (await canLaunchUrl(url)) {
+                                await launchUrl(url, mode: LaunchMode.externalApplication);
+                              }
+                            },
+                            icon: const Icon(Icons.open_in_new, size: 16),
+                            label: const Text('開く'),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.purple,
+                              foregroundColor: Colors.white,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 12),
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.amber.shade50,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.amber.shade200),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.info_outline, size: 16, color: Colors.amber.shade700),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        '実験終了後は必ず相互評価をお願いします',
+                        style: TextStyle(fontSize: 12, color: Colors.amber.shade700),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
         ),
         actions: [
           TextButton(
@@ -583,6 +826,11 @@ class _ExperimentDetailScreenState extends State<ExperimentDetailScreen> {
           ),
         );
         
+        // 事前アンケートがある場合、URLを表示
+        if (widget.experiment.preSurveyUrl != null) {
+          await _showPreSurveyDialogForReservation(widget.experiment.preSurveyUrl!);
+        }
+        
         // 実験完了回数を増やす
         await PreferenceService.incrementExperimentCompletedCount();
         
@@ -686,13 +934,18 @@ class _ExperimentDetailScreenState extends State<ExperimentDetailScreen> {
       });
 
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('実験への参加申請が完了しました。実験終了後は必ず相互評価をお願いします'),
-            backgroundColor: Colors.green,
-            duration: Duration(seconds: 4),
-          ),
-        );
+        // 事前アンケートがある場合はダイアログを表示
+        if (widget.experiment.preSurveyUrl != null && widget.experiment.preSurveyUrl!.isNotEmpty) {
+          await _showPreSurveyDialog(widget.experiment);
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('実験への参加申請が完了しました。実験終了後は必ず相互評価をお願いします'),
+              backgroundColor: Colors.green,
+              duration: Duration(seconds: 4),
+            ),
+          );
+        }
       }
     } catch (e) {
       debugPrint('参加申請エラー: $e');
@@ -1114,6 +1367,57 @@ class _ExperimentDetailScreenState extends State<ExperimentDetailScreen> {
                       Colors.red,
                     ),
                     const SizedBox(height: 8),
+                    // アンケート情報の表示
+                    if (widget.experiment.preSurveyUrl != null || widget.experiment.surveyUrl != null) ...[
+                      Row(
+                        children: [
+                          if (widget.experiment.preSurveyUrl != null) ...[
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: Colors.purple.withValues(alpha: 0.1),
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(color: Colors.purple.withValues(alpha: 0.3)),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(Icons.fact_check, size: 14, color: Colors.purple.shade700),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    '事前アンケートあり',
+                                    style: TextStyle(fontSize: 12, color: Colors.purple.shade700, fontWeight: FontWeight.bold),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                          ],
+                          if (widget.experiment.surveyUrl != null && widget.experiment.type != ExperimentType.survey) ...[
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: Colors.indigo.withValues(alpha: 0.1),
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(color: Colors.indigo.withValues(alpha: 0.3)),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(Icons.quiz, size: 14, color: Colors.indigo.shade700),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    '事後アンケートあり',
+                                    style: TextStyle(fontSize: 12, color: Colors.indigo.shade700, fontWeight: FontWeight.bold),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                    ],
                     if (widget.experiment.allowFlexibleSchedule) ...[
                       _buildInfoRow(
                         Icons.date_range,

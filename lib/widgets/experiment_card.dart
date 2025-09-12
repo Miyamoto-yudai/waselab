@@ -103,10 +103,9 @@ class _ExperimentCardState extends State<ExperimentCard> {
           },
           borderRadius: BorderRadius.circular(16),
           child: Container(
-            height: 230, // 固定高さでレイアウトを制約
+            height: 260, // 固定高さでレイアウトを制約
             padding: const EdgeInsets.all(12),
             child: Column(
-              mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
               // 締切タグとスケジュールタイプ表示、状態バッジ
@@ -312,19 +311,16 @@ class _ExperimentCardState extends State<ExperimentCard> {
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  FittedBox(
-                    fit: BoxFit.scaleDown,
-                    alignment: Alignment.centerLeft,
-                    child: Text(
-                      widget.experiment.title,
-                      style: const TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w800,
-                        color: Color(0xFF2C2C2C),
-                        height: 1.2,
-                      ),
-                      maxLines: 1,
+                  Text(
+                    widget.experiment.title,
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w800,
+                      color: Color(0xFF2C2C2C),
+                      height: 1.2,
                     ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
                   const SizedBox(height: 4),
                   Row(
@@ -352,23 +348,23 @@ class _ExperimentCardState extends State<ExperimentCard> {
                 ],
               ),
               
-              const SizedBox(height: 8),
+              const SizedBox(height: 6),
               
               // 説明文
               Text(
                 widget.experiment.description,
-                maxLines: 2,
+                maxLines: 3,
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(
-                  fontSize: 13,
+                  fontSize: 12.5,
                   color: Colors.grey[700],
                   height: 1.3,
                   letterSpacing: 0.05,
                 ),
               ),
               
-              const Spacer(),
-              const SizedBox(height: 8),
+              // スペースを埋めて情報を下部に配置
+              Expanded(child: Container()),
               
               // 情報グリッド
               Container(
@@ -479,7 +475,7 @@ class _ExperimentCardState extends State<ExperimentCard> {
                 ),
               ),
               
-              const SizedBox(height: 4),
+              const SizedBox(height: 2),
               
               // 場所情報と日程情報
               Row(

@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'dart:async';
 import '../models/experiment.dart';
 import '../models/date_time_slot.dart';
+import '../services/experiment_draft_service.dart';
 import 'experiment_card.dart';
 import 'time_slot_calendar_editor.dart';
-import '../services/preference_service.dart';
-import '../services/google_calendar_service.dart';
+import 'survey_template_selector.dart';
 
 /// 実験作成画面の共通ベースウィジェット
 class CreateExperimentBase extends StatefulWidget {
@@ -26,8 +27,6 @@ class _CreateExperimentBaseState extends State<CreateExperimentBase> {
   final _formKey = GlobalKey<FormState>();
   final PageController _pageController = PageController();
   int _currentStep = 0;
-  final GoogleCalendarService _calendarService = GoogleCalendarService();
-  bool _hasShownCalendarPrompt = false;
   
   // フォームコントローラー
   final _titleController = TextEditingController();
@@ -40,6 +39,9 @@ class _CreateExperimentBaseState extends State<CreateExperimentBase> {
   final _labNameController = TextEditingController();
   final _reservationDeadlineController = TextEditingController(text: '1'); // 予約締切日数（デフォルト1日前）
   final _surveyUrlController = TextEditingController(); // アンケートURL
+  final _preSurveyUrlController = TextEditingController(); // 事前アンケートURL
+  String? _preSurveyTemplateId; // 事前アンケートテンプレートID
+  String? _experimentSurveyTemplateId; // 実験アンケートテンプレートID
   bool _isLabExperiment = true; // true: 研究室, false: 個人
   
   // 選択項目
@@ -62,9 +64,23 @@ class _CreateExperimentBaseState extends State<CreateExperimentBase> {
   
   bool _isLoading = false;
   bool _showPreview = false;
+  
+  // 自動保存用のタイマー
+  Timer? _autoSaveTimer;
+  bool _hasUnsavedChanges = false;
+
+  @override
+  void initState() {
+    super.initState();
+    // 初期化時に下書きがあるかチェック
+    _checkForDraft();
+    // 自動保存タイマーを開始
+    _startAutoSaveTimer();
+  }
 
   @override
   void dispose() {
+    _autoSaveTimer?.cancel();
     _titleController.dispose();
     _descriptionController.dispose();
     _detailedContentController.dispose();
@@ -77,8 +93,261 @@ class _CreateExperimentBaseState extends State<CreateExperimentBase> {
     _consentItemController.dispose();
     _reservationDeadlineController.dispose();
     _surveyUrlController.dispose();
+    _preSurveyUrlController.dispose();
     _pageController.dispose();
     super.dispose();
+  }
+
+  /// 下書きをチェックして復元するか確認
+  Future<void> _checkForDraft() async {
+    final hasDraft = await ExperimentDraftService.hasDraft();
+    if (hasDraft && mounted) {
+      final lastModified = await ExperimentDraftService.getLastModified();
+      final timeAgo = _getTimeAgo(lastModified);
+      
+      // 下書きを復元するか確認するダイアログを表示
+      final shouldRestore = await showDialog<bool>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('下書きが見つかりました'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text('前回の作成途中のデータがあります。'),
+              const SizedBox(height: 8),
+              Text(
+                '最終更新: $timeAgo',
+                style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
+              ),
+              const SizedBox(height: 12),
+              const Text('続きから再開しますか？'),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () async {
+                await ExperimentDraftService.clearDraft();
+                Navigator.of(context).pop(false);
+              },
+              child: const Text('新規作成'),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF8E1728),
+              ),
+              child: const Text('続きから再開'),
+            ),
+          ],
+        ),
+      ) ?? false;
+      
+      if (shouldRestore) {
+        await _restoreDraft();
+      }
+    }
+  }
+  
+  /// 時間差を人間が読みやすい形式に変換
+  String _getTimeAgo(DateTime? dateTime) {
+    if (dateTime == null) return '不明';
+    
+    final now = DateTime.now();
+    final difference = now.difference(dateTime);
+    
+    if (difference.inMinutes < 1) {
+      return 'たった今';
+    } else if (difference.inMinutes < 60) {
+      return '${difference.inMinutes}分前';
+    } else if (difference.inHours < 24) {
+      return '${difference.inHours}時間前';
+    } else {
+      return '${difference.inDays}日前';
+    }
+  }
+  
+  /// 下書きを復元
+  Future<void> _restoreDraft() async {
+    final draftData = await ExperimentDraftService.loadDraft();
+    final currentStep = await ExperimentDraftService.getCurrentStep();
+    
+    if (draftData != null && mounted) {
+      setState(() {
+        // 基本情報
+        _titleController.text = draftData['title'] ?? '';
+        _descriptionController.text = draftData['description'] ?? '';
+        _detailedContentController.text = draftData['detailedContent'] ?? '';
+        _labNameController.text = draftData['labName'] ?? '';
+        _isLabExperiment = draftData['isLabExperiment'] ?? true;
+        
+        // 実験詳細
+        if (draftData['experimentType'] != null) {
+          _selectedType = ExperimentType.values.firstWhere(
+            (e) => e.name == draftData['experimentType'],
+            orElse: () => ExperimentType.onsite,
+          );
+        }
+        _locationController.text = draftData['location'] ?? '';
+        _isPaid = draftData['isPaid'] ?? false;
+        _rewardController.text = draftData['reward']?.toString() ?? '';
+        _durationController.text = draftData['duration']?.toString() ?? '';
+        
+        // アンケート設定
+        _preSurveyUrlController.text = draftData['preSurveyUrl'] ?? '';
+        _surveyUrlController.text = draftData['surveyUrl'] ?? '';
+        _preSurveyTemplateId = draftData['preSurveyTemplateId'];
+        _experimentSurveyTemplateId = draftData['experimentSurveyTemplateId'];
+        
+        // 日程設定
+        _allowFlexibleSchedule = draftData['allowFlexibleSchedule'] ?? false;
+        if (draftData['scheduleType'] != null) {
+          _scheduleType = ScheduleType.values.firstWhere(
+            (e) => e.name == draftData['scheduleType'],
+            orElse: () => ScheduleType.fixed,
+          );
+        }
+        
+        // 日付の復元
+        if (draftData['recruitmentStartDate'] != null) {
+          _recruitmentStartDate = DateTime.parse(draftData['recruitmentStartDate']);
+        }
+        if (draftData['recruitmentEndDate'] != null) {
+          _recruitmentEndDate = DateTime.parse(draftData['recruitmentEndDate']);
+        }
+        if (draftData['experimentPeriodStart'] != null) {
+          _experimentPeriodStart = DateTime.parse(draftData['experimentPeriodStart']);
+        }
+        if (draftData['experimentPeriodEnd'] != null) {
+          _experimentPeriodEnd = DateTime.parse(draftData['experimentPeriodEnd']);
+        }
+        if (draftData['fixedExperimentDate'] != null) {
+          _fixedExperimentDate = DateTime.parse(draftData['fixedExperimentDate']);
+        }
+        if (draftData['fixedExperimentTime'] != null) {
+          final timeParts = draftData['fixedExperimentTime'].split(':');
+          _fixedExperimentTime = TimeOfDay(
+            hour: int.parse(timeParts[0]),
+            minute: int.parse(timeParts[1]),
+          );
+        }
+        
+        // タイムスロットの復元
+        if (draftData['dateTimeSlots'] != null) {
+          _dateTimeSlots = {};
+          final slots = draftData['dateTimeSlots'] as Map<String, dynamic>;
+          slots.forEach((dateStr, slotsList) {
+            final date = DateTime.parse(dateStr);
+            _dateTimeSlots[date] = (slotsList as List).map((slot) {
+              return DateTimeSlot.fromJson(slot);
+            }).toList();
+          });
+        }
+        
+        // 募集要項
+        _maxParticipantsController.text = draftData['maxParticipants']?.toString() ?? '';
+        if (draftData['requirements'] != null) {
+          _requirements.clear();
+          _requirements.addAll(List<String>.from(draftData['requirements']));
+        }
+        if (draftData['consentItems'] != null) {
+          _consentItems.clear();
+          _consentItems.addAll(List<String>.from(draftData['consentItems']));
+        }
+        
+        // 予約締切
+        _reservationDeadlineController.text = draftData['reservationDeadline']?.toString() ?? '1';
+        
+        // 現在のステップを復元
+        _currentStep = currentStep;
+        // ページコントローラーをそのステップに移動
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          _pageController.jumpToPage(_currentStep);
+        });
+      });
+      
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('下書きを復元しました'),
+          backgroundColor: Colors.green,
+        ),
+      );
+    }
+  }
+  
+  /// 自動保存タイマーを開始
+  void _startAutoSaveTimer() {
+    _autoSaveTimer = Timer.periodic(const Duration(seconds: 30), (_) {
+      if (_hasUnsavedChanges) {
+        _saveDraft();
+        _hasUnsavedChanges = false;
+      }
+    });
+  }
+  
+  /// 下書きを保存
+  Future<void> _saveDraft() async {
+    final draftData = {
+      // 基本情報
+      'title': _titleController.text,
+      'description': _descriptionController.text,
+      'detailedContent': _detailedContentController.text,
+      'labName': _labNameController.text,
+      'isLabExperiment': _isLabExperiment,
+      
+      // 実験詳細
+      'experimentType': _selectedType.name,
+      'location': _locationController.text,
+      'isPaid': _isPaid,
+      'reward': int.tryParse(_rewardController.text),
+      'duration': int.tryParse(_durationController.text),
+      
+      // アンケート設定
+      'preSurveyUrl': _preSurveyUrlController.text,
+      'surveyUrl': _surveyUrlController.text,
+      'preSurveyTemplateId': _preSurveyTemplateId,
+      'experimentSurveyTemplateId': _experimentSurveyTemplateId,
+      
+      // 日程設定
+      'allowFlexibleSchedule': _allowFlexibleSchedule,
+      'scheduleType': _scheduleType.name,
+      'recruitmentStartDate': _recruitmentStartDate?.toIso8601String(),
+      'recruitmentEndDate': _recruitmentEndDate?.toIso8601String(),
+      'experimentPeriodStart': _experimentPeriodStart?.toIso8601String(),
+      'experimentPeriodEnd': _experimentPeriodEnd?.toIso8601String(),
+      'fixedExperimentDate': _fixedExperimentDate?.toIso8601String(),
+      'fixedExperimentTime': _fixedExperimentTime != null 
+        ? '${_fixedExperimentTime!.hour}:${_fixedExperimentTime!.minute}'
+        : null,
+      
+      // タイムスロット
+      'dateTimeSlots': _dateTimeSlots.map((date, slots) {
+        return MapEntry(
+          date.toIso8601String(),
+          slots.map((slot) => slot.toJson()).toList(),
+        );
+      }),
+      
+      // 募集要項
+      'maxParticipants': int.tryParse(_maxParticipantsController.text),
+      'requirements': _requirements,
+      'consentItems': _consentItems,
+      
+      // 予約締切
+      'reservationDeadline': int.tryParse(_reservationDeadlineController.text),
+    };
+    
+    await ExperimentDraftService.saveDraft(
+      draftData: draftData,
+      currentStep: _currentStep,
+    );
+  }
+  
+  /// 変更を検知してフラグを立てる
+  void _markAsChanged() {
+    setState(() {
+      _hasUnsavedChanges = true;
+    });
   }
 
   /// サンプルデータを入力
@@ -276,22 +545,6 @@ class _CreateExperimentBaseState extends State<CreateExperimentBase> {
     // 柔軟なスケジュールの場合、期間やスロットが設定されていなくても許可
     // 固定日時の場合も、未設定を許可（個別調整で決定）
     
-    // 初回実験作成かつカレンダー連携が無効の場合、プロンプトを表示
-    if (!_hasShownCalendarPrompt && !widget.isDemo) {
-      final isFirstExperiment = await PreferenceService.isFirstExperimentCreated();
-      final calendarEnabled = await _calendarService.isCalendarEnabled();
-      final hasShownPrompt = await PreferenceService.hasShownCalendarPrompt();
-      
-      if (isFirstExperiment && !calendarEnabled && !hasShownPrompt) {
-        _hasShownCalendarPrompt = true;
-        await PreferenceService.recordCalendarPromptShown();
-        final shouldEnableCalendar = await _showCalendarPromptDialog();
-        if (shouldEnableCalendar) {
-          await _enableCalendarIntegration();
-        }
-      }
-    }
-    
     setState(() => _isLoading = true);
     
     final data = {
@@ -327,11 +580,17 @@ class _CreateExperimentBaseState extends State<CreateExperimentBase> {
         : null,
       'reservationDeadlineDays': int.tryParse(_reservationDeadlineController.text) ?? 1,
       'surveyUrl': _selectedType == ExperimentType.survey ? _surveyUrlController.text.trim() : null,
+      'preSurveyUrl': _preSurveyUrlController.text.trim().isNotEmpty ? _preSurveyUrlController.text.trim() : null,
+      'preSurveyTemplateId': _preSurveyTemplateId,
+      'experimentSurveyTemplateId': _experimentSurveyTemplateId,
       'isLabExperiment': _isLabExperiment,
     };
     
     try {
       await widget.onSave(data);
+      
+      // 作成成功後、下書きをクリア
+      await ExperimentDraftService.clearDraft();
       
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -356,82 +615,6 @@ class _CreateExperimentBaseState extends State<CreateExperimentBase> {
     }
   }
 
-  /// カレンダー連携プロンプトを表示
-  Future<bool> _showCalendarPromptDialog() async {
-    return await showDialog<bool>(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => AlertDialog(
-        title: const Row(
-          children: [
-            Icon(Icons.calendar_today, color: Colors.blue),
-            SizedBox(width: 8),
-            Text('Googleカレンダー連携'),
-          ],
-        ),
-        content: const Text(
-          '実験予約をGoogleカレンダーに自動で追加しますか？\n\n'
-          '連携すると、参加者からの予約が自動であなたの'
-          'カレンダーに登録されます。\n\n'
-          '（後から設定画面で変更できます）',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('今はしない'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('連携する'),
-          ),
-        ],
-      ),
-    ) ?? false;
-  }
-  
-  /// カレンダー連携を有効化
-  Future<void> _enableCalendarIntegration() async {
-    try {
-      setState(() => _isLoading = true);
-      
-      final hasPermission = await _calendarService.requestCalendarPermission();
-      if (hasPermission) {
-        await _calendarService.setCalendarEnabled(true);
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Googleカレンダーと連携しました'),
-              backgroundColor: Colors.green,
-            ),
-          );
-        }
-      } else {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('カレンダー連携がキャンセルされました'),
-              backgroundColor: Colors.orange,
-            ),
-          );
-        }
-      }
-    } catch (e) {
-      debugPrint('カレンダー連携エラー: $e');
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('カレンダー連携に失敗しました: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-    } finally {
-      if (mounted) {
-        setState(() => _isLoading = false);
-      }
-    }
-  }
-  
   /// ステップのタイトル
   String _getStepTitle() {
     switch (_currentStep) {
@@ -557,6 +740,8 @@ class _CreateExperimentBaseState extends State<CreateExperimentBase> {
         duration: const Duration(milliseconds: 300),
         curve: Curves.easeInOut,
       );
+      // ステップ変更時に下書きを保存
+      _saveDraft();
     }
   }
 
@@ -570,13 +755,53 @@ class _CreateExperimentBaseState extends State<CreateExperimentBase> {
         duration: const Duration(milliseconds: 300),
         curve: Curves.easeInOut,
       );
+      // ステップ変更時に下書きを保存
+      _saveDraft();
     }
+  }
+  
+  /// 画面を離れる前の確認
+  Future<bool> _onWillPop() async {
+    // 下書きを保存
+    await _saveDraft();
+    
+    // 変更がある場合は確認ダイアログを表示
+    if (_hasUnsavedChanges || 
+        _titleController.text.isNotEmpty || 
+        _descriptionController.text.isNotEmpty) {
+      final shouldLeave = await showDialog<bool>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('実験作成を中断しますか？'),
+          content: const Text('入力内容は下書きとして保存されます。\n後で続きから再開できます。'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: const Text('作成を続ける'),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF8E1728),
+              ),
+              child: const Text('下書き保存して終了'),
+            ),
+          ],
+        ),
+      ) ?? false;
+      
+      return shouldLeave;
+    }
+    
+    return true;
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
+    return WillPopScope(
+      onWillPop: _onWillPop,
+      child: Scaffold(
+        appBar: AppBar(
         title: Text(_getStepTitle()),
         actions: [
           if (widget.isDemo)
@@ -713,6 +938,7 @@ class _CreateExperimentBaseState extends State<CreateExperimentBase> {
           ),
         ],
       ),
+      ),
     );
   }
 
@@ -738,7 +964,10 @@ class _CreateExperimentBaseState extends State<CreateExperimentBase> {
               prefixIcon: Icon(Icons.title),
             ),
             maxLength: 20,
-            onChanged: (_) => setState(() {}),
+            onChanged: (_) {
+              setState(() {});
+              _markAsChanged();
+            },
             validator: (value) {
               if (value == null || value.trim().isEmpty) {
                 return 'タイトルを入力してください';
@@ -758,7 +987,10 @@ class _CreateExperimentBaseState extends State<CreateExperimentBase> {
             ),
             maxLines: 3,
             maxLength: 50,
-            onChanged: (_) => setState(() {}),
+            onChanged: (_) {
+              setState(() {});
+              _markAsChanged();
+            },
             validator: (value) {
               if (value == null || value.trim().isEmpty) {
                 return '説明を入力してください';
@@ -778,7 +1010,10 @@ class _CreateExperimentBaseState extends State<CreateExperimentBase> {
             ),
             maxLines: 8,
             maxLength: 1000,
-            onChanged: (_) => setState(() {}),
+            onChanged: (_) {
+              setState(() {});
+              _markAsChanged();
+            },
             validator: (value) {
               if (value == null || value.trim().isEmpty) {
                 return '詳細内容を入力してください';
@@ -803,6 +1038,7 @@ class _CreateExperimentBaseState extends State<CreateExperimentBase> {
                       _isLabExperiment = value!;
                       _labNameController.clear();
                     });
+                    _markAsChanged();
                   },
                   activeColor: const Color(0xFF8E1728),
                 ),
@@ -817,6 +1053,7 @@ class _CreateExperimentBaseState extends State<CreateExperimentBase> {
                       _isLabExperiment = value!;
                       _labNameController.clear();
                     });
+                    _markAsChanged();
                   },
                   activeColor: const Color(0xFF8E1728),
                 ),
@@ -832,7 +1069,10 @@ class _CreateExperimentBaseState extends State<CreateExperimentBase> {
               border: const OutlineInputBorder(),
               prefixIcon: Icon(_isLabExperiment ? Icons.school : Icons.person),
             ),
-            onChanged: (_) => setState(() {}),
+            onChanged: (_) {
+              setState(() {});
+              _markAsChanged();
+            },
             validator: (value) {
               if (value == null || value.trim().isEmpty) {
                 return _isLabExperiment ? '研究室名を入力してください' : '個人名を入力してください';
@@ -897,7 +1137,10 @@ class _CreateExperimentBaseState extends State<CreateExperimentBase> {
               border: OutlineInputBorder(),
               prefixIcon: Icon(Icons.location_on),
             ),
-            onChanged: (_) => setState(() {}),
+            onChanged: (_) {
+              setState(() {});
+              _markAsChanged();
+            },
             validator: (value) {
               if (value == null || value.trim().isEmpty) {
                 return '場所を入力してください';
@@ -936,7 +1179,10 @@ class _CreateExperimentBaseState extends State<CreateExperimentBase> {
               ),
               keyboardType: TextInputType.number,
               inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-              onChanged: (_) => setState(() {}),
+              onChanged: (_) {
+              setState(() {});
+              _markAsChanged();
+            },
               validator: (value) {
                 if (_isPaid && (value == null || value.isEmpty)) {
                   return '報酬額を入力してください';
@@ -962,7 +1208,10 @@ class _CreateExperimentBaseState extends State<CreateExperimentBase> {
             ),
             keyboardType: TextInputType.number,
             inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-            onChanged: (_) => setState(() {}),
+            onChanged: (_) {
+              setState(() {});
+              _markAsChanged();
+            },
             validator: (value) {
               if (value == null || value.trim().isEmpty) {
                 return '所要時間を入力してください';
@@ -974,8 +1223,228 @@ class _CreateExperimentBaseState extends State<CreateExperimentBase> {
             },
           ),
           
-          // アンケートURLフィールド（アンケートタイプの場合のみ表示）
+          // アンケート設定セクション（アンケートタイプ以外のみ）
+          if (_selectedType != ExperimentType.survey) ...[
+            const SizedBox(height: 24),
+            const Divider(),
+            const SizedBox(height: 16),
+            const Text('アンケート設定（任意）', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+            const SizedBox(height: 8),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.purple.shade50,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.purple.shade200),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.assignment, size: 20, color: Colors.purple.shade700),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Googleフォームで事前アンケートや事後アンケートを作成できます',
+                      style: TextStyle(fontSize: 13, color: Colors.purple.shade700),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+            
+            // 事前アンケート
+            Card(
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      const Icon(Icons.fact_check, color: Color(0xFF8E1728)),
+                      const SizedBox(width: 8),
+                      const Text('事前アンケート', style: TextStyle(fontWeight: FontWeight.bold)),
+                      const Spacer(),
+                      if (_preSurveyUrlController.text.trim().isNotEmpty)
+                        const Chip(
+                          label: Text('設定済み', style: TextStyle(fontSize: 12)),
+                          backgroundColor: Colors.green,
+                          labelStyle: TextStyle(color: Colors.white),
+                        ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    '参加者の基本情報や実験参加条件を確認するアンケート',
+                    style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                  ),
+                  const SizedBox(height: 12),
+                  TextFormField(
+                    controller: _preSurveyUrlController,
+                    decoration: const InputDecoration(
+                      labelText: '事前アンケートURL',
+                      hintText: 'https://forms.google.com/...',
+                      border: OutlineInputBorder(),
+                      prefixIcon: Icon(Icons.link),
+                      contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    ),
+                    keyboardType: TextInputType.url,
+                    onChanged: (_) {
+              setState(() {});
+              _markAsChanged();
+            },
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          onPressed: () async {
+                            await showDialog(
+                              context: context,
+                              builder: (context) => SurveyTemplateSelector(
+                                isPreSurvey: true,
+                                onTemplateSelected: (template) {
+                                  setState(() {
+                                    _preSurveyTemplateId = template.id;
+                                  });
+                                },
+                                onUrlEntered: (url) {
+                                  setState(() {
+                                    _preSurveyUrlController.text = url;
+                                  });
+                                },
+                              ),
+                            );
+                          },
+                          icon: const Icon(Icons.list_alt),
+                          label: const Text('テンプレートから作成'),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      if (_preSurveyUrlController.text.trim().isNotEmpty)
+                        IconButton(
+                          onPressed: () {
+                            setState(() {
+                              _preSurveyUrlController.clear();
+                              _preSurveyTemplateId = null;
+                            });
+                          },
+                          icon: const Icon(Icons.clear),
+                          tooltip: 'クリア',
+                        ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            ),
+            const SizedBox(height: 16),
+            
+            // 事後アンケート
+            Card(
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      const Icon(Icons.quiz, color: Color(0xFF8E1728)),
+                      const SizedBox(width: 8),
+                      const Text('事後アンケート', style: TextStyle(fontWeight: FontWeight.bold)),
+                      const Spacer(),
+                      if (_surveyUrlController.text.trim().isNotEmpty)
+                        const Chip(
+                          label: Text('設定済み', style: TextStyle(fontSize: 12)),
+                          backgroundColor: Colors.green,
+                          labelStyle: TextStyle(color: Colors.white),
+                        ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    '実験後の評価や感想を収集するアンケート',
+                    style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                  ),
+                  const SizedBox(height: 12),
+                  TextFormField(
+                    controller: _surveyUrlController,
+                    decoration: InputDecoration(
+                      labelText: '事後アンケートURL',
+                      hintText: 'https://forms.google.com/...',
+                      border: const OutlineInputBorder(),
+                      prefixIcon: const Icon(Icons.link),
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    ),
+                    keyboardType: TextInputType.url,
+                    onChanged: (_) {
+              setState(() {});
+              _markAsChanged();
+            },
+                    validator: (value) {
+                      if (value != null && value.trim().isNotEmpty) {
+                        // URLが入力されている場合のみバリデーション
+                        if (!value.startsWith('http://') && !value.startsWith('https://')) {
+                          return '有効なURLを入力してください';
+                        }
+                      }
+                      return null;
+                    },
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          onPressed: () async {
+                            await showDialog(
+                              context: context,
+                              builder: (context) => SurveyTemplateSelector(
+                                isPreSurvey: false,
+                                onTemplateSelected: (template) {
+                                  setState(() {
+                                    _experimentSurveyTemplateId = template.id;
+                                  });
+                                },
+                                onUrlEntered: (url) {
+                                  setState(() {
+                                    _surveyUrlController.text = url;
+                                  });
+                                },
+                              ),
+                            );
+                          },
+                          icon: const Icon(Icons.list_alt),
+                          label: const Text('テンプレートから作成'),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      if (_surveyUrlController.text.trim().isNotEmpty)
+                        IconButton(
+                          onPressed: () {
+                            setState(() {
+                              _surveyUrlController.clear();
+                              _experimentSurveyTemplateId = null;
+                            });
+                          },
+                          icon: const Icon(Icons.clear),
+                          tooltip: 'クリア',
+                        ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+          ],
+          
+          // アンケートタイプの実験の場合のアンケートURL入力
           if (_selectedType == ExperimentType.survey) ...[
+            const SizedBox(height: 24),
+            const Divider(),
+            const SizedBox(height: 16),
+            const Text('アンケートURL設定', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
             const SizedBox(height: 16),
             TextFormField(
               controller: _surveyUrlController,
@@ -987,7 +1456,10 @@ class _CreateExperimentBaseState extends State<CreateExperimentBase> {
                 prefixIcon: Icon(Icons.link),
               ),
               keyboardType: TextInputType.url,
-              onChanged: (_) => setState(() {}),
+              onChanged: (_) {
+              setState(() {});
+              _markAsChanged();
+            },
               validator: (value) {
                 if (value != null && value.trim().isNotEmpty) {
                   // URLが入力されている場合のみバリデーション
@@ -1435,7 +1907,10 @@ class _CreateExperimentBaseState extends State<CreateExperimentBase> {
             ),
             keyboardType: TextInputType.number,
             inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-            onChanged: (_) => setState(() {}),
+            onChanged: (_) {
+              setState(() {});
+              _markAsChanged();
+            },
           ),
           const SizedBox(height: 24),
           
@@ -1671,6 +2146,10 @@ class _CreateExperimentBaseState extends State<CreateExperimentBase> {
               _buildConfirmationItem('所要時間', '${previewExperiment.duration}分'),
             if (_selectedType == ExperimentType.survey && _surveyUrlController.text.trim().isNotEmpty)
               _buildConfirmationItem('アンケートURL', _surveyUrlController.text.trim()),
+            if (_selectedType != ExperimentType.survey && _preSurveyUrlController.text.trim().isNotEmpty)
+              _buildConfirmationItem('事前アンケートURL', _preSurveyUrlController.text.trim()),
+            if (_selectedType != ExperimentType.survey && _surveyUrlController.text.trim().isNotEmpty)
+              _buildConfirmationItem('事後アンケートURL', _surveyUrlController.text.trim()),
           ]),
           const SizedBox(height: 16),
           

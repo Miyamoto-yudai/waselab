@@ -108,14 +108,19 @@ service cloud.firestore {
         request.resource.data.receiverId != null &&
         request.resource.data.conversationId != null &&
         request.resource.data.content != null;
-      // Allow update for isRead field
-      allow update: if isAuthenticated() && 
-        (request.auth.uid == resource.data.receiverId ||
-         resource.data.receiverId == 'support_team' ||
-         resource.data.senderId == 'support_team') &&
-        // Only allow updating isRead field
-        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['isRead']);
-      allow delete: if false; // Messages should not be deleted
+      // Allow update for message editing, deletion, and read status
+      allow update: if isAuthenticated() && (
+        // Sender can edit or delete their own messages
+        (request.auth.uid == resource.data.senderId && 
+         request.resource.data.diff(resource.data).affectedKeys().hasAny(['content', 'isEdited', 'editedAt', 'isDeleted'])) ||
+        // Receiver can mark messages as read
+        (request.auth.uid == resource.data.receiverId &&
+         request.resource.data.diff(resource.data).affectedKeys().hasOnly(['isRead'])) ||
+        // Support team special handling
+        (resource.data.receiverId == 'support_team' ||
+         resource.data.senderId == 'support_team')
+      );
+      allow delete: if false; // Messages should not be physically deleted
     }
     
     // Evaluations collection - 実験評価

@@ -261,7 +261,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                       const SizedBox(height: 8),
                       Text(
-                        'すべての方がご利用いただけます',
+                        '学外の方もご利用いただけます',
                         style: TextStyle(
                           fontSize: 12,
                           color: Colors.grey[600],
