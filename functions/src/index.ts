@@ -3,6 +3,11 @@ import * as admin from "firebase-admin";
 
 admin.initializeApp();
 
+// Google Forms 関連の関数をエクスポート
+// 注意: App Engineデフォルトサービスアカウントは Google Forms API をサポートしていません
+// Google Apps Script経由でフォームを作成する代替実装を使用
+export {createGoogleFormViaAppsScript as createGoogleFormFromTemplate} from "./googleFormsViaAppsScript";
+
 const db = admin.firestore();
 const messaging = admin.messaging();
 

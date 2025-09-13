@@ -43,3 +43,14 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# Firebase Functions environment files
+functions/.env
+functions/.env.*
+
+# Service account keys
+*.json
+!package.json
+!package-lock.json
+!firebase.json
+!tsconfig.json

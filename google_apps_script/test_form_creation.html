@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Google Forms 作成テスト</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            margin-bottom: 20px;
+        }
+        .input-group {
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+            color: #555;
+        }
+        input[type="text"] {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 16px;
+        }
+        button {
+            background-color: #4285f4;
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            font-size: 16px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-right: 10px;
+        }
+        button:hover {
+            background-color: #357ae8;
+        }
+        button:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+        .status {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 5px;
+            display: none;
+        }
+        .status.success {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+            display: block;
+        }
+        .status.error {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+            display: block;
+        }
+        .status.loading {
+            background-color: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+            display: block;
+        }
+        .result-links {
+            margin-top: 15px;
+        }
+        .result-links a {
+            display: inline-block;
+            margin-right: 15px;
+            color: #4285f4;
+            text-decoration: none;
+        }
+        .result-links a:hover {
+            text-decoration: underline;
+        }
+        .test-info {
+            background-color: #fff3cd;
+            color: #856404;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+            border: 1px solid #ffeeba;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧪 Google Forms 作成テスト</h1>
+        
+        <div class="test-info">
+            <strong>テスト手順:</strong>
+            <ol>
+                <li>Google Apps Script URLを入力（デプロイ時に取得したURL）</li>
+                <li>「テストフォームを作成」ボタンをクリック</li>
+                <li>成功すると編集URLとプレビューURLが表示されます</li>
+            </ol>
+        </div>
+
+        <div class="input-group">
+            <label for="scriptUrl">Google Apps Script Web App URL:</label>
+            <input type="text" id="scriptUrl" placeholder="https://script.google.com/macros/s/..." value="">
+        </div>
+
+        <button onclick="testFormCreation()">テストフォームを作成</button>
+        <button onclick="testDirectly()">直接Apps Scriptをテスト</button>
+        
+        <div id="status" class="status"></div>
+        <div id="result" class="result-links"></div>
+    </div>
+
+    <script>
+        async function testFormCreation() {
+            const scriptUrl = document.getElementById('scriptUrl').value;
+            const statusDiv = document.getElementById('status');
+            const resultDiv = document.getElementById('result');
+            
+            if (!scriptUrl) {
+                statusDiv.className = 'status error';
+                statusDiv.textContent = 'Google Apps Script URLを入力してください';
+                return;
+            }
+            
+            statusDiv.className = 'status loading';
+            statusDiv.textContent = '⏳ フォームを作成中...';
+            resultDiv.innerHTML = '';
+            
+            const testData = {
+                action: 'createForm',
+                template: {
+                    title: 'テストアンケート ' + new Date().toLocaleString('ja-JP'),
+                    description: 'これはGoogle Apps Script経由で作成されたテストフォームです',
+                    instructions: '以下の質問にお答えください',
+                    questions: [
+                        {
+                            question: 'お名前を教えてください',
+                            type: 'shortText',
+                            required: true,
+                            placeholder: '山田太郎'
+                        },
+                        {
+                            question: '年齢を選択してください',
+                            type: 'multipleChoice',
+                            required: true,
+                            options: ['18歳未満', '18-25歳', '26-35歳', '36-45歳', '46歳以上']
+                        },
+                        {
+                            question: '満足度を評価してください',
+                            type: 'scale',
+                            required: true,
+                            scaleMin: 1,
+                            scaleMax: 5,
+                            scaleMinLabel: '非常に不満',
+                            scaleMaxLabel: '非常に満足'
+                        },
+                        {
+                            question: 'ご意見・ご感想をお聞かせください',
+                            type: 'longText',
+                            required: false,
+                            placeholder: '自由にご記入ください'
+                        }
+                    ]
+                }
+            };
+            
+            try {
+                const response = await fetch(scriptUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'text/plain',
+                    },
+                    body: JSON.stringify(testData),
+                    mode: 'no-cors'
+                });
+                
+                // no-corsモードでは応答が読めないので、成功と仮定
+                statusDiv.className = 'status success';
+                statusDiv.innerHTML = '✅ リクエストを送信しました！<br>Google Apps Scriptコンソールでログを確認してください。';
+                
+                // 手動でURLを構築する例を表示
+                resultDiv.innerHTML = `
+                    <strong>次のステップ:</strong><br>
+                    1. Google Apps Scriptエディタの「実行」メニューから「test」関数を実行<br>
+                    2. 実行ログでフォームIDを確認<br>
+                    3. 作成されたフォームはGoogleドライブで確認できます
+                `;
+                
+            } catch (error) {
+                statusDiv.className = 'status error';
+                statusDiv.textContent = '❌ エラー: ' + error.message;
+            }
+        }
+        
+        async function testDirectly() {
+            const statusDiv = document.getElementById('status');
+            const resultDiv = document.getElementById('result');
+            
+            statusDiv.className = 'status loading';
+            statusDiv.textContent = '⏳ 直接テスト中...';
+            
+            // Firebase Functionsのローカルテスト用
+            const testUrl = 'http://localhost:5001/waselab-30308/us-central1/createGoogleFormFromTemplate';
+            
+            const testData = {
+                data: {
+                    template: {
+                        title: 'ローカルテスト ' + new Date().toLocaleString('ja-JP'),
+                        description: 'Firebase Functions経由のテスト',
+                        questions: [
+                            {
+                                question: 'テスト質問',
+                                type: 'shortText',
+                                required: true
+                            }
+                        ]
+                    }
+                }
+            };
+            
+            try {
+                const response = await fetch(testUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(testData)
+                });
+                
+                const result = await response.json();
+                
+                if (result.result && result.result.success) {
+                    statusDiv.className = 'status success';
+                    statusDiv.textContent = '✅ フォームが正常に作成されました！';
+                    
+                    resultDiv.innerHTML = `
+                        <a href="${result.result.editUrl}" target="_blank">📝 フォームを編集</a>
+                        <a href="${result.result.formUrl}" target="_blank">👁️ フォームをプレビュー</a>
+                    `;
+                } else {
+                    throw new Error(result.error || 'フォーム作成に失敗しました');
+                }
+                
+            } catch (error) {
+                statusDiv.className = 'status error';
+                statusDiv.innerHTML = `❌ ローカルテストエラー<br>
+                    Firebase Functionsをローカルで実行してください:<br>
+                    <code>cd functions && npm run serve</code>`;
+            }
+        }
+        
+        // ページ読み込み時にURLを自動入力（開発用）
+        window.onload = function() {
+            const savedUrl = localStorage.getItem('appsScriptUrl');
+            if (savedUrl) {
+                document.getElementById('scriptUrl').value = savedUrl;
+            }
+        };
+        
+        // URL入力時に保存
+        document.getElementById('scriptUrl').addEventListener('change', function(e) {
+            localStorage.setItem('appsScriptUrl', e.target.value);
+        });
+    </script>
+</body>
+</html>

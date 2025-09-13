@@ -1,9 +1,14 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.sendTestNotification = exports.removeFCMToken = exports.updateUserFCMToken = exports.sendExperimentCompletedNotification = exports.sendCancellationNotification = exports.sendReservationNotification = exports.sendMessageNotification = exports.sendEvaluationNotification = exports.onNotificationCreated = void 0;
+exports.sendTestNotification = exports.removeFCMToken = exports.updateUserFCMToken = exports.sendExperimentCompletedNotification = exports.sendCancellationNotification = exports.sendReservationNotification = exports.sendMessageNotification = exports.sendEvaluationNotification = exports.onNotificationCreated = exports.createGoogleFormFromTemplate = void 0;
 const functions = require("firebase-functions");
 const admin = require("firebase-admin");
 admin.initializeApp();
+// Google Forms 関連の関数をエクスポート
+// 注意: App Engineデフォルトサービスアカウントは Google Forms API をサポートしていません
+// Google Apps Script経由でフォームを作成する代替実装を使用
+var googleFormsViaAppsScript_1 = require("./googleFormsViaAppsScript");
+Object.defineProperty(exports, "createGoogleFormFromTemplate", { enumerable: true, get: function () { return googleFormsViaAppsScript_1.createGoogleFormViaAppsScript; } });
 const db = admin.firestore();
 const messaging = admin.messaging();
 async function sendPushNotification(token, title, body, data) {
