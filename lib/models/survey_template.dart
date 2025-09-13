@@ -237,4 +237,194 @@ class SurveyTemplate {
     
     return buffer.toString();
   }
+  
+  /// GoogleフォームAPI用のJSON形式でエクスポート
+  Map<String, dynamic> exportAsGoogleFormsJson() {
+    return {
+      'title': title,
+      'description': description,
+      'documentTitle': title,
+      'confirmationMessage': '回答を送信しました。ご協力ありがとうございます。',
+      'items': questions.map((q) => _questionToGoogleFormsItem(q)).toList(),
+    };
+  }
+  
+  /// 質問をGoogleフォームのアイテム形式に変換
+  Map<String, dynamic> _questionToGoogleFormsItem(SurveyQuestion q) {
+    final item = {
+      'title': q.question,
+      'description': q.placeholder ?? '',
+      'required': q.required,
+    };
+    
+    switch (q.type) {
+      case QuestionType.multipleChoice:
+        item['questionItem'] = {
+          'question': {
+            'required': q.required,
+            'choiceQuestion': {
+              'type': 'RADIO',
+              'options': q.options?.map((opt) => {'value': opt}).toList() ?? [],
+            }
+          }
+        };
+        break;
+      case QuestionType.checkbox:
+        item['questionItem'] = {
+          'question': {
+            'required': q.required,
+            'choiceQuestion': {
+              'type': 'CHECKBOX',
+              'options': q.options?.map((opt) => {'value': opt}).toList() ?? [],
+            }
+          }
+        };
+        break;
+      case QuestionType.scale:
+        item['questionItem'] = {
+          'question': {
+            'required': q.required,
+            'scaleQuestion': {
+              'low': q.scaleMin ?? 1,
+              'high': q.scaleMax ?? 5,
+              'lowLabel': q.scaleMinLabel ?? '',
+              'highLabel': q.scaleMaxLabel ?? '',
+            }
+          }
+        };
+        break;
+      case QuestionType.shortText:
+        item['questionItem'] = {
+          'question': {
+            'required': q.required,
+            'textQuestion': {
+              'paragraph': false,
+            }
+          }
+        };
+        break;
+      case QuestionType.longText:
+        item['questionItem'] = {
+          'question': {
+            'required': q.required,
+            'textQuestion': {
+              'paragraph': true,
+            }
+          }
+        };
+        break;
+      case QuestionType.date:
+        item['questionItem'] = {
+          'question': {
+            'required': q.required,
+            'dateQuestion': {
+              'includeTime': false,
+              'includeYear': true,
+            }
+          }
+        };
+        break;
+      case QuestionType.time:
+        item['questionItem'] = {
+          'question': {
+            'required': q.required,
+            'timeQuestion': {
+              'duration': false,
+            }
+          }
+        };
+        break;
+    }
+    
+    return item;
+  }
+  
+  /// 構造化されたMarkdown形式でエクスポート
+  String exportAsMarkdown() {
+    final buffer = StringBuffer();
+    
+    buffer.writeln('# $title');
+    buffer.writeln();
+    buffer.writeln('## 概要');
+    buffer.writeln('- **説明**: $description');
+    buffer.writeln('- **タイプ**: ${type.label}');
+    buffer.writeln('- **カテゴリ**: ${category.label}');
+    if (estimatedMinutes != null) {
+      buffer.writeln('- **予想所要時間**: 約$estimatedMinutes分');
+    }
+    buffer.writeln();
+    
+    if (instructions != null) {
+      buffer.writeln('## 回答手順');
+      buffer.writeln(instructions);
+      buffer.writeln();
+    }
+    
+    buffer.writeln('## 質問項目');
+    buffer.writeln();
+    
+    for (int i = 0; i < questions.length; i++) {
+      final q = questions[i];
+      final num = i + 1;
+      final requiredMark = q.required ? ' *(必須)*' : '';
+      
+      buffer.writeln('### $num. ${q.question}$requiredMark');
+      buffer.writeln();
+      
+      // 質問タイプの情報
+      buffer.write('**形式**: ');
+      switch (q.type) {
+        case QuestionType.multipleChoice:
+          buffer.writeln('ラジオボタン（単一選択）');
+          if (q.options != null) {
+            buffer.writeln('**選択肢**:');
+            for (final option in q.options!) {
+              buffer.writeln('- [ ] $option');
+            }
+          }
+          break;
+        case QuestionType.checkbox:
+          buffer.writeln('チェックボックス（複数選択可）');
+          if (q.options != null) {
+            buffer.writeln('**選択肢**:');
+            for (final option in q.options!) {
+              buffer.writeln('- [ ] $option');
+            }
+          }
+          break;
+        case QuestionType.scale:
+          final min = q.scaleMin ?? 1;
+          final max = q.scaleMax ?? 5;
+          buffer.writeln('線形目盛り（$min～$max）');
+          if (q.scaleMinLabel != null || q.scaleMaxLabel != null) {
+            buffer.writeln('**ラベル**:');
+            if (q.scaleMinLabel != null) buffer.writeln('- 最小値: ${q.scaleMinLabel}');
+            if (q.scaleMaxLabel != null) buffer.writeln('- 最大値: ${q.scaleMaxLabel}');
+          }
+          break;
+        case QuestionType.shortText:
+          buffer.writeln('記述式（短文回答）');
+          if (q.placeholder != null) {
+            buffer.writeln('**ヒント**: ${q.placeholder}');
+          }
+          break;
+        case QuestionType.longText:
+          buffer.writeln('記述式（長文回答）');
+          if (q.placeholder != null) {
+            buffer.writeln('**ヒント**: ${q.placeholder}');
+          }
+          break;
+        case QuestionType.date:
+          buffer.writeln('日付選択');
+          break;
+        case QuestionType.time:
+          buffer.writeln('時刻選択');
+          break;
+      }
+      
+      buffer.writeln();
+    }
+    
+    return buffer.toString();
+  }
 }

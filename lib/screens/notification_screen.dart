@@ -578,15 +578,19 @@ class _NotificationScreenState extends State<NotificationScreen> {
                                               strokeWidth: 2,
                                             ),
                                           )
-                                        : InkWell(
-                                            onTap: () => _addToCalendar(notification),
-                                            borderRadius: BorderRadius.circular(4),
-                                            child: Container(
-                                              padding: const EdgeInsets.symmetric(
-                                                horizontal: 6,
-                                                vertical: 2,
-                                              ),
-                                              decoration: BoxDecoration(
+                                        : Material(
+                                            color: Colors.transparent,
+                                            child: InkWell(
+                                              onTap: () => _addToCalendar(notification),
+                                              borderRadius: BorderRadius.circular(4),
+                                              splashColor: Colors.blue.withOpacity(0.3),
+                                              highlightColor: Colors.blue.withOpacity(0.1),
+                                              child: Container(
+                                                padding: const EdgeInsets.symmetric(
+                                                  horizontal: 8,
+                                                  vertical: 4,
+                                                ),
+                                                decoration: BoxDecoration(
                                                 color: Colors.blue.withOpacity(0.1),
                                                 borderRadius: BorderRadius.circular(4),
                                                 border: Border.all(
@@ -612,6 +616,7 @@ class _NotificationScreenState extends State<NotificationScreen> {
                                                     ),
                                                   ),
                                                 ],
+                                                ),
                                               ),
                                             ),
                                           ),

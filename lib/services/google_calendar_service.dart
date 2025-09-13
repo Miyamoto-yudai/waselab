@@ -90,34 +90,31 @@ class GoogleCalendarService {
         return null;
       }
       
-      // GoogleカレンダーのURLを生成
-      final calendarUrl = _createGoogleCalendarUrl(
-        title: '【わせラボ】${experiment.title}',
-        details: _createEventDescription(experiment, slot),
-        location: _getEventLocation(experiment),
+      final title = '【わせラボ】${experiment.title}';
+      final details = _createEventDescription(experiment, slot);
+      final location = _getEventLocation(experiment);
+      
+      // カレンダーを開く
+      final result = await _openCalendar(
+        title: title,
+        details: details,
+        location: location,
         startTime: slot.startTime,
         endTime: slot.endTime,
       );
       
-      // URLを開く
-      if (await canLaunchUrl(Uri.parse(calendarUrl))) {
-        await launchUrl(
-          Uri.parse(calendarUrl),
-          mode: LaunchMode.externalApplication,
-        );
-        
+      if (result) {
         // Firestoreにカレンダー追加情報を保存
         await _firestore
             .collection('experiment_reservations')
             .doc(reservationId)
             .update({
           'calendarAddedAt': FieldValue.serverTimestamp(),
-          'calendarUrl': calendarUrl,
         });
         
-        return reservationId; // 予約IDを返す
+        return reservationId;
       } else {
-        debugPrint('カレンダーURLを開けませんでした');
+        debugPrint('カレンダーを開けませんでした');
         return null;
       }
     } catch (e) {
@@ -183,29 +180,189 @@ class GoogleCalendarService {
         eventLocation = surveyUrl;
       }
       
-      // GoogleカレンダーのURLを生成
-      final calendarUrl = _createGoogleCalendarUrl(
-        title: '【わせラボ】$experimentTitle - $participantName',
-        details: '参加者: $participantName\n\nわせラボで予約された実験です。',
+      final title = '【わせラボ】$experimentTitle - $participantName';
+      final details = '参加者: $participantName\n\nわせラボで予約された実験です。';
+      
+      // カレンダーを開く
+      final result = await _openCalendar(
+        title: title,
+        details: details,
         location: eventLocation,
         startTime: startTime,
         endTime: endTime,
       );
       
-      // URLを開く
-      if (await canLaunchUrl(Uri.parse(calendarUrl))) {
-        await launchUrl(
-          Uri.parse(calendarUrl),
-          mode: LaunchMode.externalApplication,
-        );
+      if (result) {
         return 'quick-add-${DateTime.now().millisecondsSinceEpoch}';
       } else {
-        debugPrint('カレンダーURLを開けませんでした');
+        debugPrint('カレンダーを開けませんでした');
         return null;
       }
     } catch (e) {
       debugPrint('クイックカレンダーイベント追加エラー: $e');
       return null;
+    }
+  }
+  
+  /// カレンダーを開く（プラットフォーム別処理）
+  Future<bool> _openCalendar({
+    required String title,
+    required String details,
+    String? location,
+    required DateTime startTime,
+    required DateTime endTime,
+  }) async {
+    try {
+      debugPrint('Opening calendar for platform: ${kIsWeb ? "Web" : defaultTargetPlatform.toString()}');
+      
+      if (kIsWeb) {
+        // Web環境: ブラウザでGoogleカレンダーを開く
+        return await _openCalendarOnWeb(
+          title: title,
+          details: details,
+          location: location,
+          startTime: startTime,
+          endTime: endTime,
+        );
+      } else {
+        // モバイル環境: プラットフォームに応じた処理
+        if (defaultTargetPlatform == TargetPlatform.iOS) {
+          return await _openCalendarOnIOS(
+            title: title,
+            details: details,
+            location: location,
+            startTime: startTime,
+            endTime: endTime,
+          );
+        } else if (defaultTargetPlatform == TargetPlatform.android) {
+          return await _openCalendarOnAndroid(
+            title: title,
+            details: details,
+            location: location,
+            startTime: startTime,
+            endTime: endTime,
+          );
+        } else {
+          // その他のプラットフォーム（デスクトップなど）
+          return await _openCalendarOnWeb(
+            title: title,
+            details: details,
+            location: location,
+            startTime: startTime,
+            endTime: endTime,
+          );
+        }
+      }
+    } catch (e) {
+      debugPrint('Error opening calendar: $e');
+      // エラーが発生した場合はWebブラウザで開く
+      return await _openCalendarOnWeb(
+        title: title,
+        details: details,
+        location: location,
+        startTime: startTime,
+        endTime: endTime,
+      );
+    }
+  }
+  
+  /// Web環境でカレンダーを開く
+  Future<bool> _openCalendarOnWeb({
+    required String title,
+    required String details,
+    String? location,
+    required DateTime startTime,
+    required DateTime endTime,
+  }) async {
+    try {
+      final calendarUrl = _createGoogleCalendarUrl(
+        title: title,
+        details: details,
+        location: location,
+        startTime: startTime,
+        endTime: endTime,
+      );
+      
+      debugPrint('Opening web calendar URL: $calendarUrl');
+      
+      final uri = Uri.parse(calendarUrl);
+      
+      // canLaunchUrlのチェックをスキップして直接開く
+      // iOS/AndroidではcanLaunchUrlが正しく動作しない場合がある
+      try {
+        await launchUrl(
+          uri,
+          mode: LaunchMode.externalApplication,
+        );
+        debugPrint('Successfully opened calendar URL');
+        return true;
+      } catch (launchError) {
+        debugPrint('Failed to launch URL, trying with inAppWebView: $launchError');
+        // 外部アプリで開けない場合はアプリ内ブラウザで開く
+        try {
+          await launchUrl(
+            uri,
+            mode: LaunchMode.inAppWebView,
+          );
+          return true;
+        } catch (e) {
+          debugPrint('Failed to open in app web view: $e');
+          return false;
+        }
+      }
+    } catch (e) {
+      debugPrint('Error opening web calendar: $e');
+      return false;
+    }
+  }
+  
+  /// iOS環境でカレンダーを開く
+  Future<bool> _openCalendarOnIOS({
+    required String title,
+    required String details,
+    String? location,
+    required DateTime startTime,
+    required DateTime endTime,
+  }) async {
+    try {
+      // iOSでは直接Googleカレンダーアプリを開くことが難しいため、
+      // Webブラウザ経由でGoogleカレンダーを開く
+      debugPrint('Opening Google Calendar via web browser on iOS');
+      return await _openCalendarOnWeb(
+        title: title,
+        details: details,
+        location: location,
+        startTime: startTime,
+        endTime: endTime,
+      );
+    } catch (e) {
+      debugPrint('Error opening iOS calendar: $e');
+      return false;
+    }
+  }
+  
+  /// Android環境でカレンダーを開く
+  Future<bool> _openCalendarOnAndroid({
+    required String title,
+    required String details,
+    String? location,
+    required DateTime startTime,
+    required DateTime endTime,
+  }) async {
+    try {
+      // AndroidでもWebブラウザ経由でGoogleカレンダーを開く
+      // インテントURLはデバイスやアプリのバージョンによって動作が不安定
+      debugPrint('Opening Google Calendar via web browser on Android');
+      return await _openCalendarOnWeb(
+        title: title,
+        details: details,
+        location: location,
+        startTime: startTime,
+        endTime: endTime,
+      );
+    } catch (e) {
+      debugPrint('Error opening Android calendar: $e');
+      return false;
     }
   }
   

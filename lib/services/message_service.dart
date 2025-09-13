@@ -104,7 +104,7 @@ class MessageService {
       });
     } catch (e) {
       print('Error editing message: $e');
-      throw e;
+      rethrow;
     }
   }
 
@@ -123,7 +123,7 @@ class MessageService {
       });
     } catch (e) {
       print('Error deleting message: $e');
-      throw e;
+      rethrow;
     }
   }
   
@@ -172,7 +172,7 @@ class MessageService {
       return conversationId;
     } catch (e) {
       print('Error forwarding message: $e');
-      throw e;
+      rethrow;
     }
   }
 

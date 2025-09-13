@@ -62,5 +62,11 @@
 			</array>
 		</dict>
 	</array>
+	<!-- URL Schemes for Calendar Apps -->
+	<key>LSApplicationQueriesSchemes</key>
+	<array>
+		<string>https</string>
+		<string>http</string>
+	</array>
 </dict>
 </plist>

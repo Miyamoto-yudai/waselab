@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:cloud_functions/cloud_functions.dart';
 import '../models/survey_template.dart';
 import '../data/survey_templates.dart';
 import 'package:flutter/services.dart';
@@ -8,7 +9,79 @@ import 'package:flutter/services.dart';
 class GoogleFormsService {
   static const String _baseFormUrl = 'https://docs.google.com/forms/create';
   
-  /// テンプレートを使用してGoogleフォームを開く
+  /// Firebase Functions経由でGoogleフォームを自動作成して開く
+  static Future<Map<String, dynamic>?> createAndOpenGoogleForm({
+    required SurveyTemplate template,
+    String? customTitle,
+  }) async {
+    try {
+      // Firebase Functionsを呼び出し
+      final HttpsCallable callable = FirebaseFunctions.instance
+          .httpsCallable('createGoogleFormFromTemplate');
+      
+      // テンプレートデータを準備
+      final templateData = {
+        'title': customTitle ?? '${template.title}_${DateTime.now().millisecondsSinceEpoch}',
+        'description': template.description,
+        'type': template.type.name,
+        'category': template.category.name,
+        'questions': template.questions.map((q) => {
+          'question': q.question,
+          'type': q.type.name,
+          'required': q.required,
+          'options': q.options,
+          'scaleMin': q.scaleMin,
+          'scaleMax': q.scaleMax,
+          'scaleMinLabel': q.scaleMinLabel,
+          'scaleMaxLabel': q.scaleMaxLabel,
+          'placeholder': q.placeholder,
+        }).toList(),
+        'instructions': template.instructions,
+        'estimatedMinutes': template.estimatedMinutes,
+      };
+      
+      // Functionsを実行
+      final result = await callable.call({
+        'template': templateData,
+        'customTitle': customTitle,
+      });
+      
+      final data = result.data as Map<String, dynamic>;
+      
+      if (data['success'] == true && data['formUrl'] != null) {
+        // 作成されたフォームを開く
+        final formUrl = Uri.parse(data['formUrl']);
+        if (await canLaunchUrl(formUrl)) {
+          await launchUrl(
+            formUrl,
+            mode: LaunchMode.externalApplication,
+          );
+        }
+        return data;
+      }
+      
+      return null;
+    } on FirebaseFunctionsException catch (e) {
+      debugPrint('Firebase Functions Error: ${e.code} - ${e.message}');
+      debugPrint('Details: ${e.details}');
+      
+      // エラー情報を返す（UIで表示するため）
+      return {
+        'success': false,
+        'error': e.message,
+        'code': e.code,
+        'details': e.details,
+      };
+    } catch (e) {
+      debugPrint('Error creating Google Form via Functions: $e');
+      return {
+        'success': false,
+        'error': e.toString(),
+      };
+    }
+  }
+  
+  /// テンプレートを使用してGoogleフォームを開く（従来の手動方式）
   static Future<bool> openGoogleFormWithTemplate(SurveyTemplate template) async {
     try {
       // テンプレートから生成したURLを開く

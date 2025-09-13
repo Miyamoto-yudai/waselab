@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'dart:convert';
 import '../models/survey_template.dart';
 import '../services/google_forms_service.dart';
 
@@ -34,10 +35,20 @@ class _SurveyTemplateSelectorState extends State<SurveyTemplateSelector> {
   
   @override
   Widget build(BuildContext context) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final screenHeight = MediaQuery.of(context).size.height;
+    final isMobile = screenWidth < 600;
+
+    // モバイルの場合はモーダルボトムシートとして表示
+    if (isMobile) {
+      return _buildMobileLayout(context);
+    }
+
+    // デスクトップ/タブレットの場合は従来のダイアログ
     return Dialog(
       child: Container(
-        width: MediaQuery.of(context).size.width * 0.9,
-        height: MediaQuery.of(context).size.height * 0.8,
+        width: screenWidth * 0.9,
+        height: screenHeight * 0.8,
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -46,9 +57,12 @@ class _SurveyTemplateSelectorState extends State<SurveyTemplateSelector> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(
-                  widget.isPreSurvey ? '事前アンケート作成' : '実験アンケート作成',
-                  style: Theme.of(context).textTheme.headlineSmall,
+                Expanded(
+                  child: Text(
+                    widget.isPreSurvey ? '事前アンケート作成' : '実験アンケート作成',
+                    style: Theme.of(context).textTheme.headlineSmall,
+                    overflow: TextOverflow.ellipsis,
+                  ),
                 ),
                 IconButton(
                   icon: const Icon(Icons.close),
@@ -59,49 +73,7 @@ class _SurveyTemplateSelectorState extends State<SurveyTemplateSelector> {
             const Divider(),
             
             // タブ切り替え
-            Row(
-              children: [
-                Expanded(
-                  child: ElevatedButton.icon(
-                    onPressed: () {
-                      setState(() {
-                        _showUrlInput = false;
-                      });
-                    },
-                    icon: const Icon(Icons.list_alt),
-                    label: const Text('テンプレートから選択'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: !_showUrlInput 
-                        ? const Color(0xFF8E1728)
-                        : Colors.grey.shade300,
-                      foregroundColor: !_showUrlInput 
-                        ? Colors.white
-                        : Colors.black,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: ElevatedButton.icon(
-                    onPressed: () {
-                      setState(() {
-                        _showUrlInput = true;
-                      });
-                    },
-                    icon: const Icon(Icons.link),
-                    label: const Text('URLを入力'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: _showUrlInput 
-                        ? const Color(0xFF8E1728)
-                        : Colors.grey.shade300,
-                      foregroundColor: _showUrlInput 
-                        ? Colors.white
-                        : Colors.black,
-                    ),
-                  ),
-                ),
-              ],
-            ),
+            _buildTabSelector(),
             const SizedBox(height: 16),
             
             // コンテンツ
@@ -136,119 +108,9 @@ class _SurveyTemplateSelectorState extends State<SurveyTemplateSelector> {
                   )
                 else if (_selectedTemplate != null)
                   ElevatedButton.icon(
-                    onPressed: () async {
-                      // まず質問項目をコピー
-                      final questionsText = _selectedTemplate!.exportQuestionsAsText();
-                      await Clipboard.setData(ClipboardData(text: questionsText));
-                      
-                      if (!mounted) return;
-                      
-                      // ダイアログを表示して手順を説明
-                      final shouldContinue = await showDialog<bool>(
-                        context: context,
-                        barrierDismissible: false,
-                        builder: (context) => AlertDialog(
-                          title: Row(
-                            children: [
-                              Icon(Icons.check_circle, color: Colors.green.shade600),
-                              const SizedBox(width: 8),
-                              const Text('テンプレートを準備しました'),
-                            ],
-                          ),
-                          content: SingleChildScrollView(
-                            child: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Container(
-                                  padding: const EdgeInsets.all(8),
-                                  decoration: BoxDecoration(
-                                    color: Colors.green.shade50,
-                                    borderRadius: BorderRadius.circular(4),
-                                  ),
-                                  child: Row(
-                                    children: [
-                                      Icon(Icons.content_copy, size: 16, color: Colors.green.shade700),
-                                      const SizedBox(width: 8),
-                                      Expanded(
-                                        child: Text(
-                                          'テンプレート内容をクリップボードにコピーしました',
-                                          style: TextStyle(fontSize: 13, color: Colors.green.shade700),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                                const SizedBox(height: 16),
-                                const Text(
-                                  'Googleフォーム作成手順',
-                                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
-                                ),
-                                const SizedBox(height: 8),
-                                _buildInstructionStep('1', 'この画面で「Googleフォームを開く」をクリック'),
-                                _buildInstructionStep('2', '空白のフォームが開きます'),
-                                _buildInstructionStep('3', 'フォームの説明欄をクリック'),
-                                _buildInstructionStep('4', 'Ctrl+V (Mac: Cmd+V) で貼り付け'),
-                                _buildInstructionStep('5', '貼り付けた内容を参考に質問を作成'),
-                                _buildInstructionStep('6', '各質問の形式を設定（ラジオボタン、記述式など）'),
-                                _buildInstructionStep('7', '必須項目は「必須」をONに設定'),
-                                _buildInstructionStep('8', '作成完了後、フォームのURLをコピー'),
-                                _buildInstructionStep('9', '実験作成画面に戻ってURLを貼り付け'),
-                                const SizedBox(height: 12),
-                                Container(
-                                  padding: const EdgeInsets.all(8),
-                                  decoration: BoxDecoration(
-                                    color: Colors.amber.shade50,
-                                    borderRadius: BorderRadius.circular(4),
-                                    border: Border.all(color: Colors.amber.shade300),
-                                  ),
-                                  child: Row(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Icon(Icons.info_outline, size: 16, color: Colors.amber.shade800),
-                                      const SizedBox(width: 8),
-                                      Expanded(
-                                        child: Text(
-                                          'ヒント: 質問タイプ（[ラジオボタン]など）が記載されているので、適切な形式を選択してください',
-                                          style: TextStyle(fontSize: 12, color: Colors.amber.shade800),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          actions: [
-                            TextButton(
-                              onPressed: () => Navigator.of(context).pop(false),
-                              child: const Text('キャンセル'),
-                            ),
-                            ElevatedButton.icon(
-                              onPressed: () => Navigator.of(context).pop(true),
-                              icon: const Icon(Icons.open_in_new),
-                              label: const Text('Googleフォームを開く'),
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: const Color(0xFF8E1728),
-                                foregroundColor: Colors.white,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ) ?? false;
-                      
-                      if (shouldContinue && mounted) {
-                        // Googleフォームを開く
-                        final success = await GoogleFormsService.openNewGoogleForm();
-                        
-                        if (success && mounted) {
-                          widget.onTemplateSelected?.call(_selectedTemplate!);
-                          Navigator.of(context).pop();
-                        }
-                      }
-                    },
-                    icon: const Icon(Icons.open_in_new),
-                    label: const Text('Googleフォームで作成'),
+                    onPressed: () => _createFormAutomatically(),
+                    icon: const Icon(Icons.auto_awesome),
+                    label: const Text('Googleフォームを作成'),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFF8E1728),
                     ),
@@ -260,7 +122,263 @@ class _SurveyTemplateSelectorState extends State<SurveyTemplateSelector> {
       ),
     );
   }
-  
+
+  // モバイル用レイアウト
+  Widget _buildMobileLayout(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.transparent,
+      body: Container(
+        decoration: BoxDecoration(
+          color: Theme.of(context).scaffoldBackgroundColor,
+          borderRadius: const BorderRadius.only(
+            topLeft: Radius.circular(20),
+            topRight: Radius.circular(20),
+          ),
+        ),
+        child: SafeArea(
+          child: Column(
+            children: [
+              // ドラッグハンドル
+              Container(
+                margin: const EdgeInsets.only(top: 8),
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade400,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              // ヘッダー
+              Padding(
+                padding: const EdgeInsets.all(16),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Expanded(
+                      child: Text(
+                        widget.isPreSurvey ? '事前アンケート作成' : '実験アンケート作成',
+                        style: Theme.of(context).textTheme.titleLarge,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.close),
+                      onPressed: () => Navigator.of(context).pop(),
+                    ),
+                  ],
+                ),
+              ),
+              const Divider(height: 0),
+              // タブ切り替え
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                child: _buildTabSelector(),
+              ),
+              // コンテンツ
+              Expanded(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: _showUrlInput
+                    ? _buildUrlInput()
+                    : _buildMobileTemplateSelector(),
+                ),
+              ),
+              // 固定アクションボタン
+              _buildMobileActionButtons(),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  // タブセレクター（共通）
+  Widget _buildTabSelector() {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isMobile = screenWidth < 600;
+
+    if (isMobile) {
+      // モバイル用：セグメントコントロール風
+      return Container(
+        decoration: BoxDecoration(
+          color: Colors.grey.shade200,
+          borderRadius: BorderRadius.circular(8),
+        ),
+        padding: const EdgeInsets.all(4),
+        child: Row(
+          children: [
+            Expanded(
+              child: GestureDetector(
+                onTap: () => setState(() => _showUrlInput = false),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(vertical: 10),
+                  decoration: BoxDecoration(
+                    color: !_showUrlInput ? Colors.white : Colors.transparent,
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        Icons.list_alt,
+                        size: 18,
+                        color: !_showUrlInput ? const Color(0xFF8E1728) : Colors.grey.shade600,
+                      ),
+                      const SizedBox(width: 4),
+                      Flexible(
+                        child: Text(
+                          'テンプレート',
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: !_showUrlInput ? FontWeight.bold : FontWeight.normal,
+                            color: !_showUrlInput ? const Color(0xFF8E1728) : Colors.grey.shade600,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+            Expanded(
+              child: GestureDetector(
+                onTap: () => setState(() => _showUrlInput = true),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(vertical: 10),
+                  decoration: BoxDecoration(
+                    color: _showUrlInput ? Colors.white : Colors.transparent,
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        Icons.link,
+                        size: 18,
+                        color: _showUrlInput ? const Color(0xFF8E1728) : Colors.grey.shade600,
+                      ),
+                      const SizedBox(width: 4),
+                      Flexible(
+                        child: Text(
+                          'URL入力',
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: _showUrlInput ? FontWeight.bold : FontWeight.normal,
+                            color: _showUrlInput ? const Color(0xFF8E1728) : Colors.grey.shade600,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    } else {
+      // デスクトップ用：従来のボタン
+      return Row(
+        children: [
+          Expanded(
+            child: ElevatedButton.icon(
+              onPressed: () => setState(() => _showUrlInput = false),
+              icon: const Icon(Icons.list_alt),
+              label: const Text('テンプレートから選択'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: !_showUrlInput
+                  ? const Color(0xFF8E1728)
+                  : Colors.grey.shade300,
+                foregroundColor: !_showUrlInput
+                  ? Colors.white
+                  : Colors.black,
+              ),
+            ),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: ElevatedButton.icon(
+              onPressed: () => setState(() => _showUrlInput = true),
+              icon: const Icon(Icons.link),
+              label: const Text('URLを入力'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: _showUrlInput
+                  ? const Color(0xFF8E1728)
+                  : Colors.grey.shade300,
+                foregroundColor: _showUrlInput
+                  ? Colors.white
+                  : Colors.black,
+              ),
+            ),
+          ),
+        ],
+      );
+    }
+  }
+
+  // モバイル用固定アクションボタン
+  Widget _buildMobileActionButtons() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Theme.of(context).scaffoldBackgroundColor,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.1),
+            blurRadius: 4,
+            offset: const Offset(0, -2),
+          ),
+        ],
+      ),
+      child: SafeArea(
+        top: false,
+        child: Row(
+          children: [
+            Expanded(
+              child: TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: const Text('キャンセル'),
+              ),
+            ),
+            const SizedBox(width: 8),
+            if (_showUrlInput)
+              Expanded(
+                flex: 2,
+                child: ElevatedButton(
+                  onPressed: _urlController.text.trim().isNotEmpty
+                    ? () {
+                        widget.onUrlEntered?.call(_urlController.text.trim());
+                        Navigator.of(context).pop();
+                      }
+                    : null,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF8E1728),
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                  ),
+                  child: const Text('URLを設定'),
+                ),
+              )
+            else if (_selectedTemplate != null)
+              Expanded(
+                flex: 2,
+                child: ElevatedButton.icon(
+                  onPressed: () => _createFormAutomatically(),
+                  icon: const Icon(Icons.auto_awesome, size: 18),
+                  label: const Text('フォーム作成'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF8E1728),
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                  ),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildUrlInput() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -311,7 +429,7 @@ class _SurveyTemplateSelectorState extends State<SurveyTemplateSelector> {
       isPreSurvey: widget.isPreSurvey,
       preferredCategory: _selectedCategory,
     );
-    
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -323,6 +441,7 @@ class _SurveyTemplateSelectorState extends State<SurveyTemplateSelector> {
         const SizedBox(height: 8),
         Wrap(
           spacing: 8,
+          runSpacing: 8,
           children: [
             ChoiceChip(
               label: const Text('すべて'),
@@ -378,29 +497,44 @@ class _SurveyTemplateSelectorState extends State<SurveyTemplateSelector> {
                   title: Text(
                     template.title,
                     style: const TextStyle(fontWeight: FontWeight.bold),
+                    overflow: TextOverflow.ellipsis,
+                    maxLines: 1,
                   ),
                   subtitle: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(template.description),
+                      Text(
+                        template.description,
+                        overflow: TextOverflow.ellipsis,
+                        maxLines: 2,
+                      ),
                       const SizedBox(height: 4),
-                      Row(
+                      Wrap(
+                        spacing: 12,
                         children: [
-                          Icon(Icons.quiz, size: 14, color: Colors.grey.shade600),
-                          const SizedBox(width: 4),
-                          Text(
-                            '${template.questions.length}問',
-                            style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                          Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.quiz, size: 14, color: Colors.grey.shade600),
+                              const SizedBox(width: 4),
+                              Text(
+                                '${template.questions.length}問',
+                                style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                              ),
+                            ],
                           ),
-                          if (template.estimatedMinutes != null) ...[
-                            const SizedBox(width: 12),
-                            Icon(Icons.timer, size: 14, color: Colors.grey.shade600),
-                            const SizedBox(width: 4),
-                            Text(
-                              '約${template.estimatedMinutes}分',
-                              style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                          if (template.estimatedMinutes != null)
+                            Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(Icons.timer, size: 14, color: Colors.grey.shade600),
+                                const SizedBox(width: 4),
+                                Text(
+                                  '約${template.estimatedMinutes}分',
+                                  style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                                ),
+                              ],
                             ),
-                          ],
                         ],
                       ),
                     ],
@@ -438,7 +572,216 @@ class _SurveyTemplateSelectorState extends State<SurveyTemplateSelector> {
       ],
     );
   }
-  
+
+  // モバイル用テンプレートセレクター
+  Widget _buildMobileTemplateSelector() {
+    final templates = GoogleFormsService.getRecommendedTemplates(
+      isPreSurvey: widget.isPreSurvey,
+      preferredCategory: _selectedCategory,
+    );
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // カテゴリフィルター（横スクロール）
+        const Text(
+          'カテゴリを選択',
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
+        const SizedBox(height: 8),
+        SizedBox(
+          height: 36,
+          child: ListView(
+            scrollDirection: Axis.horizontal,
+            children: [
+              Padding(
+                padding: const EdgeInsets.only(right: 8),
+                child: ChoiceChip(
+                  label: const Text('すべて'),
+                  selected: _selectedCategory == null,
+                  onSelected: (selected) {
+                    setState(() {
+                      _selectedCategory = null;
+                    });
+                  },
+                  selectedColor: const Color(0xFF8E1728).withValues(alpha: 0.2),
+                ),
+              ),
+              ...SurveyCategory.values.map((category) {
+                return Padding(
+                  padding: const EdgeInsets.only(right: 8),
+                  child: ChoiceChip(
+                    label: Text(category.label),
+                    selected: _selectedCategory == category,
+                    onSelected: (selected) {
+                      setState(() {
+                        _selectedCategory = selected ? category : null;
+                      });
+                    },
+                    selectedColor: const Color(0xFF8E1728).withValues(alpha: 0.2),
+                  ),
+                );
+              }),
+            ],
+          ),
+        ),
+        const SizedBox(height: 16),
+
+        // テンプレートリスト
+        const Text(
+          'テンプレートを選択',
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
+        const SizedBox(height: 8),
+        ...templates.map((template) {
+          final isSelected = _selectedTemplate?.id == template.id;
+
+          return Card(
+            elevation: isSelected ? 4 : 1,
+            color: isSelected ? const Color(0xFF8E1728).withValues(alpha: 0.05) : null,
+            margin: const EdgeInsets.only(bottom: 8),
+            child: InkWell(
+              onTap: () {
+                setState(() {
+                  _selectedTemplate = template;
+                });
+              },
+              borderRadius: BorderRadius.circular(8),
+              child: Padding(
+                padding: const EdgeInsets.all(12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // タイトルとカテゴリ
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: _getCategoryColor(template.category).withValues(alpha: 0.2),
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                _getCategoryIcon(template.category),
+                                size: 14,
+                                color: _getCategoryColor(template.category),
+                              ),
+                              const SizedBox(width: 4),
+                              Text(
+                                template.category.label,
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  color: _getCategoryColor(template.category),
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const Spacer(),
+                        if (isSelected)
+                          Icon(
+                            Icons.check_circle,
+                            color: const Color(0xFF8E1728),
+                            size: 20,
+                          ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    // タイトル
+                    Text(
+                      template.title,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 15,
+                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 4),
+                    // 説明
+                    Text(
+                      template.description,
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: Colors.grey.shade700,
+                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 8),
+                    // メタ情報とアクション
+                    Row(
+                      children: [
+                        // 質問数
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: Colors.grey.shade200,
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.quiz, size: 12, color: Colors.grey.shade600),
+                              const SizedBox(width: 2),
+                              Text(
+                                '${template.questions.length}問',
+                                style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        // 所要時間
+                        if (template.estimatedMinutes != null)
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: Colors.grey.shade200,
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(Icons.timer, size: 12, color: Colors.grey.shade600),
+                                const SizedBox(width: 2),
+                                Text(
+                                  '${template.estimatedMinutes}分',
+                                  style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
+                                ),
+                              ],
+                            ),
+                          ),
+                        const Spacer(),
+                        // プレビューボタン
+                        TextButton(
+                          onPressed: () => _showTemplatePreview(template),
+                          style: TextButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            minimumSize: Size.zero,
+                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                          ),
+                          child: const Text(
+                            'プレビュー',
+                            style: TextStyle(fontSize: 12),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          );
+        }),
+      ],
+    );
+  }
+
   Color _getCategoryColor(SurveyCategory category) {
     switch (category) {
       case SurveyCategory.psychology:
@@ -514,166 +857,562 @@ class _SurveyTemplateSelectorState extends State<SurveyTemplateSelector> {
   }
   
   void _showTemplatePreview(SurveyTemplate template) {
-    showDialog(
-      context: context,
-      builder: (context) => Dialog(
-        child: Container(
-          width: MediaQuery.of(context).size.width * 0.8,
-          height: MediaQuery.of(context).size.height * 0.8,
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isMobile = screenWidth < 600;
+
+    if (isMobile) {
+      // モバイル用フルスクリーンプレビュー
+      showModalBottomSheet(
+        context: context,
+        isScrollControlled: true,
+        backgroundColor: Colors.transparent,
+        builder: (context) => Container(
+          height: MediaQuery.of(context).size.height * 0.95,
+          decoration: BoxDecoration(
+            color: Theme.of(context).scaffoldBackgroundColor,
+            borderRadius: const BorderRadius.only(
+              topLeft: Radius.circular(20),
+              topRight: Radius.circular(20),
+            ),
+          ),
+          child: _buildPreviewContent(template, isMobile: true),
+        ),
+      );
+    } else {
+      // デスクトップ用ダイアログ
+      showDialog(
+        context: context,
+        builder: (context) => Dialog(
+          child: Container(
+            width: screenWidth * 0.8,
+            height: MediaQuery.of(context).size.height * 0.8,
+            padding: const EdgeInsets.all(16),
+            child: _buildPreviewContent(template, isMobile: false),
+          ),
+        ),
+      );
+    }
+  }
+
+  Widget _buildPreviewContent(SurveyTemplate template, {required bool isMobile}) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (isMobile) ...[
+          // モバイル用ドラッグハンドル
+          Center(
+            child: Container(
+              margin: const EdgeInsets.only(top: 8, bottom: 8),
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: Colors.grey.shade400,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+          ),
+        ],
+        // ヘッダー
+        Padding(
+          padding: EdgeInsets.symmetric(
+            horizontal: isMobile ? 16 : 0,
+            vertical: isMobile ? 8 : 0,
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    template.title,
-                    style: Theme.of(context).textTheme.headlineSmall,
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.close),
-                    onPressed: () => Navigator.of(context).pop(),
-                  ),
-                ],
-              ),
-              const Divider(),
-              Text(
-                template.description,
-                style: TextStyle(color: Colors.grey.shade700),
-              ),
-              const SizedBox(height: 8),
-              if (template.instructions != null) ...[
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: Colors.amber.shade50,
-                    borderRadius: BorderRadius.circular(4),
-                  ),
-                  child: Text(
-                    template.instructions!,
-                    style: TextStyle(fontSize: 14, color: Colors.amber.shade900),
-                  ),
-                ),
-                const SizedBox(height: 8),
-              ],
-              Row(
-                children: [
-                  Chip(
-                    label: Text(template.type.label),
-                    backgroundColor: Colors.blue.shade100,
-                  ),
-                  const SizedBox(width: 8),
-                  Chip(
-                    label: Text(template.category.label),
-                    backgroundColor: _getCategoryColor(template.category).withValues(alpha: 0.2),
-                  ),
-                  if (template.estimatedMinutes != null) ...[
-                    const SizedBox(width: 8),
-                    Chip(
-                      label: Text('約${template.estimatedMinutes}分'),
-                      backgroundColor: Colors.grey.shade200,
-                    ),
-                  ],
-                ],
-              ),
-              const SizedBox(height: 16),
-              const Text(
-                '質問項目',
-                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-              ),
-              const Divider(),
               Expanded(
-                child: ListView.builder(
-                  itemCount: template.questions.length,
-                  itemBuilder: (context, index) {
-                    final question = template.questions[index];
-                    return Card(
-                      child: Padding(
-                        padding: const EdgeInsets.all(12),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 8,
-                                    vertical: 4,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: const Color(0xFF8E1728),
-                                    borderRadius: BorderRadius.circular(4),
-                                  ),
-                                  child: Text(
-                                    'Q${index + 1}',
-                                    style: const TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                ),
-                                const SizedBox(width: 8),
-                                Expanded(
-                                  child: Text(
-                                    question.question +
-                                        (question.required ? ' *' : ''),
-                                    style: const TextStyle(
-                                      fontWeight: FontWeight.w500,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 8),
-                            Container(
-                              padding: const EdgeInsets.all(8),
-                              decoration: BoxDecoration(
-                                color: Colors.grey.shade100,
-                                borderRadius: BorderRadius.circular(4),
-                              ),
-                              child: _buildQuestionPreview(question),
-                            ),
-                          ],
-                        ),
-                      ),
-                    );
-                  },
+                child: Text(
+                  template.title,
+                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                    fontSize: isMobile ? 20 : null,
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                  maxLines: 2,
                 ),
               ),
-              const Divider(),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.end,
-                children: [
-                  TextButton.icon(
-                    onPressed: () {
-                      final text = template.exportQuestionsAsText();
-                      Clipboard.setData(ClipboardData(text: text));
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('質問項目をコピーしました'),
-                          backgroundColor: Colors.green,
-                        ),
-                      );
-                    },
-                    icon: const Icon(Icons.copy),
-                    label: const Text('質問をコピー'),
-                  ),
-                  const SizedBox(width: 8),
-                  ElevatedButton(
-                    onPressed: () => Navigator.of(context).pop(),
-                    child: const Text('閉じる'),
-                  ),
-                ],
+              IconButton(
+                icon: const Icon(Icons.close),
+                onPressed: () => Navigator.of(context).pop(),
               ),
             ],
           ),
         ),
-      ),
+        const Divider(),
+        // 内容部分
+        Expanded(
+          child: SingleChildScrollView(
+            padding: EdgeInsets.symmetric(
+              horizontal: isMobile ? 16 : 0,
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  template.description,
+                  style: TextStyle(
+                    color: Colors.grey.shade700,
+                    fontSize: isMobile ? 14 : null,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                if (template.instructions != null) ...[
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: Colors.amber.shade50,
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    child: Text(
+                      template.instructions!,
+                      style: TextStyle(
+                        fontSize: isMobile ? 13 : 14,
+                        color: Colors.amber.shade900,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                ],
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    Chip(
+                      label: Text(
+                        template.type.label,
+                        style: TextStyle(fontSize: isMobile ? 12 : null),
+                      ),
+                      backgroundColor: Colors.blue.shade100,
+                    ),
+                    Chip(
+                      label: Text(
+                        template.category.label,
+                        style: TextStyle(fontSize: isMobile ? 12 : null),
+                      ),
+                      backgroundColor: _getCategoryColor(template.category).withValues(alpha: 0.2),
+                    ),
+                    if (template.estimatedMinutes != null)
+                      Chip(
+                        label: Text(
+                          '約${template.estimatedMinutes}分',
+                          style: TextStyle(fontSize: isMobile ? 12 : null),
+                        ),
+                        backgroundColor: Colors.grey.shade200,
+                      ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  '質問項目',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: isMobile ? 15 : 16,
+                  ),
+                ),
+                const Divider(),
+                // 質問リスト
+                ...List.generate(template.questions.length, (index) {
+                  final question = template.questions[index];
+                  return Card(
+                    margin: const EdgeInsets.only(bottom: 8),
+                    child: Padding(
+                      padding: EdgeInsets.all(isMobile ? 10 : 12),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Container(
+                                padding: EdgeInsets.symmetric(
+                                  horizontal: isMobile ? 6 : 8,
+                                  vertical: isMobile ? 3 : 4,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFF8E1728),
+                                  borderRadius: BorderRadius.circular(4),
+                                ),
+                                child: Text(
+                                  'Q${index + 1}',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: isMobile ? 11 : 12,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  question.question +
+                                      (question.required ? ' *' : ''),
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.w500,
+                                    fontSize: isMobile ? 14 : null,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 8),
+                          Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: Colors.grey.shade100,
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: _buildQuestionPreview(question),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                }),
+              ],
+            ),
+          ),
+        ),
+        const Divider(),
+        // フッター
+        Padding(
+          padding: EdgeInsets.symmetric(
+            horizontal: isMobile ? 16 : 0,
+            vertical: isMobile ? 8 : 0,
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.end,
+            children: [
+              if (!isMobile)
+                PopupMenuButton<String>(
+                  icon: const Icon(Icons.download),
+                  tooltip: 'エクスポート',
+                  onSelected: (format) {
+                    String exportData;
+                    String message;
+
+                    switch (format) {
+                      case 'text':
+                        exportData = template.exportQuestionsAsText();
+                        message = 'テキスト形式でコピーしました';
+                        break;
+                      case 'json':
+                        final jsonData = template.exportAsGoogleFormsJson();
+                        exportData = const JsonEncoder.withIndent('  ').convert(jsonData);
+                        message = 'JSON形式でコピーしました';
+                        break;
+                      case 'markdown':
+                        exportData = template.exportAsMarkdown();
+                        message = 'Markdown形式でコピーしました';
+                        break;
+                      default:
+                        return;
+                    }
+
+                    Clipboard.setData(ClipboardData(text: exportData));
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(message),
+                        backgroundColor: Colors.green,
+                      ),
+                    );
+                  },
+                  itemBuilder: (BuildContext context) => [
+                    const PopupMenuItem<String>(
+                      value: 'text',
+                      child: Row(
+                        children: [
+                          Icon(Icons.text_fields, size: 20),
+                          SizedBox(width: 8),
+                          Text('テキスト形式'),
+                        ],
+                      ),
+                    ),
+                    const PopupMenuItem<String>(
+                      value: 'json',
+                      child: Row(
+                        children: [
+                          Icon(Icons.code, size: 20),
+                          SizedBox(width: 8),
+                          Text('JSON形式'),
+                        ],
+                      ),
+                    ),
+                    const PopupMenuItem<String>(
+                      value: 'markdown',
+                      child: Row(
+                        children: [
+                          Icon(Icons.description, size: 20),
+                          SizedBox(width: 8),
+                          Text('Markdown形式'),
+                        ],
+                      ),
+                    ),
+                  ],
+                )
+              else
+                IconButton(
+                  icon: const Icon(Icons.share),
+                  onPressed: () {
+                    final exportData = template.exportQuestionsAsText();
+                    Clipboard.setData(ClipboardData(text: exportData));
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('テキスト形式でコピーしました'),
+                        backgroundColor: Colors.green,
+                      ),
+                    );
+                  },
+                ),
+              const SizedBox(width: 8),
+              ElevatedButton(
+                onPressed: () => Navigator.of(context).pop(),
+                style: ElevatedButton.styleFrom(
+                  minimumSize: Size(isMobile ? 80 : 100, 36),
+                ),
+                child: Text(
+                  '閉じる',
+                  style: TextStyle(fontSize: isMobile ? 14 : null),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
+  
+  /// 手動でフォームを作成（使わなくなったがコードは残しておく）
+  Future<void> _createFormManually() async {
+    // まず質問項目をコピー
+    final questionsText = _selectedTemplate!.exportQuestionsAsText();
+    await Clipboard.setData(ClipboardData(text: questionsText));
+    
+    if (!mounted) return;
+    
+    // ダイアログを表示して手順を説明
+    final shouldContinue = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        title: Row(
+          children: [
+            Icon(Icons.check_circle, color: Colors.green.shade600),
+            const SizedBox(width: 8),
+            const Text('テンプレートを準備しました'),
+          ],
+        ),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.green.shade50,
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.content_copy, size: 16, color: Colors.green.shade700),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'テンプレート内容をクリップボードにコピーしました',
+                        style: TextStyle(fontSize: 13, color: Colors.green.shade700),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+              const Text(
+                'Googleフォーム作成手順',
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+              ),
+              const SizedBox(height: 8),
+              _buildInstructionStep('1', 'この画面で「Googleフォームを開く」をクリック'),
+              _buildInstructionStep('2', '空白のフォームが開きます'),
+              _buildInstructionStep('3', 'フォームの説明欄をクリック'),
+              _buildInstructionStep('4', 'Ctrl+V (Mac: Cmd+V) で貼り付け'),
+              _buildInstructionStep('5', '貼り付けた内容を参考に質問を作成'),
+              _buildInstructionStep('6', '各質問の形式を設定（ラジオボタン、記述式など）'),
+              _buildInstructionStep('7', '必須項目は「必須」をONに設定'),
+              _buildInstructionStep('8', '作成完了後、フォームのURLをコピー'),
+              _buildInstructionStep('9', '実験作成画面に戻ってURLを貼り付け'),
+              const SizedBox(height: 12),
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.amber.shade50,
+                  borderRadius: BorderRadius.circular(4),
+                  border: Border.all(color: Colors.amber.shade300),
+                ),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Icon(Icons.info_outline, size: 16, color: Colors.amber.shade800),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'ヒント: 質問タイプ（[ラジオボタン]など）が記載されているので、適切な形式を選択してください',
+                        style: TextStyle(fontSize: 12, color: Colors.amber.shade800),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('キャンセル'),
+          ),
+          ElevatedButton.icon(
+            onPressed: () => Navigator.of(context).pop(true),
+            icon: const Icon(Icons.open_in_new),
+            label: const Text('Googleフォームを開く'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF8E1728),
+              foregroundColor: Colors.white,
+            ),
+          ),
+        ],
+      ),
+    ) ?? false;
+    
+    if (shouldContinue && mounted) {
+      // Googleフォームを開く
+      final success = await GoogleFormsService.openNewGoogleForm();
+      
+      if (success && mounted) {
+        widget.onTemplateSelected?.call(_selectedTemplate!);
+        Navigator.of(context).pop();
+      }
+    }
+  }
+  
+  /// 自動でフォームを作成（Firebase Functions経由）
+  Future<void> _createFormAutomatically() async {
+    // ローディングダイアログを表示
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const AlertDialog(
+        content: Row(
+          children: [
+            CircularProgressIndicator(),
+            SizedBox(width: 16),
+            Text('Googleフォームを作成中...'),
+          ],
+        ),
+      ),
+    );
+    
+    try {
+      // Firebase Functions経由でフォームを作成して開く
+      final result = await GoogleFormsService.createAndOpenGoogleForm(
+        template: _selectedTemplate!,
+        customTitle: '${_selectedTemplate!.title}_${DateTime.now().millisecondsSinceEpoch}',
+      );
+      
+      if (!mounted) return;
+      Navigator.of(context).pop(); // ローディングダイアログを閉じる
+      
+      if (result != null && result['success'] == true) {
+        // 成功したらダイアログを閉じる
+        if (mounted) {
+          widget.onUrlEntered?.call(result['formUrl'] ?? '');
+          Navigator.of(context).pop();
+          
+          // 成功メッセージを表示
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Row(
+                children: [
+                  Icon(Icons.check_circle, color: Colors.white),
+                  const SizedBox(width: 8),
+                  const Text('Googleフォームを作成して開きました'),
+                ],
+              ),
+              backgroundColor: Colors.green,
+            ),
+          );
+        }
+      } else {
+        // エラーダイアログを表示（詳細なエラー情報を含む）
+        final errorMessage = result?['error'] ?? 'フォームの作成に失敗しました';
+        final errorCode = result?['code'] ?? 'unknown';
+        
+        showDialog(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: const Text('エラー'),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('エラー: $errorMessage'),
+                if (errorCode != 'unknown')
+                  Text('コード: $errorCode', style: const TextStyle(fontSize: 12, color: Colors.grey)),
+                const SizedBox(height: 16),
+                const Text(
+                  '解決方法:',
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
+                if (errorCode == 'permission-denied' || errorMessage.contains('403'))
+                  const Text('• Google Forms APIを有効化してください')
+                else if (errorCode == 'unauthenticated' || errorMessage.contains('401'))
+                  const Text('• サービスアカウントの認証情報を設定してください')
+                else
+                  const Text('• Firebase Functionsの設定を確認してください'),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: const Text('OK'),
+              ),
+            ],
+          ),
+        );
+      }
+    } catch (e) {
+      if (!mounted) return;
+      Navigator.of(context).pop(); // ローディングダイアログを閉じる
+      
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('エラー'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('エラーが発生しました: $e'),
+              const SizedBox(height: 16),
+              const Text(
+                'セットアップ手順:',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+              const Text('1. Google Forms APIを有効化'),
+              const Text('2. サービスアカウントを作成'),
+              const Text('3. Firebase Functionsをデプロイ'),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('OK'),
+            ),
+          ],
+        ),
+      );
+    }
+  }
+  
   
   Widget _buildQuestionPreview(SurveyQuestion question) {
     switch (question.type) {

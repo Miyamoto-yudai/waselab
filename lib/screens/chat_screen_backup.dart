@@ -5,9 +5,7 @@ import '../services/auth_service.dart';
 import '../services/user_service.dart';
 import '../models/message.dart';
 import '../models/app_user.dart';
-import '../widgets/custom_circle_avatar.dart';
 import '../widgets/user_detail_dialog.dart';
-import '../models/avatar_design.dart';
 
 class ChatScreen extends StatefulWidget {
   final String? conversationId;
@@ -37,7 +35,7 @@ class _ChatScreenState extends State<ChatScreen> {
   AppUser? _otherUser;
   String? _actualConversationId;
   bool _isSending = false;
-  bool _showTemplates = false;
+  final bool _showTemplates = false;
   
   // 編集・リプライ関連
   Message? _editingMessage;
