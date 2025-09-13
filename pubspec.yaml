@@ -49,6 +49,9 @@ dependencies:
   
   # URL起動用
   url_launcher: ^6.3.0
+
+  # Android用インテント処理
+  android_intent_plus: ^5.0.1
   
   # ローカルストレージ
   shared_preferences: ^2.3.3

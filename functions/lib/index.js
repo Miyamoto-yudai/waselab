@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.sendTestNotification = exports.removeFCMToken = exports.updateUserFCMToken = exports.sendExperimentCompletedNotification = exports.sendCancellationNotification = exports.sendReservationNotification = exports.sendMessageNotification = exports.sendEvaluationNotification = exports.onNotificationCreated = exports.createGoogleFormFromTemplate = void 0;
+exports.sendTestNotification = exports.removeFCMToken = exports.updateUserFCMToken = exports.sendExperimentCompletedNotification = exports.sendCancellationNotification = exports.sendReservationNotification = exports.sendMessageNotification = exports.sendEvaluationNotification = exports.onNotificationCreated = exports.getAvailableGPTModels = exports.validateGPTAPIKey = exports.generateSurveyWithGPT = exports.createGoogleFormFromTemplate = void 0;
 const functions = require("firebase-functions");
 const admin = require("firebase-admin");
 admin.initializeApp();
@@ -9,6 +9,11 @@ admin.initializeApp();
 // Google Apps Script経由でフォームを作成する代替実装を使用
 var googleFormsViaAppsScript_1 = require("./googleFormsViaAppsScript");
 Object.defineProperty(exports, "createGoogleFormFromTemplate", { enumerable: true, get: function () { return googleFormsViaAppsScript_1.createGoogleFormViaAppsScript; } });
+// GPT-5を使用したアンケート生成関数をエクスポート
+var gptFormGenerator_1 = require("./gptFormGenerator");
+Object.defineProperty(exports, "generateSurveyWithGPT", { enumerable: true, get: function () { return gptFormGenerator_1.generateSurveyWithGPT; } });
+Object.defineProperty(exports, "validateGPTAPIKey", { enumerable: true, get: function () { return gptFormGenerator_1.validateGPTAPIKey; } });
+Object.defineProperty(exports, "getAvailableGPTModels", { enumerable: true, get: function () { return gptFormGenerator_1.getAvailableGPTModels; } });
 const db = admin.firestore();
 const messaging = admin.messaging();
 async function sendPushNotification(token, title, body, data) {

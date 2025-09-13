@@ -8,6 +8,13 @@ admin.initializeApp();
 // Google Apps Script経由でフォームを作成する代替実装を使用
 export {createGoogleFormViaAppsScript as createGoogleFormFromTemplate} from "./googleFormsViaAppsScript";
 
+// GPT-5を使用したアンケート生成関数をエクスポート
+export {
+  generateSurveyWithGPT,
+  validateGPTAPIKey,
+  getAvailableGPTModels
+} from "./gptFormGenerator";
+
 const db = admin.firestore();
 const messaging = admin.messaging();
 

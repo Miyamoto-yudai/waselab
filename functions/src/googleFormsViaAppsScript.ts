@@ -3,10 +3,8 @@ import * as admin from "firebase-admin";
 import fetch from "node-fetch";
 
 // Google Apps Script Web App URLを環境変数から取得
-// 注意: functions.config()は非推奨のため、.envファイルを使用
-const APPS_SCRIPT_URL = process.env.GOOGLE_APPS_SCRIPT_URL || 
-  functions.config().googleappsscript?.url || 
-  "";
+// 注: この機能は既存のテンプレート機能用で、GPT-5機能では使用しません
+const APPS_SCRIPT_URL = process.env.GOOGLE_APPS_SCRIPT_URL || "";
 
 // テンプレートデータの型定義
 interface TemplateQuestion {

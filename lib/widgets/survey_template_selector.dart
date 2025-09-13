@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'dart:convert';
 import '../models/survey_template.dart';
 import '../services/google_forms_service.dart';
+import 'ai_survey_generator.dart';
 
 /// アンケートテンプレート選択ダイアログ
 class SurveyTemplateSelector extends StatefulWidget {
@@ -26,6 +27,7 @@ class _SurveyTemplateSelectorState extends State<SurveyTemplateSelector> {
   SurveyTemplate? _selectedTemplate;
   final _urlController = TextEditingController();
   bool _showUrlInput = false;
+  bool _showAIGenerator = false;
   
   @override
   void dispose() {
@@ -75,12 +77,20 @@ class _SurveyTemplateSelectorState extends State<SurveyTemplateSelector> {
             // タブ切り替え
             _buildTabSelector(),
             const SizedBox(height: 16),
-            
+
             // コンテンツ
             Expanded(
-              child: _showUrlInput 
-                ? _buildUrlInput()
-                : _buildTemplateSelector(),
+              child: _showAIGenerator
+                ? AISurveyGenerator(
+                    isPreSurvey: widget.isPreSurvey,
+                    onFormCreated: (url) {
+                      widget.onUrlEntered?.call(url);
+                      Navigator.of(context).pop();
+                    },
+                  )
+                : _showUrlInput
+                  ? _buildUrlInput()
+                  : _buildTemplateSelector(),
             ),
             
             // アクションボタン
@@ -93,7 +103,9 @@ class _SurveyTemplateSelectorState extends State<SurveyTemplateSelector> {
                   child: const Text('キャンセル'),
                 ),
                 const SizedBox(width: 8),
-                if (_showUrlInput)
+                if (_showAIGenerator)
+                  const SizedBox() // AI生成は独自のボタンを持つ
+                else if (_showUrlInput)
                   ElevatedButton(
                     onPressed: _urlController.text.trim().isNotEmpty
                       ? () {
@@ -176,12 +188,20 @@ class _SurveyTemplateSelectorState extends State<SurveyTemplateSelector> {
               ),
               // コンテンツ
               Expanded(
-                child: SingleChildScrollView(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  child: _showUrlInput
-                    ? _buildUrlInput()
-                    : _buildMobileTemplateSelector(),
-                ),
+                child: _showAIGenerator
+                  ? AISurveyGenerator(
+                      isPreSurvey: widget.isPreSurvey,
+                      onFormCreated: (url) {
+                        widget.onUrlEntered?.call(url);
+                        Navigator.of(context).pop();
+                      },
+                    )
+                  : SingleChildScrollView(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      child: _showUrlInput
+                        ? _buildUrlInput()
+                        : _buildMobileTemplateSelector(),
+                    ),
               ),
               // 固定アクションボタン
               _buildMobileActionButtons(),
@@ -209,11 +229,14 @@ class _SurveyTemplateSelectorState extends State<SurveyTemplateSelector> {
           children: [
             Expanded(
               child: GestureDetector(
-                onTap: () => setState(() => _showUrlInput = false),
+                onTap: () => setState(() {
+                  _showUrlInput = false;
+                  _showAIGenerator = false;
+                }),
                 child: Container(
                   padding: const EdgeInsets.symmetric(vertical: 10),
                   decoration: BoxDecoration(
-                    color: !_showUrlInput ? Colors.white : Colors.transparent,
+                    color: (!_showUrlInput && !_showAIGenerator) ? Colors.white : Colors.transparent,
                     borderRadius: BorderRadius.circular(6),
                   ),
                   child: Row(
@@ -221,17 +244,17 @@ class _SurveyTemplateSelectorState extends State<SurveyTemplateSelector> {
                     children: [
                       Icon(
                         Icons.list_alt,
-                        size: 18,
-                        color: !_showUrlInput ? const Color(0xFF8E1728) : Colors.grey.shade600,
+                        size: 16,
+                        color: (!_showUrlInput && !_showAIGenerator) ? const Color(0xFF8E1728) : Colors.grey.shade600,
                       ),
-                      const SizedBox(width: 4),
+                      const SizedBox(width: 2),
                       Flexible(
                         child: Text(
-                          'テンプレート',
+                          'テンプレ',
                           style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: !_showUrlInput ? FontWeight.bold : FontWeight.normal,
-                            color: !_showUrlInput ? const Color(0xFF8E1728) : Colors.grey.shade600,
+                            fontSize: 12,
+                            fontWeight: (!_showUrlInput && !_showAIGenerator) ? FontWeight.bold : FontWeight.normal,
+                            color: (!_showUrlInput && !_showAIGenerator) ? const Color(0xFF8E1728) : Colors.grey.shade600,
                           ),
                           overflow: TextOverflow.ellipsis,
                         ),
@@ -243,7 +266,10 @@ class _SurveyTemplateSelectorState extends State<SurveyTemplateSelector> {
             ),
             Expanded(
               child: GestureDetector(
-                onTap: () => setState(() => _showUrlInput = true),
+                onTap: () => setState(() {
+                  _showUrlInput = true;
+                  _showAIGenerator = false;
+                }),
                 child: Container(
                   padding: const EdgeInsets.symmetric(vertical: 10),
                   decoration: BoxDecoration(
@@ -255,17 +281,54 @@ class _SurveyTemplateSelectorState extends State<SurveyTemplateSelector> {
                     children: [
                       Icon(
                         Icons.link,
-                        size: 18,
+                        size: 16,
                         color: _showUrlInput ? const Color(0xFF8E1728) : Colors.grey.shade600,
                       ),
-                      const SizedBox(width: 4),
+                      const SizedBox(width: 2),
                       Flexible(
                         child: Text(
-                          'URL入力',
+                          'URL',
                           style: TextStyle(
-                            fontSize: 14,
+                            fontSize: 12,
                             fontWeight: _showUrlInput ? FontWeight.bold : FontWeight.normal,
                             color: _showUrlInput ? const Color(0xFF8E1728) : Colors.grey.shade600,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+            Expanded(
+              child: GestureDetector(
+                onTap: () => setState(() {
+                  _showUrlInput = false;
+                  _showAIGenerator = true;
+                }),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(vertical: 10),
+                  decoration: BoxDecoration(
+                    color: _showAIGenerator ? Colors.white : Colors.transparent,
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        Icons.auto_awesome,
+                        size: 16,
+                        color: _showAIGenerator ? const Color(0xFF8E1728) : Colors.grey.shade600,
+                      ),
+                      const SizedBox(width: 2),
+                      Flexible(
+                        child: Text(
+                          'AI生成',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: _showAIGenerator ? FontWeight.bold : FontWeight.normal,
+                            color: _showAIGenerator ? const Color(0xFF8E1728) : Colors.grey.shade600,
                           ),
                           overflow: TextOverflow.ellipsis,
                         ),
@@ -284,14 +347,17 @@ class _SurveyTemplateSelectorState extends State<SurveyTemplateSelector> {
         children: [
           Expanded(
             child: ElevatedButton.icon(
-              onPressed: () => setState(() => _showUrlInput = false),
+              onPressed: () => setState(() {
+                _showUrlInput = false;
+                _showAIGenerator = false;
+              }),
               icon: const Icon(Icons.list_alt),
-              label: const Text('テンプレートから選択'),
+              label: const Text('テンプレート'),
               style: ElevatedButton.styleFrom(
-                backgroundColor: !_showUrlInput
+                backgroundColor: (!_showUrlInput && !_showAIGenerator)
                   ? const Color(0xFF8E1728)
                   : Colors.grey.shade300,
-                foregroundColor: !_showUrlInput
+                foregroundColor: (!_showUrlInput && !_showAIGenerator)
                   ? Colors.white
                   : Colors.black,
               ),
@@ -300,14 +366,36 @@ class _SurveyTemplateSelectorState extends State<SurveyTemplateSelector> {
           const SizedBox(width: 8),
           Expanded(
             child: ElevatedButton.icon(
-              onPressed: () => setState(() => _showUrlInput = true),
+              onPressed: () => setState(() {
+                _showUrlInput = true;
+                _showAIGenerator = false;
+              }),
               icon: const Icon(Icons.link),
-              label: const Text('URLを入力'),
+              label: const Text('URL入力'),
               style: ElevatedButton.styleFrom(
                 backgroundColor: _showUrlInput
                   ? const Color(0xFF8E1728)
                   : Colors.grey.shade300,
                 foregroundColor: _showUrlInput
+                  ? Colors.white
+                  : Colors.black,
+              ),
+            ),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: ElevatedButton.icon(
+              onPressed: () => setState(() {
+                _showUrlInput = false;
+                _showAIGenerator = true;
+              }),
+              icon: const Icon(Icons.auto_awesome),
+              label: const Text('AI生成'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: _showAIGenerator
+                  ? const Color(0xFF8E1728)
+                  : Colors.grey.shade300,
+                foregroundColor: _showAIGenerator
                   ? Colors.white
                   : Colors.black,
               ),
@@ -343,7 +431,9 @@ class _SurveyTemplateSelectorState extends State<SurveyTemplateSelector> {
               ),
             ),
             const SizedBox(width: 8),
-            if (_showUrlInput)
+            if (_showAIGenerator)
+              const SizedBox() // AI生成は独自のボタンを持つ
+            else if (_showUrlInput)
               Expanded(
                 flex: 2,
                 child: ElevatedButton(
