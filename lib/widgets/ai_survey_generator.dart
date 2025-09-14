@@ -43,6 +43,13 @@ class _AISurveyGeneratorState extends State<AISurveyGenerator> {
   SurveyCategory _selectedCategory = SurveyCategory.custom;
   int _maxQuestions = 10;
 
+  // テンプレート参照・固定設定
+  final List<String> _referenceTemplateIds = [];  // 参考にするテンプレート
+  String? _headerTemplateId;  // 開始部分の固定テンプレート
+  String? _footerTemplateId;  // 終了部分の固定テンプレート
+  bool _useReferenceTemplates = false;  // 参考テンプレート使用フラグ
+  bool _useFixedTemplates = false;  // 固定テンプレート使用フラグ
+
   // Google Forms関連
   Map<String, dynamic>? _generationResult;
   String? _formUrl;
@@ -112,6 +119,9 @@ class _AISurveyGeneratorState extends State<AISurveyGenerator> {
         baseTemplateId: widget.baseTemplate?.id,
         maxQuestions: _maxQuestions,
         modelName: 'gpt-5',  // 運営側で管理
+        referenceTemplateIds: _useReferenceTemplates ? _referenceTemplateIds : null,
+        headerTemplateId: _useFixedTemplates ? _headerTemplateId : null,
+        footerTemplateId: _useFixedTemplates ? _footerTemplateId : null,
       );
 
       if (result == null || result['success'] != true) {
@@ -541,60 +551,182 @@ class _AISurveyGeneratorState extends State<AISurveyGenerator> {
 
   // 詳細設定
   Widget _buildAdvancedSettings(bool isMobile) {
-    return ExpansionTile(
-      title: const Text('詳細設定'),
-      leading: const Icon(Icons.settings),
+    return Column(
       children: [
-        Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // カテゴリ選択
-              const Text('カテゴリ', style: TextStyle(fontWeight: FontWeight.bold)),
-              const SizedBox(height: 8),
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: SurveyCategory.values.map((category) {
-                  return ChoiceChip(
-                    label: Text(category.label),
-                    selected: _selectedCategory == category,
-                    onSelected: (selected) {
-                      setState(() {
-                        _selectedCategory = category;
-                      });
-                    },
-                    selectedColor: Theme.of(context).primaryColor.withOpacity(0.2),
-                  );
-                }).toList(),
-              ),
-              const SizedBox(height: 16),
-
-              // 最大質問数
-              Row(
+        // 基本設定
+        ExpansionTile(
+          title: const Text('基本設定'),
+          leading: const Icon(Icons.tune),
+          initiallyExpanded: true,
+          children: [
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text('最大質問数:', style: TextStyle(fontWeight: FontWeight.bold)),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: Slider(
-                      value: _maxQuestions.toDouble(),
-                      min: 5,
-                      max: 20,
-                      divisions: 15,
-                      label: '$_maxQuestions問',
-                      onChanged: (value) {
-                        setState(() {
-                          _maxQuestions = value.round();
-                        });
-                      },
-                    ),
+                  // カテゴリ選択
+                  const Text('カテゴリ', style: TextStyle(fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 8),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: SurveyCategory.values.map((category) {
+                      return ChoiceChip(
+                        label: Text(category.label),
+                        selected: _selectedCategory == category,
+                        onSelected: (selected) {
+                          setState(() {
+                            _selectedCategory = category;
+                          });
+                        },
+                        selectedColor: Theme.of(context).primaryColor.withOpacity(0.2),
+                      );
+                    }).toList(),
                   ),
-                  Text('$_maxQuestions問'),
+                  const SizedBox(height: 16),
+
+                  // 最大質問数
+                  Row(
+                    children: [
+                      const Text('最大質問数:', style: TextStyle(fontWeight: FontWeight.bold)),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: Slider(
+                          value: _maxQuestions.toDouble(),
+                          min: 5,
+                          max: 20,
+                          divisions: 15,
+                          label: '$_maxQuestions問',
+                          onChanged: (value) {
+                            setState(() {
+                              _maxQuestions = value.round();
+                            });
+                          },
+                        ),
+                      ),
+                      Text('$_maxQuestions問'),
+                    ],
+                  ),
                 ],
               ),
-            ],
-          ),
+            ),
+          ],
+        ),
+
+        // テンプレート参照設定
+        ExpansionTile(
+          title: const Text('テンプレート参照設定'),
+          leading: const Icon(Icons.library_books),
+          subtitle: const Text('既存テンプレートを参考にAIが生成'),
+          children: [
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  SwitchListTile(
+                    title: const Text('テンプレートを参考にする'),
+                    subtitle: const Text('選択したテンプレートの構造や質問形式を参考にします'),
+                    value: _useReferenceTemplates,
+                    onChanged: (value) {
+                      setState(() {
+                        _useReferenceTemplates = value;
+                      });
+                    },
+                  ),
+                  if (_useReferenceTemplates) ...[
+                    const SizedBox(height: 16),
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.blue.shade50,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: Colors.blue.shade200),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(Icons.info_outline, size: 16, color: Colors.blue.shade700),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              '選択したテンプレートの質問形式や構造を参考にしながら、実験内容に合わせた新しいアンケートを生成します',
+                              style: TextStyle(fontSize: 12, color: Colors.blue.shade700),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    // TODO: テンプレート選択UI
+                    Center(
+                      child: Text(
+                        '※ テンプレート選択機能は準備中です',
+                        style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ],
+        ),
+
+        // 固定テンプレート設定
+        ExpansionTile(
+          title: const Text('固定テンプレート設定'),
+          leading: const Icon(Icons.anchor),
+          subtitle: const Text('開始・終了部分に固定のテンプレートを配置'),
+          children: [
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  SwitchListTile(
+                    title: const Text('固定テンプレートを使用'),
+                    subtitle: const Text('アンケートの最初や最後に固定の質問を配置します'),
+                    value: _useFixedTemplates,
+                    onChanged: (value) {
+                      setState(() {
+                        _useFixedTemplates = value;
+                      });
+                    },
+                  ),
+                  if (_useFixedTemplates) ...[
+                    const SizedBox(height: 16),
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.amber.shade50,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: Colors.amber.shade200),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(Icons.tips_and_updates, size: 16, color: Colors.amber.shade700),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              '基本情報や同意確認など、必須の質問を固定配置し、中間部分をAIが生成します',
+                              style: TextStyle(fontSize: 12, color: Colors.amber.shade700),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    // TODO: 開始・終了テンプレート選択UI
+                    Center(
+                      child: Text(
+                        '※ 固定テンプレート選択機能は準備中です',
+                        style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ],
         ),
       ],
     );

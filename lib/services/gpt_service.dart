@@ -22,6 +22,9 @@ class GPTService {
     String? baseTemplateId,
     int maxQuestions = 15,
     String modelName = DEFAULT_MODEL,
+    List<String>? referenceTemplateIds,  // 参考にするテンプレートのID
+    String? headerTemplateId,  // 開始部分の固定テンプレート
+    String? footerTemplateId,  // 終了部分の固定テンプレート
   }) async {
     try {
       debugPrint('=== GPT-5アンケート生成開始 ===');
@@ -53,6 +56,9 @@ class GPTService {
           'maxQuestions': maxQuestions,
           'additionalRequirements': additionalRequirements,
           'baseTemplateId': baseTemplateId,
+          'referenceTemplateIds': referenceTemplateIds,
+          'headerTemplateId': headerTemplateId,
+          'footerTemplateId': footerTemplateId,
         },
         'modelConfig': {
           'modelName': modelName,
