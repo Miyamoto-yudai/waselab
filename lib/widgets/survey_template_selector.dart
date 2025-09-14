@@ -10,12 +10,38 @@ class SurveyTemplateSelector extends StatefulWidget {
   final bool isPreSurvey;
   final Function(SurveyTemplate template)? onTemplateSelected;
   final Function(String url)? onUrlEntered;
-  
+
+  // 実験コンテキスト情報
+  final String? experimentTitle;
+  final String? experimentDescription;
+  final String? detailedContent;
+  final String? experimentType;
+  final String? location;
+  final bool? isPaid;
+  final String? reward;
+  final String? duration;
+  final String? labName;
+  final List<String>? requirements;
+  final List<String>? consentItems;
+  final String? maxParticipants;
+
   const SurveyTemplateSelector({
     super.key,
     required this.isPreSurvey,
     this.onTemplateSelected,
     this.onUrlEntered,
+    this.experimentTitle,
+    this.experimentDescription,
+    this.detailedContent,
+    this.experimentType,
+    this.location,
+    this.isPaid,
+    this.reward,
+    this.duration,
+    this.labName,
+    this.requirements,
+    this.consentItems,
+    this.maxParticipants,
   });
   
   @override
@@ -34,7 +60,45 @@ class _SurveyTemplateSelectorState extends State<SurveyTemplateSelector> {
     _urlController.dispose();
     super.dispose();
   }
-  
+
+  /// 実験コンテキストを構築
+  String _buildExperimentContext() {
+    final List<String> contextParts = [];
+
+    if (widget.experimentDescription != null && widget.experimentDescription!.isNotEmpty) {
+      contextParts.add('実験概要: ${widget.experimentDescription}');
+    }
+    if (widget.detailedContent != null && widget.detailedContent!.isNotEmpty) {
+      contextParts.add('詳細: ${widget.detailedContent}');
+    }
+    if (widget.experimentType != null && widget.experimentType!.isNotEmpty) {
+      contextParts.add('実験タイプ: ${widget.experimentType}');
+    }
+    if (widget.location != null && widget.location!.isNotEmpty) {
+      contextParts.add('場所: ${widget.location}');
+    }
+    if (widget.isPaid == true && widget.reward != null && widget.reward!.isNotEmpty) {
+      contextParts.add('報酬: ${widget.reward}');
+    }
+    if (widget.duration != null && widget.duration!.isNotEmpty) {
+      contextParts.add('所要時間: ${widget.duration}分');
+    }
+    if (widget.labName != null && widget.labName!.isNotEmpty) {
+      contextParts.add('研究室: ${widget.labName}');
+    }
+    if (widget.requirements != null && widget.requirements!.isNotEmpty) {
+      contextParts.add('参加条件: ${widget.requirements!.join(', ')}');
+    }
+    if (widget.consentItems != null && widget.consentItems!.isNotEmpty) {
+      contextParts.add('同意項目: ${widget.consentItems!.join(', ')}');
+    }
+    if (widget.maxParticipants != null && widget.maxParticipants!.isNotEmpty) {
+      contextParts.add('募集人数: ${widget.maxParticipants}名');
+    }
+
+    return contextParts.join('\n');
+  }
+
   @override
   Widget build(BuildContext context) {
     final screenWidth = MediaQuery.of(context).size.width;
@@ -83,6 +147,8 @@ class _SurveyTemplateSelectorState extends State<SurveyTemplateSelector> {
               child: _showAIGenerator
                 ? AISurveyGenerator(
                     isPreSurvey: widget.isPreSurvey,
+                    experimentTitle: widget.experimentTitle,
+                    experimentDescription: _buildExperimentContext(),
                     onFormCreated: (url) {
                       // URLを親ウィジェットに渡すが、ダイアログは閉じない
                       widget.onUrlEntered?.call(url);
@@ -192,6 +258,8 @@ class _SurveyTemplateSelectorState extends State<SurveyTemplateSelector> {
                 child: _showAIGenerator
                   ? AISurveyGenerator(
                       isPreSurvey: widget.isPreSurvey,
+                      experimentTitle: widget.experimentTitle,
+                      experimentDescription: _buildExperimentContext(),
                       onFormCreated: (url) {
                         // URLを親ウィジェットに渡すが、ダイアログは閉じない
                         widget.onUrlEntered?.call(url);

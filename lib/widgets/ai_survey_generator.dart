@@ -32,6 +32,7 @@ class _AISurveyGeneratorState extends State<AISurveyGenerator> {
   final _targetAudienceController = TextEditingController();
   final _expectedOutcomeController = TextEditingController();
   final _additionalRequirementsController = TextEditingController();
+  final _experimentContextController = TextEditingController();
   // モデル名は運営側で管理するため削除
 
   // 状態管理
@@ -60,6 +61,10 @@ class _AISurveyGeneratorState extends State<AISurveyGenerator> {
     if (widget.experimentTitle != null) {
       _purposeController.text = '${widget.experimentTitle}に関する${widget.isPreSurvey ? '事前' : '事後'}評価';
     }
+    // 実験コンテキスト情報を設定
+    if (widget.experimentDescription != null && widget.experimentDescription!.isNotEmpty) {
+      _experimentContextController.text = widget.experimentDescription!;
+    }
   }
 
   @override
@@ -68,6 +73,7 @@ class _AISurveyGeneratorState extends State<AISurveyGenerator> {
     _targetAudienceController.dispose();
     _expectedOutcomeController.dispose();
     _additionalRequirementsController.dispose();
+    _experimentContextController.dispose();
     super.dispose();
   }
 
@@ -92,7 +98,9 @@ class _AISurveyGeneratorState extends State<AISurveyGenerator> {
       // GPTサービスを呼び出し
       final result = await GPTService.generateSurveyTemplate(
         experimentTitle: widget.experimentTitle ?? '実験',
-        experimentDescription: widget.experimentDescription ?? '',
+        experimentDescription: _experimentContextController.text.isNotEmpty
+            ? _experimentContextController.text
+            : widget.experimentDescription ?? '',
         purpose: _purposeController.text,
         targetAudience: _targetAudienceController.text,
         expectedOutcome: _expectedOutcomeController.text,
@@ -501,6 +509,31 @@ class _AISurveyGeneratorState extends State<AISurveyGenerator> {
             helperMaxLines: 2,
           ),
           maxLines: 3,
+        ),
+        const SizedBox(height: 16),
+
+        // 実験情報（折りたたみ式）
+        ExpansionTile(
+          title: const Text('実験情報（AIが参考にする情報）'),
+          leading: const Icon(Icons.science),
+          initiallyExpanded: false,
+          children: [
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: TextFormField(
+                controller: _experimentContextController,
+                decoration: const InputDecoration(
+                  labelText: '実験の詳細情報',
+                  hintText: '実験の概要、詳細、条件など',
+                  border: OutlineInputBorder(),
+                  helperText: 'AIがアンケート生成時に参考にする実験の詳細情報です。必要に応じて編集できます。',
+                  helperMaxLines: 2,
+                ),
+                maxLines: 5,
+                minLines: 3,
+              ),
+            ),
+          ],
         ),
       ],
     );

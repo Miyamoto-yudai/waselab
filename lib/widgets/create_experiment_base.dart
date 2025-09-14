@@ -2310,80 +2310,6 @@ class _CreateExperimentBaseState extends State<CreateExperimentBase> {
           ),
           const SizedBox(height: 16),
 
-          // AIアンケート生成ボタン
-          Card(
-            elevation: 2,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: InkWell(
-              onTap: () {
-                // AIアンケート生成ダイアログを表示
-                _showAiSurveyGenerator();
-              },
-              borderRadius: BorderRadius.circular(12),
-              child: Container(
-                padding: const EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [
-                      Colors.purple.shade400,
-                      Colors.purple.shade600,
-                    ],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.2),
-                        shape: BoxShape.circle,
-                      ),
-                      child: const Icon(
-                        Icons.auto_awesome,
-                        color: Colors.white,
-                        size: 28,
-                      ),
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text(
-                            'AIでアンケートを作成',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            '入力した実験情報を元に最適なアンケートを自動生成',
-                            style: TextStyle(
-                              color: Colors.white.withValues(alpha: 0.9),
-                              fontSize: 13,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const Icon(
-                      Icons.arrow_forward_ios,
-                      color: Colors.white,
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-          const SizedBox(height: 24),
-
           // アンケート設定セクション
           if (_selectedType != ExperimentType.survey) ...[
             const Divider(),
@@ -2485,6 +2411,18 @@ class _CreateExperimentBaseState extends State<CreateExperimentBase> {
                                               context: context,
                                               builder: (context) => SurveyTemplateSelector(
                                                 isPreSurvey: true,
+                                                experimentTitle: _titleController.text.trim(),
+                                                experimentDescription: _descriptionController.text.trim(),
+                                                detailedContent: _detailedContentController.text.trim(),
+                                                experimentType: _selectedType.label,
+                                                location: _locationController.text.trim(),
+                                                isPaid: _isPaid,
+                                                reward: _isPaid ? _rewardController.text.trim() : null,
+                                                duration: _durationController.text.trim(),
+                                                labName: _labNameController.text.trim(),
+                                                requirements: _requirements,
+                                                consentItems: _consentItems,
+                                                maxParticipants: _maxParticipantsController.text.trim(),
                                                 onTemplateSelected: (template) {
                                                   setState(() {
                                                     _preSurveyTemplateId = template.id;
@@ -2585,6 +2523,18 @@ class _CreateExperimentBaseState extends State<CreateExperimentBase> {
                                               context: context,
                                               builder: (context) => SurveyTemplateSelector(
                                                 isPreSurvey: false,
+                                                experimentTitle: _titleController.text.trim(),
+                                                experimentDescription: _descriptionController.text.trim(),
+                                                detailedContent: _detailedContentController.text.trim(),
+                                                experimentType: _selectedType.label,
+                                                location: _locationController.text.trim(),
+                                                isPaid: _isPaid,
+                                                reward: _isPaid ? _rewardController.text.trim() : null,
+                                                duration: _durationController.text.trim(),
+                                                labName: _labNameController.text.trim(),
+                                                requirements: _requirements,
+                                                consentItems: _consentItems,
+                                                maxParticipants: _maxParticipantsController.text.trim(),
                                                 onTemplateSelected: (template) {
                                                   setState(() {
                                                     _experimentSurveyTemplateId = template.id;
@@ -2636,6 +2586,50 @@ class _CreateExperimentBaseState extends State<CreateExperimentBase> {
             const SizedBox(height: 16),
             const Text('アンケートURL設定', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
             const SizedBox(height: 16),
+
+            // テンプレートから作成ボタン
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: () async {
+                  await showDialog(
+                    context: context,
+                    builder: (context) => SurveyTemplateSelector(
+                      isPreSurvey: false,
+                      experimentTitle: _titleController.text.trim(),
+                      experimentDescription: _descriptionController.text.trim(),
+                      detailedContent: _detailedContentController.text.trim(),
+                      experimentType: _selectedType.label,
+                      location: _locationController.text.trim(),
+                      isPaid: _isPaid,
+                      reward: _isPaid ? _rewardController.text.trim() : null,
+                      duration: _durationController.text.trim(),
+                      labName: _labNameController.text.trim(),
+                      requirements: _requirements,
+                      consentItems: _consentItems,
+                      maxParticipants: _maxParticipantsController.text.trim(),
+                      onTemplateSelected: (template) {
+                        setState(() {
+                          _experimentSurveyTemplateId = template.id;
+                        });
+                      },
+                      onUrlEntered: (url) {
+                        setState(() {
+                          _surveyUrlController.text = url;
+                        });
+                      },
+                    ),
+                  );
+                },
+                icon: const Icon(Icons.list_alt),
+                label: const Text('テンプレートから作成'),
+                style: OutlinedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+
             TextFormField(
               controller: _surveyUrlController,
               decoration: const InputDecoration(
