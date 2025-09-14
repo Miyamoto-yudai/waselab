@@ -2460,7 +2460,7 @@ class _CreateExperimentBaseState extends State<CreateExperimentBase> {
                                             );
                                           },
                                           icon: const Icon(Icons.list_alt),
-                                          label: const Text('テンプレートから作成'),
+                                          label: const Text('テンプレ・AIで作成'),
                                         ),
                                       ),
                                       const SizedBox(width: 8),
@@ -2572,7 +2572,7 @@ class _CreateExperimentBaseState extends State<CreateExperimentBase> {
                                             );
                                           },
                                           icon: const Icon(Icons.list_alt),
-                                          label: const Text('テンプレートから作成'),
+                                          label: const Text('テンプレ・AIで作成'),
                                         ),
                                       ),
                                       const SizedBox(width: 8),
@@ -2633,7 +2633,7 @@ class _CreateExperimentBaseState extends State<CreateExperimentBase> {
             const Text('アンケートURL設定', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
             const SizedBox(height: 16),
 
-            // テンプレートから作成ボタン
+            // テンプレ・AIで作成ボタン
             SizedBox(
               width: double.infinity,
               child: OutlinedButton.icon(
@@ -2668,7 +2668,7 @@ class _CreateExperimentBaseState extends State<CreateExperimentBase> {
                   );
                 },
                 icon: const Icon(Icons.list_alt),
-                label: const Text('テンプレートから作成'),
+                label: const Text('テンプレ・AIで作成'),
                 style: OutlinedButton.styleFrom(
                   padding: const EdgeInsets.symmetric(vertical: 12),
                 ),
