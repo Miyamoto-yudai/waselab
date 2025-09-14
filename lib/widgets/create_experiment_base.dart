@@ -1397,6 +1397,29 @@ class _CreateExperimentBaseState extends State<CreateExperimentBase> {
               },
               activeThumbColor: const Color(0xFF8E1728),
             ),
+            const SizedBox(height: 12),
+            // 複数回実験の注意書き
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: Colors.grey.shade100,
+                borderRadius: BorderRadius.circular(6),
+                border: Border.all(color: Colors.grey.shade300),
+              ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Icon(Icons.info_outline, size: 14, color: Colors.grey.shade600),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text(
+                      '複数回実験や継続的な実験の場合は、参加者と個別メッセージで日程を調整してください',
+                      style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
+                    ),
+                  ),
+                ],
+              ),
+            ),
           ],
           const SizedBox(height: 16),
           
@@ -2577,6 +2600,29 @@ class _CreateExperimentBaseState extends State<CreateExperimentBase> {
                 ),
               ),
             ),
+            const SizedBox(height: 12),
+            // アンケート送信に関する注意書き
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: Colors.grey.shade100,
+                borderRadius: BorderRadius.circular(6),
+                border: Border.all(color: Colors.grey.shade300),
+              ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Icon(Icons.info_outline, size: 14, color: Colors.grey.shade600),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text(
+                      '日時指定での送信や複数回送信が必要な場合は、参加者と個別メッセージで対応してください',
+                      style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
+                    ),
+                  ),
+                ],
+              ),
+            ),
           ],
 
           // アンケートタイプの実験の場合のアンケートURL入力
@@ -2635,7 +2681,6 @@ class _CreateExperimentBaseState extends State<CreateExperimentBase> {
               decoration: const InputDecoration(
                 labelText: 'アンケートURL（任意）',
                 hintText: 'https://forms.google.com/...',
-                helperText: 'URLを設定しない場合は、参加者と個別チャットで詳細を共有してください',
                 border: OutlineInputBorder(),
                 prefixIcon: Icon(Icons.link),
               ),
@@ -2656,20 +2701,31 @@ class _CreateExperimentBaseState extends State<CreateExperimentBase> {
             ),
             const SizedBox(height: 8),
             Container(
-              padding: const EdgeInsets.all(12),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               decoration: BoxDecoration(
-                color: Colors.blue.shade50,
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: Colors.blue.shade200),
+                color: Colors.amber.shade50,
+                borderRadius: BorderRadius.circular(6),
+                border: Border.all(color: Colors.amber.shade200),
               ),
               child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Icon(Icons.info_outline, size: 16, color: Colors.blue.shade700),
+                  Icon(Icons.tips_and_updates, size: 14, color: Colors.amber.shade700),
                   const SizedBox(width: 8),
                   Expanded(
-                    child: Text(
-                      'URLを設定しない場合、参加者には個別チャットでアンケートの詳細をお送りください',
-                      style: TextStyle(fontSize: 12, color: Colors.blue.shade700),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'ヒント',
+                          style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.amber.shade700),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          '• URLを設定しない場合：個別メッセージで送信\n• 日時指定・複数回送信したい場合：URLは設定せず個別メッセージで対応',
+                          style: TextStyle(fontSize: 11, color: Colors.grey.shade700),
+                        ),
+                      ],
                     ),
                   ),
                 ],
