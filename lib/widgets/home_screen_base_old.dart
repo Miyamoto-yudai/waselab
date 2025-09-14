@@ -503,7 +503,7 @@ class _HomeScreenBaseState extends State<HomeScreenBase> {
           ),
           // 検索バー、日付フィルター、種別切り替えボタン、ソート選択
           AnimatedContainer(
-            duration: const Duration(milliseconds: 100), // アニメーション時間を短縮
+            duration: const Duration(milliseconds: 100),
             height: _isHeaderVisible ? (isSmallScreen ? 180 : 160) : 0,
             curve: Curves.easeInOut,
             child: SingleChildScrollView(

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../models/notification.dart';
 import '../services/notification_service.dart';
 import '../services/auth_service.dart';
@@ -84,6 +85,7 @@ class _NotificationScreenState extends State<NotificationScreen> {
       case NotificationType.experimentJoined:
       case NotificationType.experimentCancelled:
       case NotificationType.experimentCompleted:
+      case NotificationType.experimentStarted:
         // 実験詳細または管理画面に遷移
         if (notification.data?['experimentId'] != null) {
           try {
@@ -135,7 +137,102 @@ class _NotificationScreenState extends State<NotificationScreen> {
           ),
         );
         break;
+
+      case NotificationType.postSurveyUrl:
+        // 実験後アンケートURLの処理
+        if (notification.data?['surveyUrl'] != null) {
+          _showPostSurveyUrlDialog(notification);
+        }
+        break;
     }
+  }
+
+  void _showPostSurveyUrlDialog(AppNotification notification) {
+    final surveyUrl = notification.data?['surveyUrl'] as String?;
+    final experimentTitle = notification.data?['experimentTitle'] as String? ?? '実験';
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Row(
+          children: [
+            Icon(
+              Icons.assignment,
+              color: Colors.blue[700],
+            ),
+            const SizedBox(width: 8),
+            const Expanded(
+              child: Text(
+                '実験後アンケート',
+                style: TextStyle(fontSize: 18),
+              ),
+            ),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('「$experimentTitle」の実験後アンケートが届きました。'),
+            const SizedBox(height: 16),
+            if (surveyUrl != null) ...[
+              const Text(
+                'アンケートURL:',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 8),
+              InkWell(
+                onTap: () async {
+                  final uri = Uri.parse(surveyUrl);
+                  if (await canLaunchUrl(uri)) {
+                    await launchUrl(uri, mode: LaunchMode.externalApplication);
+                  } else {
+                    if (mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('URLを開けませんでした'),
+                          backgroundColor: Colors.red,
+                        ),
+                      );
+                    }
+                  }
+                },
+                child: Text(
+                  surveyUrl,
+                  style: TextStyle(
+                    color: Colors.blue[700],
+                    decoration: TextDecoration.underline,
+                  ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('閉じる'),
+          ),
+          if (surveyUrl != null)
+            ElevatedButton.icon(
+              onPressed: () async {
+                final uri = Uri.parse(surveyUrl);
+                if (await canLaunchUrl(uri)) {
+                  await launchUrl(uri, mode: LaunchMode.externalApplication);
+                  if (mounted) Navigator.pop(context);
+                }
+              },
+              icon: const Icon(Icons.open_in_new, size: 16),
+              label: const Text('アンケートを開く'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.blue[700],
+              ),
+            ),
+        ],
+      ),
+    );
   }
   
   void _showAdminMessageDialog(AppNotification notification) {
@@ -656,12 +753,16 @@ class _NotificationScreenState extends State<NotificationScreen> {
         return Colors.red;
       case NotificationType.experimentCompleted:
         return Colors.purple;
+      case NotificationType.experimentStarted:
+        return Colors.green[700]!;
       case NotificationType.adminMessage:
         return Colors.red[700]!;
       case NotificationType.supportTicket:
         return Colors.indigo;
       case NotificationType.supportReply:
         return Colors.teal;
+      case NotificationType.postSurveyUrl:
+        return Colors.blue[700]!;
     }
   }
 }

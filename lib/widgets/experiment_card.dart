@@ -274,13 +274,89 @@ class _ExperimentCardState extends State<ExperimentCard> {
                         ],
                       ),
                     ),
+                  // アンケートバッジ
+                  if (widget.experiment.preSurveyUrl != null ||
+                      widget.experiment.postSurveyUrl != null ||
+                      (widget.experiment.surveyUrl != null && widget.experiment.type == ExperimentType.survey)) ...[
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        // 実験前アンケート
+                        if (widget.experiment.preSurveyUrl != null)
+                          Container(
+                            margin: const EdgeInsets.only(bottom: 6, right: 4),
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: Colors.purple.withValues(alpha: 0.1),
+                              borderRadius: BorderRadius.circular(4),
+                              border: Border.all(
+                                color: Colors.purple.withValues(alpha: 0.3),
+                                width: 1,
+                              ),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  Icons.fact_check,
+                                  size: 10,
+                                  color: Colors.purple[700],
+                                ),
+                                const SizedBox(width: 2),
+                                Text(
+                                  '前',
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.purple[700],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        // 実験後アンケート
+                        if (widget.experiment.postSurveyUrl != null)
+                          Container(
+                            margin: const EdgeInsets.only(bottom: 6, right: 8),
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: Colors.indigo.withValues(alpha: 0.1),
+                              borderRadius: BorderRadius.circular(4),
+                              border: Border.all(
+                                color: Colors.indigo.withValues(alpha: 0.3),
+                                width: 1,
+                              ),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  Icons.quiz,
+                                  size: 10,
+                                  color: Colors.indigo[700],
+                                ),
+                                const SizedBox(width: 2),
+                                Text(
+                                  '後',
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.indigo[700],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                      ],
+                    ),
+                  ],
                   // 締切タグ
                   if (daysLeft != null)
                     Container(
                       margin: const EdgeInsets.only(bottom: 6),
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                       decoration: BoxDecoration(
-                        color: daysLeft <= 3 
+                        color: daysLeft <= 3
                           ? Colors.red.withValues(alpha: 0.1)
                           : daysLeft <= 7
                             ? Colors.orange.withValues(alpha: 0.1)
@@ -288,15 +364,15 @@ class _ExperimentCardState extends State<ExperimentCard> {
                         borderRadius: BorderRadius.circular(6),
                       ),
                       child: Text(
-                        daysLeft <= 0 
-                          ? '本日締切' 
+                        daysLeft <= 0
+                          ? '本日締切'
                           : daysLeft == 1
                             ? '明日締切'
                             : 'あと$daysLeft日',
                         style: TextStyle(
                           fontSize: 11,
                           fontWeight: FontWeight.bold,
-                          color: daysLeft <= 3 
+                          color: daysLeft <= 3
                             ? Colors.red[700]
                             : daysLeft <= 7
                               ? Colors.orange[700]

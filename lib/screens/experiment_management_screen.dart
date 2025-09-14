@@ -92,6 +92,107 @@ class _ExperimentManagementScreenState extends State<ExperimentManagementScreen>
   // 2. 進行中: 実験期間中
   // 3. 評価待ち/完了: 参加者ごとに個別管理
 
+  /// 実験後アンケートURLが送信済みかチェック
+  bool _hasPostSurveyUrlSent(String participantId) {
+    final experimentData = _experiment.toFirestore();
+    final participantEvals = experimentData['participantEvaluations'] as Map<String, dynamic>? ?? {};
+    final userEval = participantEvals[participantId] as Map<String, dynamic>? ?? {};
+    return userEval['postSurveyUrlSent'] ?? false;
+  }
+
+  /// 実験後アンケートURLを送信
+  Future<void> _sendPostSurveyUrl(AppUser participant) async {
+    if (_experiment.postSurveyUrl == null || _experiment.postSurveyUrl!.isEmpty) {
+      return;
+    }
+
+    // 既に送信済みの場合は確認ダイアログを表示
+    if (_hasPostSurveyUrlSent(participant.uid)) {
+      final confirm = await showDialog<bool>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('確認'),
+          content: const Text('このユーザーには既にアンケートURLを送信済みです。\n再度送信しますか？'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('キャンセル'),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.pop(context, true),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF8E1728),
+              ),
+              child: const Text('再送信'),
+            ),
+          ],
+        ),
+      );
+      if (confirm != true) return;
+    }
+
+    try {
+      // 通知を作成
+      await _experimentService.sendPostSurveyUrlNotification(
+        experimentId: _experiment.id,
+        participantId: participant.uid,
+        participantName: participant.name,
+        experimentTitle: _experiment.title,
+        surveyUrl: _experiment.postSurveyUrl!,
+      );
+
+      // 送信状態を更新
+      await _experimentService.updatePostSurveyUrlSentStatus(
+        experimentId: _experiment.id,
+        participantId: participant.uid,
+        sent: true,
+      );
+
+      // データを再読み込み
+      await _loadData();
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('${participant.name}にアンケートURLを送信しました'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    } catch (e) {
+      debugPrint('アンケートURL送信エラー: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('送信に失敗しました'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  /// URL送信可能な参加者数を取得
+  int _getUrlSendableParticipantCount() {
+    if (_experiment.postSurveyUrl == null || _experiment.postSurveyUrl!.isEmpty) {
+      return 0;
+    }
+
+    int count = 0;
+    final experimentData = _experiment.toFirestore();
+    final participantEvals = experimentData['participantEvaluations'] as Map<String, dynamic>? ?? {};
+
+    for (final participantId in _experiment.participants) {
+      final userEval = participantEvals[participantId] as Map<String, dynamic>? ?? {};
+      final urlSent = userEval['postSurveyUrlSent'] ?? false;
+      if (!urlSent) {
+        count++;
+      }
+    }
+
+    return count;
+  }
+
   /// 評価可能な参加者数を取得
   int _getEvaluatableParticipantCount() {
     int count = 0;
@@ -133,6 +234,55 @@ class _ExperimentManagementScreenState extends State<ExperimentManagementScreen>
     }
     
     return count;
+  }
+
+  /// 実験を開始する
+  Future<void> _startExperiment() async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('実験を開始しますか？'),
+        content: const Text('実験を開始すると、ステータスが「進行中」に変更されます。'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('キャンセル'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.green,
+            ),
+            child: const Text('開始する'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true) {
+      try {
+        await _experimentService.startExperiment(_experiment.id);
+        await _loadData();
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('実験を開始しました'),
+              backgroundColor: Colors.green,
+            ),
+          );
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('実験開始に失敗しました: $e'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
+    }
   }
 
   /// 募集を締め切る
@@ -295,6 +445,24 @@ class _ExperimentManagementScreenState extends State<ExperimentManagementScreen>
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   const Text('参加者'),
+                  if (_getUrlSendableParticipantCount() > 0) ...[
+                    const SizedBox(width: 4),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: Colors.blue,
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Text(
+                        '${_getUrlSendableParticipantCount()}',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ],
                   if (_getEvaluatableParticipantCount() > 0) ...[
                     const SizedBox(width: 4),
                     Container(
@@ -480,6 +648,16 @@ class _ExperimentManagementScreenState extends State<ExperimentManagementScreen>
                     spacing: 8,
                     runSpacing: 8,
                     children: [
+                      // 実験開始ボタン（募集中の場合のみ表示）
+                      if (_experiment.status == ExperimentStatus.recruiting)
+                        ElevatedButton.icon(
+                          onPressed: _startExperiment,
+                          icon: const Icon(Icons.play_circle_filled),
+                          label: const Text('実験を開始'),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.green,
+                          ),
+                        ),
                       if (_experiment.status == ExperimentStatus.recruiting)
                         ElevatedButton.icon(
                           onPressed: _closeRecruitment,
@@ -850,6 +1028,33 @@ class _ExperimentManagementScreenState extends State<ExperimentManagementScreen>
                               label: const Text('評価する'),
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: Colors.orange,
+                              ),
+                            ),
+                          ),
+                        // 実験後アンケートURLが設定されている場合、URL送信ボタンを表示
+                        if (_experiment.postSurveyUrl != null && _experiment.postSurveyUrl!.isNotEmpty)
+                          SizedBox(
+                            width: MediaQuery.of(context).size.width < 400 ? double.infinity : 150,
+                            child: OutlinedButton.icon(
+                              onPressed: () => _sendPostSurveyUrl(participant),
+                              icon: Icon(
+                                _hasPostSurveyUrlSent(participant.uid)
+                                  ? Icons.check_circle
+                                  : Icons.send,
+                                size: 16,
+                                color: _hasPostSurveyUrlSent(participant.uid)
+                                  ? Colors.green
+                                  : null,
+                              ),
+                              label: Text(
+                                _hasPostSurveyUrlSent(participant.uid)
+                                  ? 'URL送信済'
+                                  : 'アンケートURL送信',
+                              ),
+                              style: OutlinedButton.styleFrom(
+                                foregroundColor: _hasPostSurveyUrlSent(participant.uid)
+                                  ? Colors.green
+                                  : null,
                               ),
                             ),
                           ),

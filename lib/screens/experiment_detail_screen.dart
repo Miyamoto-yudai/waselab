@@ -1368,10 +1368,15 @@ class _ExperimentDetailScreenState extends State<ExperimentDetailScreen> {
                     ),
                     const SizedBox(height: 8),
                     // アンケート情報の表示
-                    if (widget.experiment.preSurveyUrl != null || widget.experiment.surveyUrl != null) ...[
-                      Row(
+                    if (widget.experiment.preSurveyUrl != null ||
+                        widget.experiment.postSurveyUrl != null ||
+                        (widget.experiment.surveyUrl != null && widget.experiment.type == ExperimentType.survey)) ...[
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
                         children: [
-                          if (widget.experiment.preSurveyUrl != null) ...[
+                          // 事前アンケート
+                          if (widget.experiment.preSurveyUrl != null)
                             Container(
                               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                               decoration: BoxDecoration(
@@ -1385,15 +1390,35 @@ class _ExperimentDetailScreenState extends State<ExperimentDetailScreen> {
                                   Icon(Icons.fact_check, size: 14, color: Colors.purple.shade700),
                                   const SizedBox(width: 4),
                                   Text(
-                                    '事前アンケートあり',
+                                    '実験前アンケートあり',
                                     style: TextStyle(fontSize: 12, color: Colors.purple.shade700, fontWeight: FontWeight.bold),
                                   ),
                                 ],
                               ),
                             ),
-                            const SizedBox(width: 8),
-                          ],
-                          if (widget.experiment.surveyUrl != null && widget.experiment.type != ExperimentType.survey) ...[
+                          // 実験アンケート（アンケートタイプの実験用）
+                          if (widget.experiment.surveyUrl != null && widget.experiment.type == ExperimentType.survey)
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: Colors.green.withValues(alpha: 0.1),
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(color: Colors.green.withValues(alpha: 0.3)),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(Icons.assignment, size: 14, color: Colors.green.shade700),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    'アンケート実施',
+                                    style: TextStyle(fontSize: 12, color: Colors.green.shade700, fontWeight: FontWeight.bold),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          // 実験後アンケート
+                          if (widget.experiment.postSurveyUrl != null)
                             Container(
                               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                               decoration: BoxDecoration(
@@ -1407,13 +1432,12 @@ class _ExperimentDetailScreenState extends State<ExperimentDetailScreen> {
                                   Icon(Icons.quiz, size: 14, color: Colors.indigo.shade700),
                                   const SizedBox(width: 4),
                                   Text(
-                                    '事後アンケートあり',
+                                    '実験後アンケートあり',
                                     style: TextStyle(fontSize: 12, color: Colors.indigo.shade700, fontWeight: FontWeight.bold),
                                   ),
                                 ],
                               ),
                             ),
-                          ],
                         ],
                       ),
                       const SizedBox(height: 8),

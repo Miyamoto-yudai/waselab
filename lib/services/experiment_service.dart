@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 import '../models/experiment.dart';
+import '../models/notification.dart';
 import 'user_service.dart';
 import 'notification_service.dart';
 
@@ -185,15 +186,21 @@ class ExperimentService {
           final experimentData = experimentDoc.data()!;
           final creatorId = experimentData['creatorId'] as String?;
           final experimentTitle = experimentData['title'] as String? ?? '実験';
-          
+
+          // 実験作成者自身が参加する場合は通知を送信しない
+          if (creatorId == userId) {
+            debugPrint('実験作成者自身の参加のため、通知送信をスキップ');
+            return;
+          }
+
           // 参加者情報を取得
           final userDoc = await _firestore.collection('users').doc(userId).get();
           String participantName = 'ユーザー';
           if (userDoc.exists) {
             participantName = userDoc.data()!['name'] as String? ?? 'ユーザー';
           }
-          
-          // 実験作成者に通知を送信
+
+          // 実験作成者に通知を送信（作成者と参加者が異なる場合のみ）
           if (creatorId != null && creatorId != userId) {
             await _notificationService.createExperimentJoinedNotification(
               userId: creatorId,
@@ -201,6 +208,7 @@ class ExperimentService {
               experimentTitle: experimentTitle,
               experimentId: experimentId,
             );
+            debugPrint('実験参加通知を送信しました: creator=$creatorId, participant=$participantName');
           }
         }
       } catch (notificationError) {
@@ -304,12 +312,42 @@ class ExperimentService {
   /// 実験を開始（進行中状態に変更）
   Future<void> startExperiment(String experimentId) async {
     try {
+      // 実験情報を取得
+      final experimentDoc = await _firestore.collection('experiments').doc(experimentId).get();
+      if (!experimentDoc.exists) {
+        throw Exception('実験が見つかりません');
+      }
+
+      final experimentData = experimentDoc.data()!;
+      final creatorId = experimentData['creatorId'] as String?;
+      final experimentTitle = experimentData['title'] as String? ?? '実験';
+
+      // ステータスを更新
       await _firestore.collection('experiments').doc(experimentId).update({
         'status': ExperimentStatus.ongoing.name,
         'actualStartDate': Timestamp.fromDate(DateTime.now()),
       });
-      
+
       debugPrint('Started experiment: $experimentId');
+
+      // 実験作成者に通知を送信
+      if (creatorId != null) {
+        try {
+          await _notificationService.createNotification(
+            userId: creatorId,
+            type: NotificationType.experimentStarted,
+            title: '実験を開始しました',
+            message: '「$experimentTitle」の実験を開始しました。参加者への対応をお願いします。',
+            data: {
+              'experimentId': experimentId,
+              'experimentTitle': experimentTitle,
+            },
+          );
+          debugPrint('実験開始通知を送信しました: userId=$creatorId, experimentTitle=$experimentTitle');
+        } catch (notificationError) {
+          debugPrint('通知送信エラー（無視）: $notificationError');
+        }
+      }
     } catch (e) {
       debugPrint('Error starting experiment: $e');
       throw Exception('実験の開始に失敗しました');
@@ -436,6 +474,69 @@ class ExperimentService {
       
     } catch (e) {
       debugPrint('Error canceling participation: $e');
+      rethrow;
+    }
+  }
+
+  /// 実験後アンケートURL送信通知を作成
+  Future<void> sendPostSurveyUrlNotification({
+    required String experimentId,
+    required String participantId,
+    required String participantName,
+    required String experimentTitle,
+    required String surveyUrl,
+  }) async {
+    try {
+      await _notificationService.createNotification(
+        userId: participantId,
+        type: NotificationType.postSurveyUrl,
+        title: '実験後アンケートのお知らせ',
+        message: '「$experimentTitle」の実験後アンケートURLが送信されました。タップしてアンケートに回答してください。',
+        data: {
+          'experimentId': experimentId,
+          'surveyUrl': surveyUrl,
+          'experimentTitle': experimentTitle,
+        },
+      );
+    } catch (e) {
+      debugPrint('Error sending post survey URL notification: $e');
+      rethrow;
+    }
+  }
+
+  /// 実験後アンケートURL送信状態を更新
+  Future<void> updatePostSurveyUrlSentStatus({
+    required String experimentId,
+    required String participantId,
+    required bool sent,
+  }) async {
+    try {
+      // 現在の実験データを取得
+      final doc = await _firestore.collection('experiments').doc(experimentId).get();
+      if (!doc.exists) {
+        throw Exception('実験が見つかりません');
+      }
+
+      final data = doc.data()!;
+      final participantEvaluations = Map<String, Map<String, dynamic>>.from(
+        data['participantEvaluations'] ?? {},
+      );
+
+      // 参加者の評価データを更新
+      if (!participantEvaluations.containsKey(participantId)) {
+        participantEvaluations[participantId] = {};
+      }
+      participantEvaluations[participantId]!['postSurveyUrlSent'] = sent;
+      if (sent) {
+        participantEvaluations[participantId]!['postSurveyUrlSentAt'] = Timestamp.now();
+      }
+
+      // Firestoreを更新
+      await _firestore.collection('experiments').doc(experimentId).update({
+        'participantEvaluations': participantEvaluations,
+      });
+    } catch (e) {
+      debugPrint('Error updating post survey URL sent status: $e');
       rethrow;
     }
   }

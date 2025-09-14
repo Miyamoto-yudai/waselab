@@ -623,17 +623,74 @@ class _HistoryScreenState extends State<HistoryScreen> with TickerProviderStateM
                         ),
                         if (isMyExperiment) ...[
                           const SizedBox(height: 4),
-                          Container(
-                            padding: const EdgeInsets.all(4),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFF8E1728).withValues(alpha: 0.1),
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: const Icon(
-                              Icons.settings,
-                              size: 16,
-                              color: Color(0xFF8E1728),
-                            ),
+                          Stack(
+                            clipBehavior: Clip.none,
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.all(4),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFF8E1728).withValues(alpha: 0.1),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: const Icon(
+                                  Icons.settings,
+                                  size: 16,
+                                  color: Color(0xFF8E1728),
+                                ),
+                              ),
+                              // URL送信可能バッジ
+                              if (_getUrlSendableParticipantCount(experiment) > 0)
+                                Positioned(
+                                  top: -4,
+                                  right: -4,
+                                  child: Container(
+                                    width: 16,
+                                    height: 16,
+                                    decoration: BoxDecoration(
+                                      color: Colors.blue,
+                                      shape: BoxShape.circle,
+                                      border: Border.all(color: Colors.white, width: 1.5),
+                                    ),
+                                    child: Center(
+                                      child: Text(
+                                        '${_getUrlSendableParticipantCount(experiment)}',
+                                        style: const TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 10,
+                                          fontWeight: FontWeight.bold,
+                                          height: 1,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              // 評価可能バッジ
+                              if (_getUnevaluatedParticipantCount(experiment) > 0)
+                                Positioned(
+                                  top: -4,
+                                  left: -4,
+                                  child: Container(
+                                    width: 16,
+                                    height: 16,
+                                    decoration: BoxDecoration(
+                                      color: Colors.orange,
+                                      shape: BoxShape.circle,
+                                      border: Border.all(color: Colors.white, width: 1.5),
+                                    ),
+                                    child: Center(
+                                      child: Text(
+                                        '${_getUnevaluatedParticipantCount(experiment)}',
+                                        style: const TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 10,
+                                          fontWeight: FontWeight.bold,
+                                          height: 1,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                            ],
                           ),
                         ],
                       ],
@@ -1010,6 +1067,27 @@ class _HistoryScreenState extends State<HistoryScreen> with TickerProviderStateM
         ],
       ),
     );
+  }
+
+  /// URL送信可能な参加者数を取得
+  int _getUrlSendableParticipantCount(Experiment experiment) {
+    if (experiment.postSurveyUrl == null || experiment.postSurveyUrl!.isEmpty) {
+      return 0;
+    }
+
+    int count = 0;
+    final experimentData = experiment.toFirestore();
+    final participantEvals = experimentData['participantEvaluations'] as Map<String, dynamic>? ?? {};
+
+    for (final participantId in experiment.participants) {
+      final userEval = participantEvals[participantId] as Map<String, dynamic>? ?? {};
+      final urlSent = userEval['postSurveyUrlSent'] ?? false;
+      if (!urlSent) {
+        count++;
+      }
+    }
+
+    return count;
   }
 
   Widget _buildStatusBadge(Experiment experiment, bool isMyExperiment) {
