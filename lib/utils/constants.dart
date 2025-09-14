@@ -6,9 +6,9 @@ class AppConstants {
   static const String privacyPolicyUrl = 'https://waselab-support.notion.site/privacy-policy';
   static const String termsOfServiceUrl = 'https://waselab-support.notion.site/terms-of-service';
   
-  // 支援関連URL（例：実際のURLに置き換えてください）
-  static const String payPayDonationUrl = 'https://pay.paypay.ne.jp/waselab';  // 仮のURL
-  static const String githubSponsorsUrl = 'https://github.com/sponsors/waselab';  // 仮のURL
+  // 支援関連URL
+  static const String payPayDonationUrl = 'https://qr.paypay.ne.jp/p2p01_7K0lVcK1GgYSHfg6';
+  static const String githubSponsorsUrl = 'https://github.com/sponsors/Miyamoto-yudai';
   
   // 開発依頼フォーム
   static const String developmentRequestFormUrl = 'https://forms.gle/example123';  // 仮のURL
