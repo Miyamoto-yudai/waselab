@@ -166,7 +166,7 @@ class _AISurveyGeneratorState extends State<AISurveyGenerator> {
       if (_retryCount < _maxRetries) {
         setState(() {
           _retryCount++;
-          _statusMessage = 'エラーが発生しました。再試行中... (${_retryCount}/$_maxRetries)';
+          _statusMessage = 'エラーが発生しました。再試行中... ($_retryCount/$_maxRetries)';
         });
         await Future.delayed(const Duration(seconds: 2));
         return _generateSurvey(); // 再試行
@@ -730,7 +730,7 @@ class _AISurveyGeneratorState extends State<AISurveyGenerator> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              // 左側: 再生成ボタン（小さく）
+              // 左側: 再生成ボタン
               TextButton.icon(
                 onPressed: () {
                   setState(() {
@@ -747,28 +747,39 @@ class _AISurveyGeneratorState extends State<AISurveyGenerator> {
                 label: const Text('再生成', style: TextStyle(fontSize: 14)),
               ),
 
-              // 右側: Google Formsで編集ボタン（メインボタン、大きく）
-              ElevatedButton.icon(
-                onPressed: () async {
-                  // Google Formsの編集URLを開く
-                  if (_editUrl != null && _editUrl!.isNotEmpty) {
-                    await _launchUrl(_editUrl!);
-                    if (mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Row(
-                            children: [
-                              const Icon(Icons.check_circle, color: Colors.white, size: 20),
-                              const SizedBox(width: 8),
-                              const Text('Google Formsを新しいタブで開きました'),
-                            ],
-                          ),
-                          backgroundColor: Colors.green,
-                          duration: const Duration(seconds: 3),
-                        ),
-                      );
-                    }
-                    // ダイアログは閉じない（ユーザーが参照できるように）
+              // 右側: ボタングループ
+              Row(
+                children: [
+                  // 完了ボタン（ダイアログを閉じる）
+                  OutlinedButton(
+                    onPressed: () {
+                      Navigator.of(context).pop();
+                    },
+                    child: const Text('完了'),
+                  ),
+                  const SizedBox(width: 8),
+                  // Google Formsで編集ボタン（メインボタン）
+                  ElevatedButton.icon(
+                    onPressed: () async {
+                      // Google Formsの編集URLを開く
+                      if (_editUrl != null && _editUrl!.isNotEmpty) {
+                        await _launchUrl(_editUrl!);
+                        if (mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Row(
+                                children: [
+                                  const Icon(Icons.check_circle, color: Colors.white, size: 20),
+                                  const SizedBox(width: 8),
+                                  const Text('Google Formsを新しいタブで開きました'),
+                                ],
+                              ),
+                              backgroundColor: Colors.green,
+                              duration: const Duration(seconds: 3),
+                            ),
+                          );
+                        }
+                        // ダイアログは閉じない（ユーザーが参照できるように）
                   } else {
                     // URLがない場合はエラーメッセージを表示
                     if (mounted) {
@@ -809,17 +820,19 @@ class _AISurveyGeneratorState extends State<AISurveyGenerator> {
                       );
                     }
                   }
-                },
-                icon: const Icon(Icons.edit_document),
-                label: const Text(
-                  'Google Formsで編集',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                ),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF8E1728),
-                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                  elevation: 2,
-                ),
+                    },
+                    icon: const Icon(Icons.edit_document),
+                    label: const Text(
+                      'Google Formsで編集',
+                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                    ),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF8E1728),
+                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                      elevation: 2,
+                    ),
+                  ),
+                ],
               ),
             ],
           ),

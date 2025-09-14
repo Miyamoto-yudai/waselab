@@ -84,8 +84,9 @@ class _SurveyTemplateSelectorState extends State<SurveyTemplateSelector> {
                 ? AISurveyGenerator(
                     isPreSurvey: widget.isPreSurvey,
                     onFormCreated: (url) {
+                      // URLを親ウィジェットに渡すが、ダイアログは閉じない
                       widget.onUrlEntered?.call(url);
-                      Navigator.of(context).pop();
+                      // Navigator.of(context).pop(); // 削除: ユーザーが手動で閉じるまで開いたままにする
                     },
                   )
                 : _showUrlInput
@@ -192,8 +193,9 @@ class _SurveyTemplateSelectorState extends State<SurveyTemplateSelector> {
                   ? AISurveyGenerator(
                       isPreSurvey: widget.isPreSurvey,
                       onFormCreated: (url) {
+                        // URLを親ウィジェットに渡すが、ダイアログは閉じない
                         widget.onUrlEntered?.call(url);
-                        Navigator.of(context).pop();
+                        // Navigator.of(context).pop(); // 削除: ユーザーが手動で閉じるまで開いたままにする
                       },
                     )
                   : SingleChildScrollView(
