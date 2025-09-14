@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../services/gpt_service.dart';
+import '../services/google_forms_service.dart';
 import '../models/survey_template.dart';
 
 /// AIによるアンケート生成ウィジェット
@@ -33,7 +34,7 @@ class _AISurveyGeneratorState extends State<AISurveyGenerator> {
   final _expectedOutcomeController = TextEditingController();
   final _additionalRequirementsController = TextEditingController();
   final _experimentContextController = TextEditingController();
-  // モデル名は運営側で管理するため削除
+  final _referenceFormUrlController = TextEditingController();  // Google Forms URL参照用
 
   // 状態管理
   bool _isGenerating = false;
@@ -49,6 +50,11 @@ class _AISurveyGeneratorState extends State<AISurveyGenerator> {
   String? _footerTemplateId;  // 終了部分の固定テンプレート
   bool _useReferenceTemplates = false;  // 参考テンプレート使用フラグ
   bool _useFixedTemplates = false;  // 固定テンプレート使用フラグ
+  bool _useReferenceFormUrl = false;  // Google Forms URL参照フラグ
+
+  // テンプレート選択用
+  List<SurveyTemplate> _allTemplates = [];
+  SurveyCategory? _templateFilterCategory;
 
   // Google Forms関連
   Map<String, dynamic>? _generationResult;
@@ -72,6 +78,14 @@ class _AISurveyGeneratorState extends State<AISurveyGenerator> {
     if (widget.experimentDescription != null && widget.experimentDescription!.isNotEmpty) {
       _experimentContextController.text = widget.experimentDescription!;
     }
+    // 利用可能なテンプレートを読み込み
+    _loadTemplates();
+  }
+
+  void _loadTemplates() {
+    setState(() {
+      _allTemplates = GoogleFormsService.getAllTemplates();
+    });
   }
 
   @override
@@ -81,6 +95,7 @@ class _AISurveyGeneratorState extends State<AISurveyGenerator> {
     _expectedOutcomeController.dispose();
     _additionalRequirementsController.dispose();
     _experimentContextController.dispose();
+    _referenceFormUrlController.dispose();
     super.dispose();
   }
 
@@ -122,6 +137,7 @@ class _AISurveyGeneratorState extends State<AISurveyGenerator> {
         referenceTemplateIds: _useReferenceTemplates ? _referenceTemplateIds : null,
         headerTemplateId: _useFixedTemplates ? _headerTemplateId : null,
         footerTemplateId: _useFixedTemplates ? _footerTemplateId : null,
+        referenceFormUrl: _useReferenceFormUrl ? _referenceFormUrlController.text.trim() : null,
       );
 
       if (result == null || result['success'] != true) {
@@ -657,13 +673,7 @@ class _AISurveyGeneratorState extends State<AISurveyGenerator> {
                       ),
                     ),
                     const SizedBox(height: 16),
-                    // TODO: テンプレート選択UI
-                    Center(
-                      child: Text(
-                        '※ テンプレート選択機能は準備中です',
-                        style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
-                      ),
-                    ),
+                    _buildTemplateReferenceSelector(),
                   ],
                 ],
               ),
@@ -715,12 +725,77 @@ class _AISurveyGeneratorState extends State<AISurveyGenerator> {
                       ),
                     ),
                     const SizedBox(height: 16),
-                    // TODO: 開始・終了テンプレート選択UI
-                    Center(
-                      child: Text(
-                        '※ 固定テンプレート選択機能は準備中です',
-                        style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
+                    _buildFixedTemplateSelectors(),
+                  ],
+                ],
+              ),
+            ),
+          ],
+        ),
+
+        // 外部フォーム参照設定（新規追加）
+        ExpansionTile(
+          title: const Text('外部フォーム参照設定'),
+          leading: const Icon(Icons.link),
+          subtitle: const Text('既存のGoogle Formsのスタイルを参考にする'),
+          children: [
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  SwitchListTile(
+                    title: const Text('Google FormsのURLを参照'),
+                    subtitle: const Text('既存フォームのスタイルをAIが参考にします'),
+                    value: _useReferenceFormUrl,
+                    onChanged: (value) {
+                      setState(() {
+                        _useReferenceFormUrl = value;
+                      });
+                    },
+                  ),
+                  if (_useReferenceFormUrl) ...[
+                    const SizedBox(height: 16),
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.green.shade50,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: Colors.green.shade200),
                       ),
+                      child: Row(
+                        children: [
+                          Icon(Icons.lightbulb_outline, size: 16, color: Colors.green.shade700),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              '既存のGoogle Formsの質問形式やデザインをAIが参考にして、統一感のあるアンケートを生成します',
+                              style: TextStyle(fontSize: 12, color: Colors.green.shade700),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    TextFormField(
+                      controller: _referenceFormUrlController,
+                      decoration: InputDecoration(
+                        labelText: 'Google Forms URL',
+                        hintText: 'https://forms.google.com/...',
+                        border: const OutlineInputBorder(),
+                        prefixIcon: const Icon(Icons.link),
+                        helperText: '参考にしたいGoogle FormsのURLを入力',
+                      ),
+                      keyboardType: TextInputType.url,
+                      validator: (value) {
+                        if (_useReferenceFormUrl && (value == null || value.trim().isEmpty)) {
+                          return 'URLを入力してください';
+                        }
+                        if (_useReferenceFormUrl && value != null && !value.contains('forms.google.com')) {
+                          return 'Google FormsのURLを入力してください';
+                        }
+                        return null;
+                      },
                     ),
                   ],
                 ],
@@ -728,6 +803,256 @@ class _AISurveyGeneratorState extends State<AISurveyGenerator> {
             ),
           ],
         ),
+      ],
+    );
+  }
+
+  // テンプレート参照選択UI
+  Widget _buildTemplateReferenceSelector() {
+    // カテゴリフィルタを適用
+    final filteredTemplates = _templateFilterCategory == null
+        ? _allTemplates
+        : _allTemplates.where((t) => t.category == _templateFilterCategory).toList();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // カテゴリフィルター
+        const Text('カテゴリでフィルター:', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+        const SizedBox(height: 8),
+        Wrap(
+          spacing: 4,
+          runSpacing: 4,
+          children: [
+            ChoiceChip(
+              label: const Text('すべて', style: TextStyle(fontSize: 11)),
+              selected: _templateFilterCategory == null,
+              onSelected: (selected) {
+                setState(() {
+                  _templateFilterCategory = null;
+                });
+              },
+              selectedColor: Theme.of(context).primaryColor.withOpacity(0.2),
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 0),
+            ),
+            ...SurveyCategory.values.map((category) {
+              return ChoiceChip(
+                label: Text(category.label, style: const TextStyle(fontSize: 11)),
+                selected: _templateFilterCategory == category,
+                onSelected: (selected) {
+                  setState(() {
+                    _templateFilterCategory = selected ? category : null;
+                  });
+                },
+                selectedColor: Theme.of(context).primaryColor.withOpacity(0.2),
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 0),
+              );
+            }),
+          ],
+        ),
+        const SizedBox(height: 12),
+
+        // 選択済みテンプレート表示
+        if (_referenceTemplateIds.isNotEmpty) ...[
+          const Text('選択済み:', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+          const SizedBox(height: 4),
+          Wrap(
+            spacing: 4,
+            runSpacing: 4,
+            children: _referenceTemplateIds.map((id) {
+              final template = _allTemplates.firstWhere((t) => t.id == id);
+              return Chip(
+                label: Text(template.title, style: const TextStyle(fontSize: 11)),
+                deleteIcon: const Icon(Icons.close, size: 16),
+                onDeleted: () {
+                  setState(() {
+                    _referenceTemplateIds.remove(id);
+                  });
+                },
+                backgroundColor: Colors.blue.shade100,
+                padding: const EdgeInsets.all(4),
+              );
+            }).toList(),
+          ),
+          const SizedBox(height: 12),
+        ],
+
+        // テンプレートリスト
+        Container(
+          height: 200,
+          decoration: BoxDecoration(
+            border: Border.all(color: Colors.grey.shade300),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: ListView.builder(
+            itemCount: filteredTemplates.length,
+            itemBuilder: (context, index) {
+              final template = filteredTemplates[index];
+              final isSelected = _referenceTemplateIds.contains(template.id);
+
+              return CheckboxListTile(
+                title: Text(template.title, style: const TextStyle(fontSize: 13)),
+                subtitle: Text(
+                  '${template.questions.length}問 - ${template.description}',
+                  style: const TextStyle(fontSize: 11),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                value: isSelected,
+                onChanged: (bool? value) {
+                  setState(() {
+                    if (value == true) {
+                      _referenceTemplateIds.add(template.id);
+                    } else {
+                      _referenceTemplateIds.remove(template.id);
+                    }
+                  });
+                },
+                dense: true,
+                controlAffinity: ListTileControlAffinity.leading,
+              );
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
+  // 固定テンプレート選択UI
+  Widget _buildFixedTemplateSelectors() {
+    // 事前アンケート向けのテンプレートをフィルター
+    final preTemplates = _allTemplates
+        .where((t) => t.type == SurveyType.pre || t.type == SurveyType.both)
+        .toList();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // ヘッダーテンプレート選択
+        const Text('開始部分のテンプレート:', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+        const SizedBox(height: 8),
+        DropdownButtonFormField<String>(
+          value: _headerTemplateId,
+          decoration: const InputDecoration(
+            border: OutlineInputBorder(),
+            contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            hintText: '選択してください',
+          ),
+          items: [
+            const DropdownMenuItem(
+              value: null,
+              child: Text('なし', style: TextStyle(fontSize: 13)),
+            ),
+            ...preTemplates.map((template) {
+              return DropdownMenuItem(
+                value: template.id,
+                child: Text(
+                  '${template.title} (${template.questions.length}問)',
+                  style: const TextStyle(fontSize: 13),
+                ),
+              );
+            }),
+          ],
+          onChanged: (value) {
+            setState(() {
+              _headerTemplateId = value;
+            });
+          },
+        ),
+        const SizedBox(height: 16),
+
+        // フッターテンプレート選択
+        const Text('終了部分のテンプレート:', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+        const SizedBox(height: 8),
+        DropdownButtonFormField<String>(
+          value: _footerTemplateId,
+          decoration: const InputDecoration(
+            border: OutlineInputBorder(),
+            contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            hintText: '選択してください',
+          ),
+          items: [
+            const DropdownMenuItem(
+              value: null,
+              child: Text('なし', style: TextStyle(fontSize: 13)),
+            ),
+            ...preTemplates.map((template) {
+              return DropdownMenuItem(
+                value: template.id,
+                child: Text(
+                  '${template.title} (${template.questions.length}問)',
+                  style: const TextStyle(fontSize: 13),
+                ),
+              );
+            }),
+          ],
+          onChanged: (value) {
+            setState(() {
+              _footerTemplateId = value;
+            });
+          },
+        ),
+
+        // プレビュー表示
+        if (_headerTemplateId != null || _footerTemplateId != null) ...[
+          const SizedBox(height: 16),
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.grey.shade100,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('構成プレビュー:', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                const SizedBox(height: 8),
+                if (_headerTemplateId != null) ...[
+                  Row(
+                    children: [
+                      const Icon(Icons.vertical_align_top, size: 16, color: Colors.blue),
+                      const SizedBox(width: 4),
+                      Expanded(
+                        child: Text(
+                          '開始: ${_allTemplates.firstWhere((t) => t.id == _headerTemplateId).title}',
+                          style: const TextStyle(fontSize: 11),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                ],
+                Row(
+                  children: [
+                    const Icon(Icons.auto_awesome, size: 16, color: Colors.orange),
+                    const SizedBox(width: 4),
+                    const Expanded(
+                      child: Text(
+                        '中間: AIが生成する質問',
+                        style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                  ],
+                ),
+                if (_footerTemplateId != null) ...[
+                  const SizedBox(height: 4),
+                  Row(
+                    children: [
+                      const Icon(Icons.vertical_align_bottom, size: 16, color: Colors.blue),
+                      const SizedBox(width: 4),
+                      Expanded(
+                        child: Text(
+                          '終了: ${_allTemplates.firstWhere((t) => t.id == _footerTemplateId).title}',
+                          style: const TextStyle(fontSize: 11),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ],
       ],
     );
   }

@@ -25,6 +25,7 @@ class GPTService {
     List<String>? referenceTemplateIds,  // 参考にするテンプレートのID
     String? headerTemplateId,  // 開始部分の固定テンプレート
     String? footerTemplateId,  // 終了部分の固定テンプレート
+    String? referenceFormUrl,  // 参考にするGoogle FormsのURL
   }) async {
     try {
       debugPrint('=== GPT-5アンケート生成開始 ===');
@@ -59,6 +60,7 @@ class GPTService {
           'referenceTemplateIds': referenceTemplateIds,
           'headerTemplateId': headerTemplateId,
           'footerTemplateId': footerTemplateId,
+          'referenceFormUrl': referenceFormUrl,
         },
         'modelConfig': {
           'modelName': modelName,
