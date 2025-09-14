@@ -732,7 +732,7 @@ class _CreateExperimentBaseState extends State<CreateExperimentBase> {
   
   /// 次のステップへ
   void _nextStep() {
-    if (_currentStep < 5) {
+    if (_currentStep < 4) {
       if (!_canProceedToNextStep()) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -742,7 +742,7 @@ class _CreateExperimentBaseState extends State<CreateExperimentBase> {
         );
         return;
       }
-
+      
       setState(() {
         _currentStep++;
       });
@@ -2821,4 +2821,393 @@ class _CreateExperimentBaseState extends State<CreateExperimentBase> {
     );
   }
 
+  /// ステップ5: アンケート設定
+  Widget _buildSurveyStep() {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'アンケートを設定（任意）',
+            style: Theme.of(context).textTheme.titleMedium,
+          ),
+          const SizedBox(height: 16),
+
+          // AIアンケート生成ボタン
+          Card(
+            elevation: 2,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: InkWell(
+              onTap: () {
+                // AIアンケート生成ダイアログを表示
+                _showAiSurveyGenerator();
+              },
+              borderRadius: BorderRadius.circular(12),
+              child: Container(
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [
+                      Colors.purple.shade400,
+                      Colors.purple.shade600,
+                    ],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.2),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(
+                        Icons.auto_awesome,
+                        color: Colors.white,
+                        size: 28,
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'AIでアンケートを作成',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            '入力した実験情報を元に最適なアンケートを自動生成',
+                            style: TextStyle(
+                              color: Colors.white.withValues(alpha: 0.9),
+                              fontSize: 13,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const Icon(
+                      Icons.arrow_forward_ios,
+                      color: Colors.white,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 24),
+
+          // アンケート設定セクション
+          if (_selectedType != ExperimentType.survey) ...[
+            const Divider(),
+            const SizedBox(height: 8),
+            Card(
+              elevation: 1,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Theme(
+                data: Theme.of(context).copyWith(
+                  dividerColor: Colors.transparent,
+                ),
+                child: ExpansionTile(
+                  tilePadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                  title: Row(
+                    children: [
+                      const Icon(Icons.assignment, size: 20, color: Color(0xFF8E1728)),
+                      const SizedBox(width: 8),
+                      const Text('アンケート設定', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                      const SizedBox(width: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: Colors.grey.shade200,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: const Text(
+                          '任意',
+                          style: TextStyle(fontSize: 12, color: Colors.grey),
+                        ),
+                      ),
+                    ],
+                  ),
+                  subtitle: const Text(
+                    'Googleフォームで事前・事後アンケートを作成',
+                    style: TextStyle(fontSize: 13),
+                  ),
+                  initiallyExpanded: false,
+                  onExpansionChanged: (expanded) {
+                    setState(() {});
+                  },
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: Column(
+                        children: [
+                          // 事前アンケート
+                          Card(
+                            elevation: 0,
+                            color: Colors.grey.shade50,
+                            child: Padding(
+                              padding: const EdgeInsets.all(16),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    children: [
+                                      const Icon(Icons.fact_check, color: Color(0xFF8E1728)),
+                                      const SizedBox(width: 8),
+                                      const Text('事前アンケート', style: TextStyle(fontWeight: FontWeight.bold)),
+                                      const Spacer(),
+                                      if (_preSurveyUrlController.text.trim().isNotEmpty)
+                                        const Chip(
+                                          label: Text('設定済み', style: TextStyle(fontSize: 12)),
+                                          backgroundColor: Colors.green,
+                                          labelStyle: TextStyle(color: Colors.white),
+                                        ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 8),
+                                  Text(
+                                    '参加者の基本情報や実験参加条件を確認するアンケート',
+                                    style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                                  ),
+                                  const SizedBox(height: 12),
+                                  TextFormField(
+                                    controller: _preSurveyUrlController,
+                                    decoration: const InputDecoration(
+                                      labelText: '事前アンケートURL',
+                                      hintText: 'https://forms.google.com/...',
+                                      border: OutlineInputBorder(),
+                                      prefixIcon: Icon(Icons.link),
+                                      contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                    ),
+                                    keyboardType: TextInputType.url,
+                                    onChanged: (_) {
+                                      setState(() {});
+                                      _markAsChanged();
+                                    },
+                                  ),
+                                  const SizedBox(height: 12),
+                                  Row(
+                                    children: [
+                                      Expanded(
+                                        child: OutlinedButton.icon(
+                                          onPressed: () async {
+                                            await showDialog(
+                                              context: context,
+                                              builder: (context) => SurveyTemplateSelector(
+                                                isPreSurvey: true,
+                                                onTemplateSelected: (template) {
+                                                  setState(() {
+                                                    _preSurveyTemplateId = template.id;
+                                                  });
+                                                },
+                                                onUrlEntered: (url) {
+                                                  setState(() {
+                                                    _preSurveyUrlController.text = url;
+                                                  });
+                                                },
+                                              ),
+                                            );
+                                          },
+                                          icon: const Icon(Icons.list_alt),
+                                          label: const Text('テンプレートから作成'),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 8),
+                                      if (_preSurveyUrlController.text.trim().isNotEmpty)
+                                        IconButton(
+                                          onPressed: () {
+                                            setState(() {
+                                              _preSurveyUrlController.clear();
+                                              _preSurveyTemplateId = null;
+                                            });
+                                          },
+                                          icon: const Icon(Icons.clear),
+                                          tooltip: 'クリア',
+                                        ),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+
+                          // 事後アンケート
+                          Card(
+                            elevation: 0,
+                            color: Colors.grey.shade50,
+                            child: Padding(
+                              padding: const EdgeInsets.all(16),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    children: [
+                                      const Icon(Icons.quiz, color: Color(0xFF8E1728)),
+                                      const SizedBox(width: 8),
+                                      const Text('事後アンケート', style: TextStyle(fontWeight: FontWeight.bold)),
+                                      const Spacer(),
+                                      if (_surveyUrlController.text.trim().isNotEmpty)
+                                        const Chip(
+                                          label: Text('設定済み', style: TextStyle(fontSize: 12)),
+                                          backgroundColor: Colors.green,
+                                          labelStyle: TextStyle(color: Colors.white),
+                                        ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 8),
+                                  Text(
+                                    '実験後の評価や感想を収集するアンケート',
+                                    style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                                  ),
+                                  const SizedBox(height: 12),
+                                  TextFormField(
+                                    controller: _surveyUrlController,
+                                    decoration: const InputDecoration(
+                                      labelText: '事後アンケートURL',
+                                      hintText: 'https://forms.google.com/...',
+                                      border: OutlineInputBorder(),
+                                      prefixIcon: Icon(Icons.link),
+                                      contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                    ),
+                                    keyboardType: TextInputType.url,
+                                    onChanged: (_) {
+                                      setState(() {});
+                                      _markAsChanged();
+                                    },
+                                    validator: (value) {
+                                      if (value != null && value.trim().isNotEmpty) {
+                                        // URLが入力されている場合のみバリデーション
+                                        if (!value.startsWith('http://') && !value.startsWith('https://')) {
+                                          return '有効なURLを入力してください';
+                                        }
+                                      }
+                                      return null;
+                                    },
+                                  ),
+                                  const SizedBox(height: 12),
+                                  Row(
+                                    children: [
+                                      Expanded(
+                                        child: OutlinedButton.icon(
+                                          onPressed: () async {
+                                            await showDialog(
+                                              context: context,
+                                              builder: (context) => SurveyTemplateSelector(
+                                                isPreSurvey: false,
+                                                onTemplateSelected: (template) {
+                                                  setState(() {
+                                                    _experimentSurveyTemplateId = template.id;
+                                                  });
+                                                },
+                                                onUrlEntered: (url) {
+                                                  setState(() {
+                                                    _surveyUrlController.text = url;
+                                                  });
+                                                },
+                                              ),
+                                            );
+                                          },
+                                          icon: const Icon(Icons.list_alt),
+                                          label: const Text('テンプレートから作成'),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 8),
+                                      if (_surveyUrlController.text.trim().isNotEmpty)
+                                        IconButton(
+                                          onPressed: () {
+                                            setState(() {
+                                              _surveyUrlController.clear();
+                                              _experimentSurveyTemplateId = null;
+                                            });
+                                          },
+                                          icon: const Icon(Icons.clear),
+                                          tooltip: 'クリア',
+                                        ),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+
+          // アンケートタイプの実験の場合のアンケートURL入力
+          if (_selectedType == ExperimentType.survey) ...[
+            const SizedBox(height: 24),
+            const Divider(),
+            const SizedBox(height: 16),
+            const Text('アンケートURL設定', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+            const SizedBox(height: 16),
+            TextFormField(
+              controller: _surveyUrlController,
+              decoration: const InputDecoration(
+                labelText: 'アンケートURL（任意）',
+                hintText: 'https://forms.google.com/...',
+                helperText: 'URLを設定しない場合は、参加者と個別チャットで詳細を共有してください',
+                border: OutlineInputBorder(),
+                prefixIcon: Icon(Icons.link),
+              ),
+              keyboardType: TextInputType.url,
+              onChanged: (_) {
+                setState(() {});
+                _markAsChanged();
+              },
+              validator: (value) {
+                if (value != null && value.trim().isNotEmpty) {
+                  // URLが入力されている場合のみバリデーション
+                  if (!value.startsWith('http://') && !value.startsWith('https://')) {
+                    return '有効なURLを入力してください';
+                  }
+                }
+                return null;
+              },
+            ),
+            const SizedBox(height: 8),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.blue.shade50,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.blue.shade200),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.info_outline, size: 16, color: Colors.blue.shade700),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'URLを設定しない場合、参加者には個別チャットでアンケートの詳細をお送りください',
+                      style: TextStyle(fontSize: 12, color: Colors.blue.shade700),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
 }
