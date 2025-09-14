@@ -3,7 +3,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../services/gpt_service.dart';
 import '../models/survey_template.dart';
 
-/// AI（GPT-5）によるアンケート生成ウィジェット
+/// AIによるアンケート生成ウィジェット
 class AISurveyGenerator extends StatefulWidget {
   final bool isPreSurvey;
   final String? experimentTitle;
@@ -32,7 +32,7 @@ class _AISurveyGeneratorState extends State<AISurveyGenerator> {
   final _targetAudienceController = TextEditingController();
   final _expectedOutcomeController = TextEditingController();
   final _additionalRequirementsController = TextEditingController();
-  final _modelNameController = TextEditingController(text: 'gpt-5');
+  // モデル名は運営側で管理するため削除
 
   // 状態管理
   bool _isGenerating = false;
@@ -68,18 +68,17 @@ class _AISurveyGeneratorState extends State<AISurveyGenerator> {
     _targetAudienceController.dispose();
     _expectedOutcomeController.dispose();
     _additionalRequirementsController.dispose();
-    _modelNameController.dispose();
     super.dispose();
   }
 
-  // GPT-5でアンケートを生成
+  // AIでアンケートを生成
   Future<void> _generateSurvey() async {
     if (!_formKey.currentState!.validate()) return;
 
     setState(() {
       _isGenerating = true;
       _generationProgress = 0.1;
-      _statusMessage = 'GPT-5に接続中...';
+      _statusMessage = 'AIに接続中...';
       _errorMessage = null;
     });
 
@@ -88,7 +87,7 @@ class _AISurveyGeneratorState extends State<AISurveyGenerator> {
       _updateProgress(0.3, 'プロンプトを生成中...');
       await Future.delayed(const Duration(milliseconds: 500));
 
-      _updateProgress(0.5, 'GPT-5で質問を生成中...');
+      _updateProgress(0.5, 'AIで質問を生成中...');
 
       // GPTサービスを呼び出し
       final result = await GPTService.generateSurveyTemplate(
@@ -104,7 +103,7 @@ class _AISurveyGeneratorState extends State<AISurveyGenerator> {
         isPreSurvey: widget.isPreSurvey,
         baseTemplateId: widget.baseTemplate?.id,
         maxQuestions: _maxQuestions,
-        modelName: _modelNameController.text,
+        modelName: 'gpt-5',  // 運営側で管理
       );
 
       if (result == null || result['success'] != true) {
@@ -205,7 +204,7 @@ class _AISurveyGeneratorState extends State<AISurveyGenerator> {
     } else if (error.contains('timeout')) {
       return 'タイムアウトしました。ネットワーク接続を確認してください。';
     } else if (error.contains('model')) {
-      return 'モデル名が正しくありません。"gpt-5"を使用してください。';
+      return 'AIモデルの設定に問題があります。管理者に連絡してください。';
     } else {
       return 'エラーが発生しました: $error';
     }
@@ -239,7 +238,7 @@ class _AISurveyGeneratorState extends State<AISurveyGenerator> {
             else if (message.contains('利用制限'))
               const Text('• 数分待ってから再試行')
             else if (message.contains('モデル'))
-              const Text('• モデル名を"gpt-5"に設定')
+              const Text('• 管理者に連絡してモデル設定を確認')
             else
               const Text('• 入力内容を確認して再試行'),
           ],
@@ -359,7 +358,7 @@ class _AISurveyGeneratorState extends State<AISurveyGenerator> {
             const SizedBox(width: 8),
             Expanded(
               child: Text(
-                'AI アンケート生成（GPT-5）',
+                'AI アンケート生成',
                 style: TextStyle(
                   fontSize: isMobile ? 18 : 20,
                   fontWeight: FontWeight.bold,
@@ -399,7 +398,7 @@ class _AISurveyGeneratorState extends State<AISurveyGenerator> {
               Icon(Icons.info_outline, size: 20, color: Colors.blue.shade700),
               const SizedBox(width: 8),
               Text(
-                'GPT-5（熟考モード）使用',
+                'AI による自動生成',
                 style: TextStyle(
                   fontWeight: FontWeight.bold,
                   color: Colors.blue.shade700,
@@ -409,12 +408,12 @@ class _AISurveyGeneratorState extends State<AISurveyGenerator> {
           ),
           const SizedBox(height: 8),
           Text(
-            '実験の詳細情報を入力すると、GPT-5が最適なアンケート項目を自動生成します。',
+            '実験の詳細情報を入力すると、AIが最適なアンケート項目を自動生成します。',
             style: TextStyle(fontSize: 14, color: Colors.blue.shade700),
           ),
           const SizedBox(height: 4),
           Text(
-            'モデル: ${_modelNameController.text} | 最大質問数: $_maxQuestions問',
+            '最大質問数: $_maxQuestions問',
             style: TextStyle(fontSize: 12, color: Colors.blue.shade600),
           ),
         ],
@@ -560,19 +559,6 @@ class _AISurveyGeneratorState extends State<AISurveyGenerator> {
                   ),
                   Text('$_maxQuestions問'),
                 ],
-              ),
-              const SizedBox(height: 16),
-
-              // モデル名設定
-              TextFormField(
-                controller: _modelNameController,
-                decoration: InputDecoration(
-                  labelText: 'GPTモデル名',
-                  hintText: 'gpt-5',
-                  border: const OutlineInputBorder(),
-                  prefixIcon: const Icon(Icons.memory),
-                  helperText: 'GPT-5（熟考モード）推奨',
-                ),
               ),
             ],
           ),

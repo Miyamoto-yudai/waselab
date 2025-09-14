@@ -199,18 +199,41 @@ function createSystemPrompt(): string {
 5. 論理的な質問の順序を保つ
 
 出力形式：
-必ず以下のJSON形式で質問リストを返してください：
+重要: 必ず正確なJSON配列形式で質問リストを返してください。余計なテキストや説明を含めず、データ構造のみを出力してください。
+
+必須フィールド:
+- question (文字列): 質問文
+- type (文字列): "multipleChoice", "checkbox", "scale", "shortText", "longText", "date", "time" のいずれか
+- required (真偽値): 必須かどうか
+
+オプションフィールド:
+- options (配列): multipleChoiceまたはcheckboxの場合のみ必須
+- scaleMin, scaleMax (数値): scaleの場合のみ
+- scaleMinLabel, scaleMaxLabel (文字列): scaleの場合のみ
+- placeholder (文字列): shortTextまたはlongTextの場合のみ
+
+出力例:
 [
   {
-    "question": "質問文",
-    "type": "multipleChoice|checkbox|scale|shortText|longText|date|time",
-    "required": true/false,
-    "options": ["選択肢1", "選択肢2"], // 選択式の場合のみ
-    "scaleMin": 1, // 尺度の場合のみ
-    "scaleMax": 5, // 尺度の場合のみ
-    "scaleMinLabel": "最小ラベル", // 尺度の場合のみ
-    "scaleMaxLabel": "最大ラベル", // 尺度の場合のみ
-    "placeholder": "入力例" // テキスト入力の場合のみ
+    "question": "あなたの年齢を教えてください",
+    "type": "shortText",
+    "required": true,
+    "placeholder": "例: 25"
+  },
+  {
+    "question": "性別を選択してください",
+    "type": "multipleChoice",
+    "required": true,
+    "options": ["男性", "女性", "その他", "回答しない"]
+  },
+  {
+    "question": "実験の満足度を評価してください",
+    "type": "scale",
+    "required": true,
+    "scaleMin": 1,
+    "scaleMax": 5,
+    "scaleMinLabel": "非常に不満",
+    "scaleMaxLabel": "非常に満足"
   }
 ]`;
 }
@@ -251,7 +274,12 @@ function createUserPrompt(
 - 全体的な満足度`;
   }
 
-  prompt += "\n\n質問は日本語で作成し、JSON形式で出力してください。";
+  prompt += `\n\n重要な注意事項:
+1. 質問はすべて日本語で作成してください
+2. 必ずJSON配列形式で出力してください
+3. JSON以外のテキストや説明を含めないでください
+4. 各質問オブジェクトは必ず"question", "type", "required"フィールドを含むこと
+5. typeに応じて適切な追加フィールドを含めること`;
 
   return prompt;
 }
@@ -269,7 +297,7 @@ async function callGPTAPI(
 
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     try {
-      console.log(`Calling GPT API with model: ${model} (attempt ${attempt}/${maxRetries})`);
+      console.log(`Calling AI API with model: ${model} (attempt ${attempt}/${maxRetries})`);
 
       // GPT-5用のリクエストボディを構築
       const requestBody: any = {
@@ -504,33 +532,86 @@ function parseGPTResponse(gptResponse: string): GeneratedQuestion[] {
     console.error("Error parsing GPT response:", error);
     console.error("Raw response:", gptResponse.substring(0, 1000));
 
-    // GPT-5の場合、レスポンス形式が異なる可能性があるため、
-    // デフォルトの質問を返す
-    if (gptResponse.includes("gpt-5") || gptResponse.includes("GPT-5")) {
-      console.log("GPT-5 response parsing failed, returning default questions");
-      return [
-        {
-          question: "あなたの年齢を教えてください。",
-          type: "shortText",
-          required: true,
-          placeholder: "例: 25"
-        },
-        {
-          question: "この実験に参加した理由を教えてください。",
-          type: "longText",
-          required: true,
-          placeholder: "自由に記述してください"
-        },
-        {
-          question: "実験テーマに関する事前知識はありますか？",
-          type: "multipleChoice",
-          required: true,
-          options: ["はい", "いいえ", "わからない"]
-        }
-      ] as GeneratedQuestion[];
-    }
+    // エラーが発生した場合、デフォルトの質問を返す
+    console.log("Response parsing failed, returning default questions");
+    return getDefaultQuestions(gptResponse.includes("事前"));
+  }
+}
 
-    throw new Error(`GPTレスポンスの解析に失敗しました: ${error.message}`);
+// デフォルトの質問を返すヘルパー関数
+function getDefaultQuestions(isPreSurvey: boolean): GeneratedQuestion[] {
+  if (isPreSurvey) {
+    return [
+      {
+        question: "あなたの年齢を教えてください。",
+        type: "shortText",
+        required: true,
+        placeholder: "例: 25"
+      },
+      {
+        question: "性別を選択してください。",
+        type: "multipleChoice",
+        required: true,
+        options: ["男性", "女性", "その他", "回答しない"]
+      },
+      {
+        question: "この実験に参加した理由を教えてください。",
+        type: "longText",
+        required: true,
+        placeholder: "自由に記述してください"
+      },
+      {
+        question: "実験テーマに関する事前知識はありますか？",
+        type: "multipleChoice",
+        required: true,
+        options: ["はい", "いいえ", "わからない"]
+      },
+      {
+        question: "何を期待してこの実験に参加しましたか？",
+        type: "longText",
+        required: false,
+        placeholder: "期待していることを記述してください"
+      }
+    ];
+  } else {
+    return [
+      {
+        question: "実験の内容は理解できましたか？",
+        type: "scale",
+        required: true,
+        scaleMin: 1,
+        scaleMax: 5,
+        scaleMinLabel: "全く理解できなかった",
+        scaleMaxLabel: "完全に理解できた"
+      },
+      {
+        question: "実験の難易度はどうでしたか？",
+        type: "multipleChoice",
+        required: true,
+        options: ["非常に簡単", "簡単", "ちょうどよい", "難しい", "非常に難しい"]
+      },
+      {
+        question: "実験を通して新しい知識や気づきはありましたか？",
+        type: "longText",
+        required: true,
+        placeholder: "具体的に記述してください"
+      },
+      {
+        question: "実験の改善点があれば教えてください。",
+        type: "longText",
+        required: false,
+        placeholder: "自由に記述してください"
+      },
+      {
+        question: "全体的な満足度を評価してください。",
+        type: "scale",
+        required: true,
+        scaleMin: 1,
+        scaleMax: 5,
+        scaleMinLabel: "非常に不満",
+        scaleMaxLabel: "非常に満足"
+      }
+    ];
   }
 }
 
