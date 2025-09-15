@@ -21,18 +21,21 @@ class NotificationService {
       
       // タイプに応じて通知設定を確認
       bool shouldSendNotification = true;
-      
+
       if (type == NotificationType.experimentJoined ||
           type == NotificationType.experimentCancelled ||
           type == NotificationType.experimentCompleted ||
           type == NotificationType.experimentStarted) {
         shouldSendNotification = prefs.getBool('experiment_notifications') ?? true;
+        print('実験通知設定: $shouldSendNotification (type=${type.value})');
       } else if (type == NotificationType.message) {
         shouldSendNotification = prefs.getBool('message_notifications') ?? true;
+        print('メッセージ通知設定: $shouldSendNotification');
       }
-      
+
       // 通知が無効の場合は作成しない
       if (!shouldSendNotification) {
+        print('通知設定が無効のため、通知を作成しません: type=${type.value}');
         return;
       }
       
@@ -47,7 +50,9 @@ class NotificationService {
         data: data,
       );
 
-      await _firestore.collection(_collection).add(notification.toFirestore());
+      print('通知を作成します: type=${type.value}, userId=$userId, title=$title');
+      final docRef = await _firestore.collection(_collection).add(notification.toFirestore());
+      print('通知が正常に作成されました: docId=${docRef.id}, type=${type.value}, userId=$userId');
     } catch (e) {
       print('通知の作成に失敗しました: $e');
       rethrow;

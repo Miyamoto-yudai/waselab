@@ -350,6 +350,7 @@ class ExperimentService {
       // 実験作成者に通知を送信
       if (creatorId != null) {
         try {
+          debugPrint('実験開始通知を作成中: userId=$creatorId, experimentTitle=$experimentTitle');
           await _notificationService.createNotification(
             userId: creatorId,
             type: NotificationType.experimentStarted,
@@ -360,10 +361,13 @@ class ExperimentService {
               'experimentTitle': experimentTitle,
             },
           );
-          debugPrint('実験開始通知を送信しました: userId=$creatorId, experimentTitle=$experimentTitle');
-        } catch (notificationError) {
-          debugPrint('通知送信エラー（無視）: $notificationError');
+          debugPrint('実験開始通知を正常に作成しました: userId=$creatorId, experimentTitle=$experimentTitle');
+        } catch (notificationError, stackTrace) {
+          debugPrint('通知作成エラー: $notificationError');
+          debugPrint('スタックトレース: $stackTrace');
         }
+      } else {
+        debugPrint('実験作成者IDがnullのため通知を送信できません');
       }
     } catch (e) {
       debugPrint('Error starting experiment: $e');
