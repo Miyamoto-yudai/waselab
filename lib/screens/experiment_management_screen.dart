@@ -861,37 +861,70 @@ class _ExperimentManagementScreenState extends State<ExperimentManagementScreen>
                     )
                   : null,
             ),
-            title: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+            title: Row(
               children: [
-                Text(
-                  participant.name,
-                  style: const TextStyle(fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(height: 4),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: statusColor.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: statusColor.withValues(alpha: 0.3)),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Icon(statusIcon, size: 14, color: statusColor),
-                      const SizedBox(width: 4),
                       Text(
-                        evaluationStatus,
-                        style: TextStyle(
-                          fontSize: 11,
-                          color: statusColor,
-                          fontWeight: FontWeight.bold,
+                        participant.name,
+                        style: const TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                      const SizedBox(height: 4),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: statusColor.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: statusColor.withValues(alpha: 0.3)),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(statusIcon, size: 14, color: statusColor),
+                            const SizedBox(width: 4),
+                            Text(
+                              evaluationStatus,
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: statusColor,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                     ],
                   ),
                 ),
+                // バッジ表示エリア
+                if (!creatorToParticipant &&
+                    (_experiment.status == ExperimentStatus.ongoing ||
+                     _experiment.status == ExperimentStatus.waitingEvaluation))
+                  Container(
+                    margin: const EdgeInsets.only(left: 4),
+                    padding: const EdgeInsets.all(4),
+                    decoration: BoxDecoration(
+                      color: Colors.orange.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: Colors.orange.withValues(alpha: 0.3)),
+                    ),
+                    child: const Icon(Icons.star, size: 16, color: Colors.orange),
+                  ),
+                if (_experiment.postSurveyUrl != null &&
+                    _experiment.postSurveyUrl!.isNotEmpty &&
+                    !_hasPostSurveyUrlSent(participant.uid))
+                  Container(
+                    margin: const EdgeInsets.only(left: 4),
+                    padding: const EdgeInsets.all(4),
+                    decoration: BoxDecoration(
+                      color: Colors.blue.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: Colors.blue.withValues(alpha: 0.3)),
+                    ),
+                    child: const Icon(Icons.send, size: 16, color: Colors.blue),
+                  ),
               ],
             ),
             subtitle: Padding(
@@ -1048,8 +1081,8 @@ class _ExperimentManagementScreenState extends State<ExperimentManagementScreen>
                               ),
                               label: Text(
                                 _hasPostSurveyUrlSent(participant.uid)
-                                  ? 'URL送信済'
-                                  : 'アンケートURL送信',
+                                  ? '送信済'
+                                  : '事後アンケート送信',
                               ),
                               style: OutlinedButton.styleFrom(
                                 foregroundColor: _hasPostSurveyUrlSent(participant.uid)
