@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../services/message_service.dart';
 import '../services/auth_service.dart';
+import '../services/admin_service.dart';
 import '../models/message.dart';
 
 class SupportChatScreen extends StatefulWidget {
@@ -13,6 +14,7 @@ class SupportChatScreen extends StatefulWidget {
 class _SupportChatScreenState extends State<SupportChatScreen> {
   final MessageService _messageService = MessageService();
   final AuthService _authService = AuthService();
+  final AdminService _adminService = AdminService();
   final TextEditingController _messageController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
   
@@ -76,15 +78,23 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
     debugPrint('  Content: ${_messageController.text.trim()}');
     
     try {
+      final messageContent = _messageController.text.trim();
+
       final conversationId = await _messageService.sendMessage(
         senderId: _currentUserId!,
         receiverId: supportUserId,
-        content: _messageController.text.trim(),
+        content: messageContent,
         senderName: _currentUserName!,
         receiverName: supportUserName,
       );
       debugPrint('Message sent successfully. Conversation ID: $conversationId');
-      
+
+      // 管理者にプッシュ通知を送信
+      await _adminService.notifyAdminsOfSupportMessage(
+        senderName: _currentUserName!,
+        message: messageContent,
+      );
+
       // Update the conversation ID if it's different
       if (_conversationId != conversationId) {
         debugPrint('Updating conversation ID from $_conversationId to $conversationId');
@@ -92,7 +102,7 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
           _conversationId = conversationId;
         });
       }
-      
+
       _messageController.clear();
       _scrollToBottom();
     } catch (e) {

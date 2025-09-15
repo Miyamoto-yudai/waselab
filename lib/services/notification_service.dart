@@ -1,10 +1,12 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:cloud_functions/cloud_functions.dart';
 import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/notification.dart';
 
 class NotificationService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final FirebaseFunctions _functions = FirebaseFunctions.instance;
   final String _collection = 'notifications';
 
   /// 通知を作成
@@ -377,6 +379,29 @@ class NotificationService {
       message: message,
       data: additionalData,
     );
+  }
+
+  /// プッシュ通知を送信（FCM経由）
+  Future<void> sendPushNotification({
+    required String token,
+    required String title,
+    required String body,
+    Map<String, dynamic>? data,
+  }) async {
+    try {
+      // Cloud Functionsを使用してプッシュ通知を送信
+      final callable = _functions.httpsCallable('sendNotification');
+      await callable.call({
+        'token': token,
+        'title': title,
+        'body': body,
+        'data': data ?? {},
+      });
+      print('プッシュ通知を送信しました: $title');
+    } catch (e) {
+      print('プッシュ通知の送信に失敗しました: $e');
+      // エラーが発生してもアプリの動作は継続
+    }
   }
 
   // 全ユーザーに運営からのお知らせを送信

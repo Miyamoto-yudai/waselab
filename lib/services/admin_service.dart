@@ -1,5 +1,6 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 import '../models/admin.dart';
 import '../models/app_user.dart';
@@ -86,10 +87,10 @@ class AdminService {
       debugPrint('========== 管理者ログイン開始 ==========');
       debugPrint('メールアドレス: $email');
       debugPrint('パスワード長: ${password.length}文字');
-      
+
       // まず、通常のユーザーとしてログインを試みる
       debugPrint('Step 1: Firebase認証を試行中...');
-      
+
       // Firebaseで認証
       final UserCredential userCredential = await _auth.signInWithEmailAndPassword(
         email: email,
@@ -162,7 +163,10 @@ class AdminService {
       });
 
       _currentAdmin = admin;
-      
+
+      // FCMトークンを管理者ドキュメントに保存
+      await _saveAdminFCMToken(admin.uid);
+
       // 管理者ログイン履歴を記録
       await _logAdminActivity(
         adminId: admin.uid,
@@ -216,9 +220,118 @@ class AdminService {
     }
   }
 
+  /// 管理者のFCMトークンを保存
+  Future<void> _saveAdminFCMToken(String adminId) async {
+    try {
+      final fcmToken = await FirebaseMessaging.instance.getToken();
+      if (fcmToken != null) {
+        await _firestore.collection('admins').doc(adminId).update({
+          'fcmToken': fcmToken,
+          'fcmTokenUpdatedAt': FieldValue.serverTimestamp(),
+        });
+        debugPrint('管理者FCMトークンを保存しました: $fcmToken');
+      }
+    } catch (e) {
+      debugPrint('FCMトークン保存エラー: $e');
+    }
+  }
+
+  /// すべての管理者のFCMトークンを取得
+  Future<List<String>> getAllAdminFCMTokens() async {
+    try {
+      final adminsSnapshot = await _firestore
+          .collection('admins')
+          .where('isActive', isEqualTo: true)
+          .where('fcmToken', isNotEqualTo: null)
+          .get();
+
+      final tokens = <String>[];
+      for (final doc in adminsSnapshot.docs) {
+        final token = doc.data()['fcmToken'] as String?;
+        if (token != null && token.isNotEmpty) {
+          tokens.add(token);
+        }
+      }
+      return tokens;
+    } catch (e) {
+      debugPrint('管理者FCMトークン取得エラー: $e');
+      return [];
+    }
+  }
+
+  /// サポートメッセージが送信されたときに管理者に通知を送る
+  Future<void> notifyAdminsOfSupportMessage({
+    required String senderName,
+    required String message,
+  }) async {
+    try {
+      // すべてのアクティブな管理者を取得
+      final adminsSnapshot = await _firestore
+          .collection('admins')
+          .where('isActive', isEqualTo: true)
+          .get();
+
+      if (adminsSnapshot.docs.isEmpty) {
+        debugPrint('通知を送信する管理者が見つかりません');
+        return;
+      }
+
+      // 各管理者に通知を作成
+      final batch = _firestore.batch();
+      for (final adminDoc in adminsSnapshot.docs) {
+        final adminId = adminDoc.id;
+        final notificationRef = _firestore.collection('admin_notifications').doc();
+
+        batch.set(notificationRef, {
+          'adminId': adminId,
+          'type': 'support_message',
+          'title': '新しいお問い合わせ',
+          'body': '$senderNameさんからお問い合わせがあります',
+          'message': message.length > 100 ? '${message.substring(0, 100)}...' : message,
+          'senderName': senderName,
+          'isRead': false,
+          'createdAt': FieldValue.serverTimestamp(),
+        });
+
+        // FCMトークンがある場合はプッシュ通知も送信を試みる
+        final fcmToken = adminDoc.data()['fcmToken'] as String?;
+        if (fcmToken != null && fcmToken.isNotEmpty) {
+          // プッシュ通知の送信（エラーが起きても処理は継続）
+          _notificationService.sendPushNotification(
+            token: fcmToken,
+            title: '新しいお問い合わせ',
+            body: '$senderNameさんからお問い合わせがあります',
+            data: {
+              'type': 'support_message',
+              'senderId': senderName,
+              'message': message.length > 100 ? '${message.substring(0, 100)}...' : message,
+            },
+          ).catchError((e) {
+            debugPrint('プッシュ通知送信エラー（無視）: $e');
+          });
+        }
+      }
+
+      await batch.commit();
+      debugPrint('${adminsSnapshot.docs.length}人の管理者に通知を作成しました');
+    } catch (e) {
+      debugPrint('管理者への通知送信エラー: $e');
+    }
+  }
+
   /// 管理者ログアウト
   Future<void> signOut() async {
     if (_currentAdmin != null) {
+      // FCMトークンをクリア
+      try {
+        await _firestore.collection('admins').doc(_currentAdmin!.uid).update({
+          'fcmToken': FieldValue.delete(),
+          'fcmTokenUpdatedAt': FieldValue.delete(),
+        });
+      } catch (e) {
+        debugPrint('FCMトークンクリアエラー: $e');
+      }
+
       await _logAdminActivity(
         adminId: _currentAdmin!.uid,
         action: 'logout',
