@@ -35,14 +35,27 @@ class AdminService {
       final user = _auth.currentUser;
       if (user == null) return false;
 
-      final adminDoc = await _firestore
-          .collection('admins')
-          .doc(user.uid)
-          .get();
+      // 権限エラーを避けるため、エラーハンドリングを強化
+      try {
+        final adminDoc = await _firestore
+            .collection('admins')
+            .doc(user.uid)
+            .get();
 
-      return adminDoc.exists;
+        return adminDoc.exists;
+      } on FirebaseException catch (e) {
+        // 権限エラーの場合は false を返す（通常のユーザー）
+        if (e.code == 'permission-denied') {
+          // 権限エラーは通常のユーザーなので、エラーログを出力しない
+          return false;
+        }
+        // その他のFirebaseエラー
+        debugPrint('Firestore エラー: ${e.code} - ${e.message}');
+        return false;
+      }
     } catch (e) {
-      debugPrint('管理者権限確認エラー: $e');
+      // その他の予期しないエラー
+      debugPrint('管理者権限確認で予期しないエラー: $e');
       return false;
     }
   }

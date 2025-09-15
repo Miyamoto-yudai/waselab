@@ -56,7 +56,12 @@ class NavigationScreenState extends State<NavigationScreen> {
     _loadPendingSurveys();
     _loadUnreadNotifications();
     _loadCurrentUser();
-    _checkAdminPrivileges();
+    // 管理者権限チェックを遅延実行（画面が完全に読み込まれた後）
+    Future.delayed(const Duration(milliseconds: 500), () {
+      if (mounted) {
+        _checkAdminPrivileges();
+      }
+    });
     _setupRealtimeListeners();
   }
 

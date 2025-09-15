@@ -11,13 +11,13 @@ import 'shared/app_wrapper.dart';
 
 /// アプリのエントリーポイント
 /// Firebaseの初期化を行ってからアプリを起動する
-/// 
+///
 /// 重要: 共通コンポーネントはshared/フォルダに配置されています
 /// main.dartとmain_demo.dartで共有される部分は必ずshared/に配置してください
 void main() async {
   // Flutter Engineの初期化を確実に行う
   WidgetsFlutterBinding.ensureInitialized();
-  
+
   // 並列で初期化処理を実行
   await Future.wait([
     // Firebaseの初期化
@@ -27,10 +27,10 @@ void main() async {
     // 日本語ロケールを初期化
     initializeDateFormatting('ja_JP', null),
   ]);
-  
+
   // FCMサービスの初期化
   await FCMService().initialize();
-  
+
   // 初期化完了後にアプリを起動
   runApp(const WaseLaboApp(
     home: AuthWrapper(),
@@ -47,10 +47,11 @@ class AuthWrapper extends StatefulWidget {
 }
 
 class _AuthWrapperState extends State<AuthWrapper> {
+
   @override
   Widget build(BuildContext context) {
     final authService = AuthService();
-    
+
     // Firebase Authの認証状態を監視
     return StreamBuilder(
       stream: authService.authStateChanges,
@@ -70,7 +71,7 @@ class _AuthWrapperState extends State<AuthWrapper> {
             ),
           );
         }
-        
+
         // エラーが発生した場合
         if (snapshot.hasError) {
           return Scaffold(
@@ -111,7 +112,7 @@ class _AuthWrapperState extends State<AuthWrapper> {
             ),
           );
         }
-        
+
         // 認証状態に応じて画面を表示
         if (snapshot.hasData && snapshot.data != null) {
           // ログイン済み

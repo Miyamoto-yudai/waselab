@@ -7,6 +7,11 @@ import '../models/app_user.dart';
 /// 認証サービスクラス
 /// Firebase AuthenticationとGoogle Sign Inを使用したユーザー認証を管理する
 class AuthService {
+  // シングルトンインスタンス
+  static final AuthService _instance = AuthService._internal();
+  factory AuthService() => _instance;
+  AuthService._internal();
+
   // Firebase Auth、Firestore、GoogleSignInのインスタンス
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
