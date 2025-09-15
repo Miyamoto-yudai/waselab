@@ -225,45 +225,50 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
                       ),
                     ),
                     const SizedBox(height: 16),
-                    GridView.count(
-                      shrinkWrap: true,
-                      physics: const NeverScrollableScrollPhysics(),
-                      crossAxisCount: isSmallScreen ? 1 : 2,
-                      mainAxisSpacing: 16,
-                      crossAxisSpacing: 16,
-                      childAspectRatio: isSmallScreen ? 2.5 : 1.5,
-                      children: [
-                        _buildStatCard(
-                          title: '総ユーザー数',
-                          value: '${_statistics['totalUsers'] ?? 0}',
-                          icon: Icons.people,
-                          color: Colors.blue,
-                          isSmallScreen: isSmallScreen,
-                        ),
-                        _buildStatCard(
-                          title: 'アクティブユーザー',
-                          value: '${_statistics['activeUsers'] ?? 0}',
-                          subtitle: '(30日以内)',
-                          icon: Icons.trending_up,
-                          color: Colors.green,
-                          isSmallScreen: isSmallScreen,
-                        ),
-                        _buildStatCard(
-                          title: '総実験数',
-                          value: '${_statistics['totalExperiments'] ?? 0}',
-                          icon: Icons.science,
-                          color: Colors.orange,
-                          isSmallScreen: isSmallScreen,
-                        ),
-                        _buildStatCard(
-                          title: '今月の新規登録',
-                          value: '${_statistics['newUsersThisMonth'] ?? 0}',
-                          icon: Icons.person_add,
-                          color: Colors.purple,
-                          isSmallScreen: isSmallScreen,
-                        ),
-                      ],
-                    ),
+                    if (isSmallScreen)
+                      // スマホ用：1枚のカードにまとめて表示
+                      _buildCompactStatsCard()
+                    else
+                      // PC/タブレット用：従来のグリッド表示
+                      GridView.count(
+                        shrinkWrap: true,
+                        physics: const NeverScrollableScrollPhysics(),
+                        crossAxisCount: 2,
+                        mainAxisSpacing: 16,
+                        crossAxisSpacing: 16,
+                        childAspectRatio: 1.5,
+                        children: [
+                          _buildStatCard(
+                            title: '総ユーザー数',
+                            value: '${_statistics['totalUsers'] ?? 0}',
+                            icon: Icons.people,
+                            color: Colors.blue,
+                            isSmallScreen: false,
+                          ),
+                          _buildStatCard(
+                            title: 'アクティブユーザー',
+                            value: '${_statistics['activeUsers'] ?? 0}',
+                            subtitle: '(30日以内)',
+                            icon: Icons.trending_up,
+                            color: Colors.green,
+                            isSmallScreen: false,
+                          ),
+                          _buildStatCard(
+                            title: '総実験数',
+                            value: '${_statistics['totalExperiments'] ?? 0}',
+                            icon: Icons.science,
+                            color: Colors.orange,
+                            isSmallScreen: false,
+                          ),
+                          _buildStatCard(
+                            title: '今月の新規登録',
+                            value: '${_statistics['newUsersThisMonth'] ?? 0}',
+                            icon: Icons.person_add,
+                            color: Colors.purple,
+                            isSmallScreen: false,
+                          ),
+                        ],
+                      ),
                     const SizedBox(height: 32),
 
                     // 管理機能メニュー
@@ -518,6 +523,113 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
                 ),
               ),
             ),
+    );
+  }
+
+  // スマホ用：コンパクトな統計カード
+  Widget _buildCompactStatsCard() {
+    return Card(
+      elevation: 2,
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          children: [
+            // 上段：ユーザー統計
+            Row(
+              children: [
+                Expanded(
+                  child: _buildCompactStatItem(
+                    icon: Icons.people,
+                    value: '${_statistics['totalUsers'] ?? 0}',
+                    label: '総ユーザー',
+                    color: Colors.blue,
+                  ),
+                ),
+                Container(
+                  width: 1,
+                  height: 50,
+                  color: Colors.grey[300],
+                ),
+                Expanded(
+                  child: _buildCompactStatItem(
+                    icon: Icons.trending_up,
+                    value: '${_statistics['activeUsers'] ?? 0}',
+                    label: 'アクティブ',
+                    color: Colors.green,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            Divider(color: Colors.grey[300], height: 1),
+            const SizedBox(height: 16),
+            // 下段：実験と新規登録
+            Row(
+              children: [
+                Expanded(
+                  child: _buildCompactStatItem(
+                    icon: Icons.science,
+                    value: '${_statistics['totalExperiments'] ?? 0}',
+                    label: '総実験数',
+                    color: Colors.orange,
+                  ),
+                ),
+                Container(
+                  width: 1,
+                  height: 50,
+                  color: Colors.grey[300],
+                ),
+                Expanded(
+                  child: _buildCompactStatItem(
+                    icon: Icons.person_add,
+                    value: '${_statistics['newUsersThisMonth'] ?? 0}',
+                    label: '今月新規',
+                    color: Colors.purple,
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // コンパクトな統計アイテム
+  Widget _buildCompactStatItem({
+    required IconData icon,
+    required String value,
+    required String label,
+    required Color color,
+  }) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, color: color, size: 20),
+            const SizedBox(width: 8),
+            Text(
+              value,
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: color,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 4),
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 11,
+            color: Colors.grey[600],
+          ),
+          textAlign: TextAlign.center,
+        ),
+      ],
     );
   }
 
