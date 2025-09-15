@@ -138,6 +138,13 @@ class _NotificationScreenState extends State<NotificationScreen> {
         );
         break;
 
+      case NotificationType.preSurveyAvailable:
+        // 事前アンケートURLの処理
+        if (notification.data?['surveyUrl'] != null) {
+          _showPostSurveyUrlDialog(notification);
+        }
+        break;
+
       case NotificationType.postSurveyUrl:
         // 実験後アンケートURLの処理
         if (notification.data?['surveyUrl'] != null) {
@@ -761,6 +768,8 @@ class _NotificationScreenState extends State<NotificationScreen> {
         return Colors.indigo;
       case NotificationType.supportReply:
         return Colors.teal;
+      case NotificationType.preSurveyAvailable:
+        return Colors.indigo[600]!;
       case NotificationType.postSurveyUrl:
         return Colors.blue[700]!;
     }

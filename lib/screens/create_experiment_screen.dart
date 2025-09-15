@@ -47,6 +47,10 @@ class CreateExperimentScreen extends StatelessWidget {
     debugPrint('固定実験時刻: ${data['fixedExperimentTime']}');
     debugPrint('予約締切日数: ${data['reservationDeadlineDays']}');
     debugPrint('アンケートURL: ${data['surveyUrl']}');
+    debugPrint('事前アンケートURL: ${data['preSurveyUrl']}');
+    debugPrint('事後アンケートURL: ${data['postSurveyUrl']}');
+    debugPrint('事前アンケートテンプレートID: ${data['preSurveyTemplateId']}');
+    debugPrint('事後アンケートテンプレートID: ${data['postSurveyTemplateId']}');
     debugPrint('研究室/個人: ${data['isLabExperiment']}');
     debugPrint('=========================');
 
@@ -99,6 +103,11 @@ class CreateExperimentScreen extends StatelessWidget {
       'fixedExperimentTime': data['fixedExperimentTime'],
       'reservationDeadlineDays': data['reservationDeadlineDays'] ?? 1,
       'surveyUrl': data['surveyUrl'],
+      'preSurveyUrl': data['preSurveyUrl'],
+      'preSurveyTemplateId': data['preSurveyTemplateId'],
+      'experimentSurveyTemplateId': data['experimentSurveyTemplateId'],
+      'postSurveyUrl': data['postSurveyUrl'],
+      'postSurveyTemplateId': data['postSurveyTemplateId'],
       'isLabExperiment': data['isLabExperiment'] ?? true,
       'participants': [], // 初期値として空配列を設定
       'status': 'recruiting', // 初期ステータスを設定

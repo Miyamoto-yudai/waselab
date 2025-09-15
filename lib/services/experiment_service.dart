@@ -210,6 +210,23 @@ class ExperimentService {
             );
             debugPrint('実験参加通知を送信しました: creator=$creatorId, participant=$participantName');
           }
+
+          // 事前アンケートがある場合は参加者に通知を送信
+          final preSurveyUrl = experimentData['preSurveyUrl'] as String?;
+          if (preSurveyUrl != null && preSurveyUrl.isNotEmpty) {
+            await _notificationService.createNotification(
+              userId: userId,
+              type: NotificationType.preSurveyAvailable,
+              title: '事前アンケートのお知らせ',
+              message: '「$experimentTitle」の事前アンケートにご回答ください。',
+              data: {
+                'experimentId': experimentId,
+                'surveyUrl': preSurveyUrl,
+                'experimentTitle': experimentTitle,
+              },
+            );
+            debugPrint('事前アンケート通知を送信しました: userId=$userId, url=$preSurveyUrl');
+          }
         }
       } catch (notificationError) {
         // 通知送信に失敗しても参加処理は成功とする

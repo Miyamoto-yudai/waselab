@@ -932,7 +932,7 @@ class _AISurveyGeneratorState extends State<AISurveyGenerator> {
         const Text('開始部分のテンプレート:', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
         const SizedBox(height: 8),
         DropdownButtonFormField<String>(
-          value: _headerTemplateId,
+          initialValue: _headerTemplateId,
           decoration: const InputDecoration(
             border: OutlineInputBorder(),
             contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
@@ -965,7 +965,7 @@ class _AISurveyGeneratorState extends State<AISurveyGenerator> {
         const Text('終了部分のテンプレート:', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
         const SizedBox(height: 8),
         DropdownButtonFormField<String>(
-          value: _footerTemplateId,
+          initialValue: _footerTemplateId,
           decoration: const InputDecoration(
             border: OutlineInputBorder(),
             contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),

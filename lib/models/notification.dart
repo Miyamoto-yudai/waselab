@@ -11,6 +11,7 @@ enum NotificationType {
   adminMessage('admin_message', '運営からのお知らせ', Icons.campaign),
   supportTicket('support_ticket', '新規サポート', Icons.support_agent),
   supportReply('support_reply', 'サポート返信', Icons.reply),
+  preSurveyAvailable('pre_survey_available', '事前アンケート', Icons.assignment_turned_in),
   postSurveyUrl('post_survey_url', '実験後アンケート', Icons.assignment);
 
   final String value;
