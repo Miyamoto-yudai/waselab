@@ -123,6 +123,9 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
 
   @override
   Widget build(BuildContext context) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isSmallScreen = screenWidth < 600;
+
     return Scaffold(
       backgroundColor: Colors.grey[100],
       appBar: AppBar(
@@ -225,16 +228,17 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
                     GridView.count(
                       shrinkWrap: true,
                       physics: const NeverScrollableScrollPhysics(),
-                      crossAxisCount: 2,
+                      crossAxisCount: isSmallScreen ? 1 : 2,
                       mainAxisSpacing: 16,
                       crossAxisSpacing: 16,
-                      childAspectRatio: 1.5,
+                      childAspectRatio: isSmallScreen ? 2.5 : 1.5,
                       children: [
                         _buildStatCard(
                           title: '総ユーザー数',
                           value: '${_statistics['totalUsers'] ?? 0}',
                           icon: Icons.people,
                           color: Colors.blue,
+                          isSmallScreen: isSmallScreen,
                         ),
                         _buildStatCard(
                           title: 'アクティブユーザー',
@@ -242,18 +246,21 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
                           subtitle: '(30日以内)',
                           icon: Icons.trending_up,
                           color: Colors.green,
+                          isSmallScreen: isSmallScreen,
                         ),
                         _buildStatCard(
                           title: '総実験数',
                           value: '${_statistics['totalExperiments'] ?? 0}',
                           icon: Icons.science,
                           color: Colors.orange,
+                          isSmallScreen: isSmallScreen,
                         ),
                         _buildStatCard(
                           title: '今月の新規登録',
                           value: '${_statistics['newUsersThisMonth'] ?? 0}',
                           icon: Icons.person_add,
                           color: Colors.purple,
+                          isSmallScreen: isSmallScreen,
                         ),
                       ],
                     ),
@@ -520,43 +527,89 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
     String? subtitle,
     required IconData icon,
     required Color color,
+    bool isSmallScreen = false,
   }) {
     return Card(
       elevation: 2,
       child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(icon, color: color, size: 32),
-            const SizedBox(height: 8),
-            Text(
-              value,
-              style: TextStyle(
-                fontSize: 24,
-                fontWeight: FontWeight.bold,
-                color: color,
+        padding: EdgeInsets.all(isSmallScreen ? 12 : 16),
+        child: isSmallScreen
+            ? Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  Icon(icon, color: color, size: isSmallScreen ? 28 : 32),
+                  Expanded(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: Text(
+                            value,
+                            style: TextStyle(
+                              fontSize: isSmallScreen ? 20 : 24,
+                              fontWeight: FontWeight.bold,
+                              color: color,
+                            ),
+                          ),
+                        ),
+                        if (subtitle != null)
+                          Text(
+                            subtitle,
+                            style: TextStyle(
+                              fontSize: 10,
+                              color: Colors.grey[600],
+                            ),
+                          ),
+                        const SizedBox(height: 2),
+                        Text(
+                          title,
+                          style: TextStyle(
+                            fontSize: isSmallScreen ? 12 : 14,
+                            color: Colors.grey[700],
+                          ),
+                          textAlign: TextAlign.center,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              )
+            : Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(icon, color: color, size: 32),
+                  const SizedBox(height: 8),
+                  Text(
+                    value,
+                    style: TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                      color: color,
+                    ),
+                  ),
+                  if (subtitle != null)
+                    Text(
+                      subtitle,
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.grey[600],
+                      ),
+                    ),
+                  const SizedBox(height: 4),
+                  Text(
+                    title,
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: Colors.grey[700],
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                ],
               ),
-            ),
-            if (subtitle != null)
-              Text(
-                subtitle,
-                style: TextStyle(
-                  fontSize: 12,
-                  color: Colors.grey[600],
-                ),
-              ),
-            const SizedBox(height: 4),
-            Text(
-              title,
-              style: TextStyle(
-                fontSize: 14,
-                color: Colors.grey[700],
-              ),
-              textAlign: TextAlign.center,
-            ),
-          ],
-        ),
       ),
     );
   }

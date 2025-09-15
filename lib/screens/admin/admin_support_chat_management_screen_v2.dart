@@ -13,7 +13,7 @@ class AdminSupportChatManagementScreenV2 extends StatefulWidget {
   State<AdminSupportChatManagementScreenV2> createState() => _AdminSupportChatManagementScreenV2State();
 }
 
-class _AdminSupportChatManagementScreenV2State extends State<AdminSupportChatManagementScreenV2> {
+class _AdminSupportChatManagementScreenV2State extends State<AdminSupportChatManagementScreenV2> with SingleTickerProviderStateMixin {
   final MessageService _messageService = MessageService();
   final TextEditingController _messageController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
@@ -26,11 +26,13 @@ class _AdminSupportChatManagementScreenV2State extends State<AdminSupportChatMan
   final Map<String, AppUser> _usersCache = {};
   final Map<String, List<Message>> _userMessages = {};
   final Map<String, int> _unreadCounts = {};
+  late TabController _tabController;
 
   @override
   void initState() {
     super.initState();
     debugPrint('===== AdminSupportChatManagementScreenV2 initState =====');
+    _tabController = TabController(length: 2, vsync: this);
     _loadAllSupportMessages();
     // 5秒ごとに自動更新
     _refreshTimer = Timer.periodic(const Duration(seconds: 5), (_) {
@@ -43,6 +45,7 @@ class _AdminSupportChatManagementScreenV2State extends State<AdminSupportChatMan
     _refreshTimer?.cancel();
     _messageController.dispose();
     _scrollController.dispose();
+    _tabController.dispose();
     super.dispose();
   }
 
@@ -248,12 +251,12 @@ class _AdminSupportChatManagementScreenV2State extends State<AdminSupportChatMan
 
   Future<void> _selectUser(String userId) async {
     debugPrint('Selecting user: $userId');
-    
+
     setState(() {
       _selectedUserId = userId;
       _selectedUserName = _usersCache[userId]?.name ?? 'ユーザー';
     });
-    
+
     // 会話IDを取得または作成
     try {
       final conversationId = await _messageService.getOrCreateConversation(
@@ -262,16 +265,22 @@ class _AdminSupportChatManagementScreenV2State extends State<AdminSupportChatMan
         _selectedUserName!,
         'わせラボサポート',
       );
-      
+
       setState(() {
         _selectedConversationId = conversationId;
       });
-      
+
       debugPrint('Conversation ID: $conversationId');
-      
+
       // 未読メッセージを既読にする
       if (_unreadCounts[userId] != null && _unreadCounts[userId]! > 0) {
         await _markMessagesAsRead(userId);
+      }
+
+      // モバイルの場合はチャットタブに切り替え
+      final screenWidth = MediaQuery.of(context).size.width;
+      if (screenWidth < 600) {
+        _tabController.animateTo(1);
       }
     } catch (e) {
       debugPrint('Error selecting user: $e');
@@ -350,53 +359,100 @@ class _AdminSupportChatManagementScreenV2State extends State<AdminSupportChatMan
 
   @override
   Widget build(BuildContext context) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isMobile = screenWidth < 600;
+
     return Scaffold(
       backgroundColor: Colors.grey[900],
       appBar: AppBar(
         backgroundColor: Colors.black,
         title: const Text('サポートチャット管理'),
+        bottom: isMobile
+            ? TabBar(
+                controller: _tabController,
+                indicatorColor: Colors.blue,
+                tabs: [
+                  Tab(
+                    icon: Badge(
+                      label: Text('${_unreadCounts.values.fold(0, (sum, count) => sum + count)}'),
+                      isLabelVisible: _unreadCounts.values.any((count) => count > 0),
+                      child: const Icon(Icons.list),
+                    ),
+                    text: 'ユーザー',
+                  ),
+                  Tab(
+                    icon: Icon(Icons.chat,
+                      color: _selectedUserId != null ? Colors.white : Colors.grey,
+                    ),
+                    text: 'チャット',
+                  ),
+                ],
+              )
+            : null,
       ),
-      body: Row(
-        children: [
-          // 左側: ユーザーリスト
-          Container(
-            width: 300,
-            decoration: BoxDecoration(
-              color: Colors.grey[850],
-              border: Border(
-                right: BorderSide(color: Colors.grey[700]!),
-              ),
-            ),
-            child: Column(
+      body: isMobile
+          ? TabBarView(
+              controller: _tabController,
               children: [
+                // ユーザーリスト（モバイル）
+                _buildUserList(isMobile: true),
+                // チャット画面（モバイル）
+                _buildChatView(isMobile: true),
+              ],
+            )
+          : Row(
+              children: [
+                // 左側: ユーザーリスト（PC）
                 Container(
-                  padding: const EdgeInsets.all(16),
+                  width: 300,
                   decoration: BoxDecoration(
-                    color: Colors.grey[800],
+                    color: Colors.grey[850],
                     border: Border(
-                      bottom: BorderSide(color: Colors.grey[700]!),
+                      right: BorderSide(color: Colors.grey[700]!),
                     ),
                   ),
-                  child: Row(
-                    children: [
-                      Icon(Icons.support_agent, color: Colors.blue[400]),
-                      const SizedBox(width: 8),
-                      const Text(
-                        'サポート履歴',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const Spacer(),
-                      if (_unreadCounts.values.any((unreadCount) => unreadCount > 0))
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                          decoration: BoxDecoration(
-                            color: Colors.red,
-                            borderRadius: BorderRadius.circular(12),
-                          ),
+                  child: _buildUserList(isMobile: false),
+                ),
+                // 右側: チャット画面（PC）
+                Expanded(
+                  child: _buildChatView(isMobile: false),
+                ),
+              ],
+            ),
+    );
+  }
+
+  Widget _buildUserList({required bool isMobile}) {
+    return Column(
+      children: [
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Colors.grey[800],
+            border: Border(
+              bottom: BorderSide(color: Colors.grey[700]!),
+            ),
+          ),
+          child: Row(
+            children: [
+              Icon(Icons.support_agent, color: Colors.blue[400]),
+              const SizedBox(width: 8),
+              const Text(
+                'サポート履歴',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const Spacer(),
+              if (_unreadCounts.values.any((unreadCount) => unreadCount > 0))
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: Colors.red,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
                           child: Text(
                             _unreadCounts.values.where((unreadCount) => unreadCount > 0).length.toString(),
                             style: const TextStyle(
@@ -510,75 +566,89 @@ class _AdminSupportChatManagementScreenV2State extends State<AdminSupportChatMan
                         ),
                 ),
               ],
+            );
+  }
+
+  Widget _buildChatView({required bool isMobile}) {
+    if (_selectedUserId == null) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.chat_bubble_outline,
+              size: 64,
+              color: Colors.grey[600],
+            ),
+            const SizedBox(height: 16),
+            Text(
+              isMobile ? 'ユーザータブから選択してください' : '左側からユーザーを選択してください',
+              style: TextStyle(
+                color: Colors.grey[500],
+                fontSize: 16,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return Column(
+      children: [
+        // チャットヘッダー（モバイルの場合は戻るボタン付き）
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Colors.grey[850],
+            border: Border(
+              bottom: BorderSide(color: Colors.grey[700]!),
             ),
           ),
-          // 右側: チャット画面
-          Expanded(
-            child: _selectedUserId == null
-                ? Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          Icons.chat_bubble_outline,
-                          size: 64,
-                          color: Colors.grey[600],
-                        ),
-                        const SizedBox(height: 16),
-                        Text(
-                          '左側からユーザーを選択してください',
-                          style: TextStyle(
-                            color: Colors.grey[500],
-                            fontSize: 16,
-                          ),
-                        ),
-                      ],
-                    ),
-                  )
-                : Column(
-                    children: [
-                      // チャットヘッダー
-                      Container(
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          color: Colors.grey[850],
-                          border: Border(
-                            bottom: BorderSide(color: Colors.grey[700]!),
-                          ),
-                        ),
-                        child: Row(
-                          children: [
-                            CircleAvatar(
-                              backgroundColor: Colors.grey[700],
-                              child: Text(
-                                (_selectedUserName ?? 'U')[0].toUpperCase(),
-                                style: const TextStyle(color: Colors.white),
-                              ),
-                            ),
-                            const SizedBox(width: 12),
-                            Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  _selectedUserName ?? 'ユーザー',
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                                Text(
-                                  'サポートチャット',
-                                  style: TextStyle(
-                                    color: Colors.grey[400],
-                                    fontSize: 12,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ],
-                        ),
+          child: Row(
+            children: [
+              if (isMobile) ...[
+                IconButton(
+                  icon: const Icon(Icons.arrow_back, color: Colors.white),
+                  onPressed: () {
+                    _tabController.animateTo(0);
+                  },
+                ),
+                const SizedBox(width: 8),
+              ],
+              CircleAvatar(
+                backgroundColor: Colors.grey[700],
+                child: Text(
+                  (_selectedUserName ?? 'U')[0].toUpperCase(),
+                  style: const TextStyle(color: Colors.white),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      _selectedUserName ?? 'ユーザー',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
                       ),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    Text(
+                      'サポートチャット',
+                      style: TextStyle(
+                        color: Colors.grey[400],
+                        fontSize: 12,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
                       // メッセージエリア
                       Expanded(
                         child: _selectedConversationId == null
@@ -680,11 +750,7 @@ class _AdminSupportChatManagementScreenV2State extends State<AdminSupportChatMan
                           ],
                         ),
                       ),
-                    ],
-                  ),
-          ),
-        ],
-      ),
+      ],
     );
   }
 }
