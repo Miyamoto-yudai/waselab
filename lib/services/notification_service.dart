@@ -22,9 +22,10 @@ class NotificationService {
       // タイプに応じて通知設定を確認
       bool shouldSendNotification = true;
       
-      if (type == NotificationType.experimentJoined || 
+      if (type == NotificationType.experimentJoined ||
           type == NotificationType.experimentCancelled ||
-          type == NotificationType.experimentCompleted) {
+          type == NotificationType.experimentCompleted ||
+          type == NotificationType.experimentStarted) {
         shouldSendNotification = prefs.getBool('experiment_notifications') ?? true;
       } else if (type == NotificationType.message) {
         shouldSendNotification = prefs.getBool('message_notifications') ?? true;
