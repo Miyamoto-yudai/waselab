@@ -40,8 +40,10 @@ class _CreateExperimentBaseState extends State<CreateExperimentBase> {
   final _reservationDeadlineController = TextEditingController(text: '1'); // 予約締切日数（デフォルト1日前）
   final _surveyUrlController = TextEditingController(); // アンケートURL
   final _preSurveyUrlController = TextEditingController(); // 事前アンケートURL
+  final _postSurveyUrlController = TextEditingController(); // 実験後アンケートURL
   String? _preSurveyTemplateId; // 事前アンケートテンプレートID
   String? _experimentSurveyTemplateId; // 実験アンケートテンプレートID
+  String? _postSurveyTemplateId; // 実験後アンケートテンプレートID
   bool _isLabExperiment = true; // true: 研究室, false: 個人
   
   // 選択項目
@@ -514,10 +516,16 @@ class _CreateExperimentBaseState extends State<CreateExperimentBase> {
 
   /// 実験を保存
   Future<void> _saveExperiment() async {
-    if (!_formKey.currentState!.validate()) return;
-    
+    debugPrint('=== _saveExperiment開始 ===');
+
+    if (!_formKey.currentState!.validate()) {
+      debugPrint('フォームバリデーション失敗');
+      return;
+    }
+
     // 追加のバリデーション
     if (_titleController.text.trim().isEmpty) {
+      debugPrint('タイトルが空');
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('タイトルを入力してください'),
@@ -526,8 +534,9 @@ class _CreateExperimentBaseState extends State<CreateExperimentBase> {
       );
       return;
     }
-    
+
     if (_descriptionController.text.trim().isEmpty) {
+      debugPrint('実験概要が空');
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('実験概要を入力してください'),
@@ -536,8 +545,9 @@ class _CreateExperimentBaseState extends State<CreateExperimentBase> {
       );
       return;
     }
-    
+
     if (_locationController.text.trim().isEmpty) {
+      debugPrint('実施場所が空');
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('実施場所を入力してください'),
@@ -546,13 +556,13 @@ class _CreateExperimentBaseState extends State<CreateExperimentBase> {
       );
       return;
     }
-    
+
     // 日付の整合性チェック（日時未定も許可）
     // 柔軟なスケジュールの場合、期間やスロットが設定されていなくても許可
     // 固定日時の場合も、未設定を許可（個別調整で決定）
-    
+
     setState(() => _isLoading = true);
-    
+
     final data = {
       'title': _titleController.text.trim(),
       'description': _descriptionController.text.trim(),
@@ -572,16 +582,16 @@ class _CreateExperimentBaseState extends State<CreateExperimentBase> {
       'requirements': _requirements,
       'consentItems': _consentItems,
       'timeSlots': [], // 曜日ベースは使用しない
-      'dateTimeSlots': _dateTimeSlots.isNotEmpty 
+      'dateTimeSlots': _dateTimeSlots.isNotEmpty
         ? List<Map<String, dynamic>>.from(
-            _dateTimeSlots.entries.expand((entry) => 
+            _dateTimeSlots.entries.expand((entry) =>
               entry.value.map((slot) => slot.toJson())
             )
           )
         : <Map<String, dynamic>>[],
       'simultaneousCapacity': _simultaneousCapacity,
       'fixedExperimentDate': _fixedExperimentDate,
-      'fixedExperimentTime': _fixedExperimentTime != null 
+      'fixedExperimentTime': _fixedExperimentTime != null
         ? {'hour': _fixedExperimentTime!.hour, 'minute': _fixedExperimentTime!.minute}
         : null,
       'reservationDeadlineDays': int.tryParse(_reservationDeadlineController.text) ?? 1,
@@ -589,15 +599,25 @@ class _CreateExperimentBaseState extends State<CreateExperimentBase> {
       'preSurveyUrl': _preSurveyUrlController.text.trim().isNotEmpty ? _preSurveyUrlController.text.trim() : null,
       'preSurveyTemplateId': _preSurveyTemplateId,
       'experimentSurveyTemplateId': _experimentSurveyTemplateId,
+      'postSurveyUrl': _postSurveyUrlController.text.trim().isNotEmpty ? _postSurveyUrlController.text.trim() : null,
+      'postSurveyTemplateId': _postSurveyTemplateId,
       'isLabExperiment': _isLabExperiment,
     };
-    
+
+    debugPrint('保存データ:');
+    debugPrint('- title: ${data['title']}');
+    debugPrint('- type: ${data['type']}');
+    debugPrint('- postSurveyUrl: ${data['postSurveyUrl']}');
+    debugPrint('- preSurveyUrl: ${data['preSurveyUrl']}');
+
     try {
+      debugPrint('widget.onSaveを呼び出し中...');
       await widget.onSave(data);
-      
+      debugPrint('widget.onSave完了');
+
       // 作成成功後、下書きをクリア
       await ExperimentDraftService.clearDraft();
-      
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -607,7 +627,9 @@ class _CreateExperimentBaseState extends State<CreateExperimentBase> {
         );
         Navigator.pop(context);
       }
-    } catch (e) {
+    } catch (e, stackTrace) {
+      debugPrint('エラー発生: $e');
+      debugPrint('スタックトレース: $stackTrace');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -2496,9 +2518,9 @@ class _CreateExperimentBaseState extends State<CreateExperimentBase> {
                                     children: [
                                       const Icon(Icons.quiz, color: Color(0xFF8E1728)),
                                       const SizedBox(width: 8),
-                                      const Text('事後アンケート', style: TextStyle(fontWeight: FontWeight.bold)),
+                                      const Text('実験後アンケート', style: TextStyle(fontWeight: FontWeight.bold)),
                                       const Spacer(),
-                                      if (_surveyUrlController.text.trim().isNotEmpty)
+                                      if (_postSurveyUrlController.text.trim().isNotEmpty)
                                         const Chip(
                                           label: Text('設定済み', style: TextStyle(fontSize: 12)),
                                           backgroundColor: Colors.green,
@@ -2513,9 +2535,9 @@ class _CreateExperimentBaseState extends State<CreateExperimentBase> {
                                   ),
                                   const SizedBox(height: 12),
                                   TextFormField(
-                                    controller: _surveyUrlController,
+                                    controller: _postSurveyUrlController,
                                     decoration: const InputDecoration(
-                                      labelText: '事後アンケートURL',
+                                      labelText: '実験後アンケートURL',
                                       hintText: 'https://forms.google.com/...',
                                       border: OutlineInputBorder(),
                                       prefixIcon: Icon(Icons.link),
@@ -2545,7 +2567,7 @@ class _CreateExperimentBaseState extends State<CreateExperimentBase> {
                                             await showDialog(
                                               context: context,
                                               builder: (context) => SurveyTemplateSelector(
-                                                isPreSurvey: false,
+                                                isPreSurvey: false,  // false for post-survey
                                                 experimentTitle: _titleController.text.trim(),
                                                 experimentDescription: _descriptionController.text.trim(),
                                                 detailedContent: _detailedContentController.text.trim(),
@@ -2560,12 +2582,12 @@ class _CreateExperimentBaseState extends State<CreateExperimentBase> {
                                                 maxParticipants: _maxParticipantsController.text.trim(),
                                                 onTemplateSelected: (template) {
                                                   setState(() {
-                                                    _experimentSurveyTemplateId = template.id;
+                                                    _postSurveyTemplateId = template.id;
                                                   });
                                                 },
                                                 onUrlEntered: (url) {
                                                   setState(() {
-                                                    _surveyUrlController.text = url;
+                                                    _postSurveyUrlController.text = url;
                                                   });
                                                 },
                                               ),
@@ -2576,12 +2598,12 @@ class _CreateExperimentBaseState extends State<CreateExperimentBase> {
                                         ),
                                       ),
                                       const SizedBox(width: 8),
-                                      if (_surveyUrlController.text.trim().isNotEmpty)
+                                      if (_postSurveyUrlController.text.trim().isNotEmpty)
                                         IconButton(
                                           onPressed: () {
                                             setState(() {
-                                              _surveyUrlController.clear();
-                                              _experimentSurveyTemplateId = null;
+                                              _postSurveyUrlController.clear();
+                                              _postSurveyTemplateId = null;
                                             });
                                           },
                                           icon: const Icon(Icons.clear),
