@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'firebase_options.dart';
 import 'services/auth_service.dart';
@@ -47,50 +48,25 @@ class AuthWrapper extends StatefulWidget {
 }
 
 class _AuthWrapperState extends State<AuthWrapper> {
-  bool _isInitializing = true;
+  final AuthService _authService = AuthService();
+  late Future<User?> _initialAuthState;
 
   @override
   void initState() {
     super.initState();
-    // Firebase Authが認証状態を復元する時間を確保
-    // これにより、永続化された認証状態が正しく読み込まれる
-    Future.delayed(const Duration(milliseconds: 1000), () {
-      if (mounted) {
-        setState(() {
-          _isInitializing = false;
-        });
-      }
-    });
+    // Firebase Auth の最初の認証状態を待つ
+    // これにより、永続化された認証状態が確実に復元される
+    _initialAuthState = _authService.authStateChanges.first;
   }
 
   @override
   Widget build(BuildContext context) {
-    // 初期化中は必ずローディング画面を表示
-    // これにより、認証状態の復元中に誤ってログイン画面が表示されることを防ぐ
-    if (_isInitializing) {
-      return const Scaffold(
-        body: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              CircularProgressIndicator(),
-              SizedBox(height: 16),
-              Text('アプリを起動中...'),
-            ],
-          ),
-        ),
-      );
-    }
-
-    final authService = AuthService();
-
-    // Firebase Authの認証状態を監視
-    return StreamBuilder(
-      stream: authService.authStateChanges,
-      builder: (context, snapshot) {
-        // 接続待ちまたは初期状態の場合はローディング表示
-        if (snapshot.connectionState == ConnectionState.waiting ||
-            snapshot.connectionState == ConnectionState.none) {
+    // 最初の認証状態を確実に取得してから画面を表示
+    return FutureBuilder<User?>(
+      future: _initialAuthState,
+      builder: (context, initialSnapshot) {
+        // 初回の認証状態を待っている間はローディング表示
+        if (initialSnapshot.connectionState == ConnectionState.waiting) {
           return const Scaffold(
             body: Center(
               child: Column(
@@ -98,12 +74,74 @@ class _AuthWrapperState extends State<AuthWrapper> {
                 children: [
                   CircularProgressIndicator(),
                   SizedBox(height: 16),
-                  Text('認証状態を確認中...'),
+                  Text('アプリを起動中...'),
                 ],
               ),
             ),
           );
         }
+
+        // エラーが発生した場合
+        if (initialSnapshot.hasError) {
+          return Scaffold(
+            body: Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(
+                    Icons.error_outline,
+                    size: 64,
+                    color: Colors.red,
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    'エラーが発生しました',
+                    style: Theme.of(context).textTheme.headlineSmall,
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    initialSnapshot.error.toString(),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 24),
+                  ElevatedButton(
+                    onPressed: () {
+                      // アプリを再起動（実際にはウィジェットの再構築）
+                      Navigator.pushReplacement(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const AuthWrapper(),
+                        ),
+                      );
+                    },
+                    child: const Text('再試行'),
+                  ),
+                ],
+              ),
+            ),
+          );
+        }
+
+        // 初回の認証状態を取得できたら、StreamBuilderで継続的に監視
+        return StreamBuilder<User?>(
+          stream: _authService.authStateChanges,
+          initialData: initialSnapshot.data, // 初回の認証状態を初期値として設定
+          builder: (context, snapshot) {
+            // 接続待ちの場合はローディング表示（通常は表示されない）
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return const Scaffold(
+                body: Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      CircularProgressIndicator(),
+                      SizedBox(height: 16),
+                      Text('認証状態を確認中...'),
+                    ],
+                  ),
+                ),
+              );
+            }
 
         // エラーが発生した場合
         if (snapshot.hasError) {
@@ -160,7 +198,9 @@ class _AuthWrapperState extends State<AuthWrapper> {
         } else {
           // 未ログイン：ログイン画面を表示
           return const LoginScreen();
-        }
+            }
+          },
+        );
       },
     );
   }
