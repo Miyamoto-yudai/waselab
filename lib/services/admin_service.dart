@@ -18,6 +18,54 @@ class AdminService {
   Admin? _currentAdmin;
   Admin? get currentAdmin => _currentAdmin;
 
+  // 管理者モードフラグ（管理者権限を持つユーザーが通常画面を表示している場合はfalse）
+  bool _isAdminMode = true;
+  bool get isAdminMode => _isAdminMode;
+
+  /// 管理者モードの切り替え
+  void setAdminMode(bool mode) {
+    _isAdminMode = mode;
+    debugPrint('管理者モード切り替え: $mode');
+  }
+
+  /// 現在のユーザーが管理者権限を持っているか確認
+  Future<bool> hasAdminPrivileges() async {
+    try {
+      final user = _auth.currentUser;
+      if (user == null) return false;
+
+      final adminDoc = await _firestore
+          .collection('admins')
+          .doc(user.uid)
+          .get();
+
+      return adminDoc.exists;
+    } catch (e) {
+      debugPrint('管理者権限確認エラー: $e');
+      return false;
+    }
+  }
+
+  /// 管理者情報を再読み込み
+  Future<void> reloadAdminInfo() async {
+    try {
+      final user = _auth.currentUser;
+      if (user == null) return;
+
+      final adminDoc = await _firestore
+          .collection('admins')
+          .doc(user.uid)
+          .get();
+
+      if (adminDoc.exists) {
+        _currentAdmin = Admin.fromFirestore(adminDoc);
+        debugPrint('管理者情報を再読み込みしました');
+      }
+    } catch (e) {
+      debugPrint('管理者情報再読み込みエラー: $e');
+    }
+  }
+
   /// 未読のサポートメッセージ数を取得
   Stream<int> getUnreadSupportMessageCount() {
     return _firestore

@@ -9,6 +9,7 @@ import 'admin_support_message_screen.dart';
 import 'admin_announcement_screen.dart';
 import 'admin_support_chat_management_screen_v2.dart';
 import '../login_screen.dart';
+import '../navigation_screen.dart';
 
 /// 管理者ダッシュボード画面
 class AdminDashboardScreen extends StatefulWidget {
@@ -128,6 +129,21 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
         backgroundColor: Colors.black,
         title: const Text('管理者ダッシュボード'),
         actions: [
+          // ユーザー画面切り替えボタン
+          IconButton(
+            icon: const Icon(Icons.person),
+            onPressed: () {
+              // 管理者モードをOFFにしてユーザー画面へ
+              _adminService.setAdminMode(false);
+              Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const NavigationScreen(),
+                ),
+              );
+            },
+            tooltip: 'ユーザー画面へ切り替え',
+          ),
           IconButton(
             icon: const Icon(Icons.bug_report),
             onPressed: () {

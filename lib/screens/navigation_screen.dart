@@ -10,8 +10,10 @@ import '../services/auth_service.dart';
 import '../services/experiment_service.dart';
 import '../services/user_service.dart';
 import '../services/notification_service.dart';
+import '../services/admin_service.dart';
 import '../models/app_user.dart';
 import 'support_donation_screen.dart';
+import 'admin/admin_dashboard_screen.dart';
 
 class NavigationScreen extends StatefulWidget {
   
@@ -28,11 +30,13 @@ class NavigationScreenState extends State<NavigationScreen> {
   final ExperimentService _experimentService = ExperimentService();
   final UserService _userService = UserService();
   final NotificationService _notificationService = NotificationService();
+  final AdminService _adminService = AdminService();
   int _unreadCount = 0;
   int _pendingEvaluations = 0; // 未評価の実験数
   int _pendingSurveys = 0; // 未送信の事後アンケート数
   int _unreadNotifications = 0; // 未読通知数
   AppUser? _currentUser;
+  bool _hasAdminPrivileges = false;
 
   late final List<Widget> _screens;
 
@@ -52,7 +56,17 @@ class NavigationScreenState extends State<NavigationScreen> {
     _loadPendingSurveys();
     _loadUnreadNotifications();
     _loadCurrentUser();
+    _checkAdminPrivileges();
     _setupRealtimeListeners();
+  }
+
+  Future<void> _checkAdminPrivileges() async {
+    final hasAdmin = await _adminService.hasAdminPrivileges();
+    if (mounted) {
+      setState(() {
+        _hasAdminPrivileges = hasAdmin;
+      });
+    }
   }
 
   Future<void> _loadUnreadCount() async {
@@ -241,6 +255,34 @@ class NavigationScreenState extends State<NavigationScreen> {
 
     if (isSmallScreen) {
       return Scaffold(
+        appBar: _hasAdminPrivileges && _selectedIndex == 0
+            ? AppBar(
+                backgroundColor: Colors.black87,
+                title: const Text(
+                  'ユーザーモード',
+                  style: TextStyle(fontSize: 14),
+                ),
+                actions: [
+                  TextButton.icon(
+                    onPressed: () {
+                      // 管理者モードをONにして管理者画面へ
+                      _adminService.setAdminMode(true);
+                      Navigator.pushReplacement(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const AdminDashboardScreen(),
+                        ),
+                      );
+                    },
+                    icon: const Icon(Icons.admin_panel_settings, color: Colors.red),
+                    label: const Text(
+                      '管理者画面へ',
+                      style: TextStyle(color: Colors.white),
+                    ),
+                  ),
+                ],
+              )
+            : null,
         body: IndexedStack(
           index: _selectedIndex,
           children: _screens,
@@ -438,6 +480,34 @@ class NavigationScreenState extends State<NavigationScreen> {
       );
     } else {
       return Scaffold(
+        appBar: _hasAdminPrivileges
+            ? AppBar(
+                backgroundColor: Colors.black87,
+                title: const Text(
+                  'ユーザーモード',
+                  style: TextStyle(fontSize: 14),
+                ),
+                actions: [
+                  TextButton.icon(
+                    onPressed: () {
+                      // 管理者モードをONにして管理者画面へ
+                      _adminService.setAdminMode(true);
+                      Navigator.pushReplacement(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const AdminDashboardScreen(),
+                        ),
+                      );
+                    },
+                    icon: const Icon(Icons.admin_panel_settings, color: Colors.red),
+                    label: const Text(
+                      '管理者画面へ',
+                      style: TextStyle(color: Colors.white),
+                    ),
+                  ),
+                ],
+              )
+            : null,
         body: Row(
           children: [
             NavigationRail(
