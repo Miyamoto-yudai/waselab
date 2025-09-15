@@ -172,6 +172,24 @@ class _HistoryScreenState extends State<HistoryScreen> with TickerProviderStateM
                       ),
                     ),
                   ],
+                  if (_getCreatedExperimentsPostSurveyCount() > 0) ...[
+                    const SizedBox(width: 4),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+                      decoration: BoxDecoration(
+                        color: Colors.blue,
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Text(
+                        '${_getCreatedExperimentsPostSurveyCount()}',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ],
                 ],
               ),
             ),
@@ -1394,15 +1412,40 @@ class _HistoryScreenState extends State<HistoryScreen> with TickerProviderStateM
   int _getUnevaluatedParticipantCount(Experiment experiment) {
     int count = 0;
     final participantEvals = experiment.participantEvaluations ?? {};
-    
+
     for (final participantId in experiment.participants) {
       final evalData = participantEvals[participantId] ?? {};
-      if (!(evalData['creatorEvaluated'] ?? false) && 
+      if (!(evalData['creatorEvaluated'] ?? false) &&
           !experiment.isScheduledFuture(participantId)) {
         count++;
       }
     }
-    
+
+    return count;
+  }
+
+  int _getCreatedExperimentsPostSurveyCount() {
+    return _createdExperiments.fold<int>(
+      0,
+      (sum, exp) => sum + _getPostSurveyPendingCount(exp),
+    );
+  }
+
+  int _getPostSurveyPendingCount(Experiment experiment) {
+    int count = 0;
+
+    // 事後アンケートURLが設定されている実験のみチェック
+    if (experiment.postSurveyUrl != null && experiment.postSurveyUrl!.isNotEmpty) {
+      final participantEvals = experiment.participantEvaluations ?? {};
+
+      for (final participantId in experiment.participants) {
+        final evalData = participantEvals[participantId] ?? {};
+        if (!(evalData['postSurveyUrlSent'] ?? false)) {
+          count++;
+        }
+      }
+    }
+
     return count;
   }
 

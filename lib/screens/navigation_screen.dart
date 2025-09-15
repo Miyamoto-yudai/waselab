@@ -30,6 +30,7 @@ class NavigationScreenState extends State<NavigationScreen> {
   final NotificationService _notificationService = NotificationService();
   int _unreadCount = 0;
   int _pendingEvaluations = 0; // 未評価の実験数
+  int _pendingSurveys = 0; // 未送信の事後アンケート数
   int _unreadNotifications = 0; // 未読通知数
   AppUser? _currentUser;
 
@@ -48,6 +49,7 @@ class NavigationScreenState extends State<NavigationScreen> {
     ];
     _loadUnreadCount();
     _loadPendingEvaluations();
+    _loadPendingSurveys();
     _loadUnreadNotifications();
     _loadCurrentUser();
     _setupRealtimeListeners();
@@ -123,6 +125,42 @@ class NavigationScreenState extends State<NavigationScreen> {
     }
   }
 
+  Future<void> _loadPendingSurveys() async {
+    try {
+      final user = await _authService.getCurrentAppUser();
+      if (user == null) return;
+
+      // 作成した実験の事後アンケート未送信数を取得
+      final createdExperiments = await _experimentService.getUserCreatedExperiments(user.uid);
+      int pendingSurveyCount = 0;
+
+      for (final exp in createdExperiments) {
+        // 事後アンケートURLが設定されている実験のみチェック
+        if (exp.postSurveyUrl != null && exp.postSurveyUrl!.isNotEmpty) {
+          // 参加者ごとの送信状態をチェック
+          for (final participantId in exp.participants) {
+            final participantEvals = exp.participantEvaluations ?? {};
+            final participantEval = participantEvals[participantId] ?? {};
+            final postSurveyUrlSent = participantEval['postSurveyUrlSent'] ?? false;
+
+            // 事後アンケートが未送信の場合のみカウント
+            if (!postSurveyUrlSent) {
+              pendingSurveyCount++;
+            }
+          }
+        }
+      }
+
+      if (mounted) {
+        setState(() {
+          _pendingSurveys = pendingSurveyCount;
+        });
+      }
+    } catch (e) {
+      debugPrint('Error loading pending surveys: $e');
+    }
+  }
+
   void _openSettings() async {
     final result = await Navigator.push(
       context,
@@ -187,10 +225,11 @@ class NavigationScreenState extends State<NavigationScreen> {
       }
     });
 
-    // 評価待ちの実験数を定期的に更新（5秒ごと）
+    // 評価待ちと事後アンケート未送信数を定期的に更新（5秒ごと）
     Stream.periodic(const Duration(seconds: 5)).listen((_) {
       if (mounted) {
         _loadPendingEvaluations();
+        _loadPendingSurveys();
       }
     });
   }
@@ -223,6 +262,7 @@ class NavigationScreenState extends State<NavigationScreen> {
                   // マイページに遷移したら画面を再構築して最新状態を表示
                   _screens[4] = MyPageScreen(key: UniqueKey());
                   _loadPendingEvaluations(); // 評価状態を更新
+                  _loadPendingSurveys(); // アンケート送信状態を更新
                 }
               });
               if (index == 1) {
@@ -272,17 +312,113 @@ class NavigationScreenState extends State<NavigationScreen> {
               label: '通知',
             ),
             NavigationDestination(
-              icon: Badge(
-                label: Text('$_pendingEvaluations'),
-                backgroundColor: Colors.orange,
-                isLabelVisible: _pendingEvaluations > 0,
-                child: const Icon(Icons.history_outlined),
+              icon: Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  const Icon(Icons.history_outlined),
+                  if (_pendingEvaluations > 0)
+                    Positioned(
+                      right: -8,
+                      top: -8,
+                      child: Container(
+                        padding: const EdgeInsets.all(2),
+                        decoration: BoxDecoration(
+                          color: Colors.orange,
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        constraints: const BoxConstraints(
+                          minWidth: 12,
+                          minHeight: 12,
+                        ),
+                        child: Text(
+                          '$_pendingEvaluations',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 8,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
+                    ),
+                  if (_pendingSurveys > 0)
+                    Positioned(
+                      left: -8,
+                      top: -8,
+                      child: Container(
+                        padding: const EdgeInsets.all(2),
+                        decoration: BoxDecoration(
+                          color: Colors.blue,
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        constraints: const BoxConstraints(
+                          minWidth: 12,
+                          minHeight: 12,
+                        ),
+                        child: Text(
+                          '$_pendingSurveys',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 8,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
+                    ),
+                ],
               ),
-              selectedIcon: Badge(
-                label: Text('$_pendingEvaluations'),
-                backgroundColor: Colors.orange,
-                isLabelVisible: _pendingEvaluations > 0,
-                child: const Icon(Icons.history, color: Color(0xFF8E1728)),
+              selectedIcon: Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  const Icon(Icons.history, color: Color(0xFF8E1728)),
+                  if (_pendingEvaluations > 0)
+                    Positioned(
+                      right: -8,
+                      top: -8,
+                      child: Container(
+                        padding: const EdgeInsets.all(2),
+                        decoration: BoxDecoration(
+                          color: Colors.orange,
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        constraints: const BoxConstraints(
+                          minWidth: 12,
+                          minHeight: 12,
+                        ),
+                        child: Text(
+                          '$_pendingEvaluations',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 8,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
+                    ),
+                  if (_pendingSurveys > 0)
+                    Positioned(
+                      left: -8,
+                      top: -8,
+                      child: Container(
+                        padding: const EdgeInsets.all(2),
+                        decoration: BoxDecoration(
+                          color: Colors.blue,
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        constraints: const BoxConstraints(
+                          minWidth: 12,
+                          minHeight: 12,
+                        ),
+                        child: Text(
+                          '$_pendingSurveys',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 8,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
+                    ),
+                ],
               ),
               label: '履歴',
             ),
@@ -313,6 +449,7 @@ class NavigationScreenState extends State<NavigationScreen> {
                     // マイページに遷移したら画面を再構築
                     _screens[4] = MyPageScreen(key: UniqueKey());
                     _loadPendingEvaluations(); // 評価状態を更新
+                    _loadPendingSurveys(); // アンケート送信状態を更新
                   }
                 });
                 if (index == 1) {
@@ -361,17 +498,113 @@ class NavigationScreenState extends State<NavigationScreen> {
                   label: const Text('通知'),
                 ),
                 NavigationRailDestination(
-                  icon: Badge(
-                    label: Text('$_pendingEvaluations'),
-                    backgroundColor: Colors.orange,
-                    isLabelVisible: _pendingEvaluations > 0,
-                    child: const Icon(Icons.history_outlined),
+                  icon: Stack(
+                    clipBehavior: Clip.none,
+                    children: [
+                      const Icon(Icons.history_outlined),
+                      if (_pendingEvaluations > 0)
+                        Positioned(
+                          right: -8,
+                          top: -8,
+                          child: Container(
+                            padding: const EdgeInsets.all(2),
+                            decoration: BoxDecoration(
+                              color: Colors.orange,
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            constraints: const BoxConstraints(
+                              minWidth: 12,
+                              minHeight: 12,
+                            ),
+                            child: Text(
+                              '$_pendingEvaluations',
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 8,
+                              ),
+                              textAlign: TextAlign.center,
+                            ),
+                          ),
+                        ),
+                      if (_pendingSurveys > 0)
+                        Positioned(
+                          left: -8,
+                          top: -8,
+                          child: Container(
+                            padding: const EdgeInsets.all(2),
+                            decoration: BoxDecoration(
+                              color: Colors.blue,
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            constraints: const BoxConstraints(
+                              minWidth: 12,
+                              minHeight: 12,
+                            ),
+                            child: Text(
+                              '$_pendingSurveys',
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 8,
+                              ),
+                              textAlign: TextAlign.center,
+                            ),
+                          ),
+                        ),
+                    ],
                   ),
-                  selectedIcon: Badge(
-                    label: Text('$_pendingEvaluations'),
-                    backgroundColor: Colors.orange,
-                    isLabelVisible: _pendingEvaluations > 0,
-                    child: const Icon(Icons.history, color: Color(0xFF8E1728)),
+                  selectedIcon: Stack(
+                    clipBehavior: Clip.none,
+                    children: [
+                      const Icon(Icons.history, color: Color(0xFF8E1728)),
+                      if (_pendingEvaluations > 0)
+                        Positioned(
+                          right: -8,
+                          top: -8,
+                          child: Container(
+                            padding: const EdgeInsets.all(2),
+                            decoration: BoxDecoration(
+                              color: Colors.orange,
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            constraints: const BoxConstraints(
+                              minWidth: 12,
+                              minHeight: 12,
+                            ),
+                            child: Text(
+                              '$_pendingEvaluations',
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 8,
+                              ),
+                              textAlign: TextAlign.center,
+                            ),
+                          ),
+                        ),
+                      if (_pendingSurveys > 0)
+                        Positioned(
+                          left: -8,
+                          top: -8,
+                          child: Container(
+                            padding: const EdgeInsets.all(2),
+                            decoration: BoxDecoration(
+                              color: Colors.blue,
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            constraints: const BoxConstraints(
+                              minWidth: 12,
+                              minHeight: 12,
+                            ),
+                            child: Text(
+                              '$_pendingSurveys',
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 8,
+                              ),
+                              textAlign: TextAlign.center,
+                            ),
+                          ),
+                        ),
+                    ],
                   ),
                   label: const Text('履歴'),
                 ),
