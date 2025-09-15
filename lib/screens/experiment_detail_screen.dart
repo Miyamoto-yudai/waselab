@@ -2040,7 +2040,7 @@ class _ExperimentDetailScreenState extends State<ExperimentDetailScreen> {
   /// 実験日時のテキストを取得
   String _getExperimentDateTimeText() {
     // 固定日時の実験の場合
-    if (!widget.experiment.allowFlexibleSchedule && widget.experiment.fixedExperimentDate != null) {
+    if (widget.experiment.fixedExperimentDate != null) {
       final dateStr = DateFormat('yyyy/MM/dd').format(widget.experiment.fixedExperimentDate!);
       if (widget.experiment.fixedExperimentTime != null) {
         final hour = widget.experiment.fixedExperimentTime!['hour'] ?? 0;
@@ -2049,9 +2049,19 @@ class _ExperimentDetailScreenState extends State<ExperimentDetailScreen> {
       }
       return dateStr;
     }
-    
-    // それ以外の場合（フォールバック）
-    return _formatDateTime(widget.experiment.recruitmentStartDate);
+
+    // 柔軟なスケジュール調整の場合
+    if (widget.experiment.allowFlexibleSchedule) {
+      return '予約制（日程調整可）';
+    }
+
+    // アンケートタイプの場合
+    if (widget.experiment.type == ExperimentType.survey) {
+      return '日時自由';
+    }
+
+    // それ以外の場合（日時未定）
+    return '未定';
   }
 
   /// 実験参加がキャンセル可能かどうかを判定（履歴画面と同じ条件）

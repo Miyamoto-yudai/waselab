@@ -242,7 +242,7 @@ class _ExperimentCardState extends State<ExperimentCard> {
                         ],
                       ),
                     )
-                  else
+                  else if (widget.experiment.fixedExperimentDate != null)
                     Container(
                       margin: const EdgeInsets.only(bottom: 6, right: 8),
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
@@ -269,6 +269,38 @@ class _ExperimentCardState extends State<ExperimentCard> {
                               fontSize: 11,
                               fontWeight: FontWeight.bold,
                               color: Colors.purple[700],
+                            ),
+                          ),
+                        ],
+                      ),
+                    )
+                  else
+                    Container(
+                      margin: const EdgeInsets.only(bottom: 6, right: 8),
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: Colors.grey.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(6),
+                        border: Border.all(
+                          color: Colors.grey.withValues(alpha: 0.3),
+                          width: 1,
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.schedule_outlined,
+                            size: 12,
+                            color: Colors.grey[700],
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            '日時未定',
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.grey[700],
                             ),
                           ),
                         ],
