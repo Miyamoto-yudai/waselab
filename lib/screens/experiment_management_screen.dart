@@ -919,9 +919,7 @@ class _ExperimentManagementScreenState extends State<ExperimentManagementScreen>
                     runSpacing: 4,
                     children: [
                       // 未評価タグ
-                      if (!creatorToParticipant &&
-                          (_experiment.status == ExperimentStatus.ongoing ||
-                           _experiment.status == ExperimentStatus.waitingEvaluation))
+                      if (!creatorToParticipant && (isExperimentStarted || participantToCreator))
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                           decoration: BoxDecoration(
