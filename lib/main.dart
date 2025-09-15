@@ -47,17 +47,50 @@ class AuthWrapper extends StatefulWidget {
 }
 
 class _AuthWrapperState extends State<AuthWrapper> {
+  bool _isInitializing = true;
+
+  @override
+  void initState() {
+    super.initState();
+    // Firebase Authが認証状態を復元する時間を確保
+    // これにより、永続化された認証状態が正しく読み込まれる
+    Future.delayed(const Duration(milliseconds: 1000), () {
+      if (mounted) {
+        setState(() {
+          _isInitializing = false;
+        });
+      }
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
+    // 初期化中は必ずローディング画面を表示
+    // これにより、認証状態の復元中に誤ってログイン画面が表示されることを防ぐ
+    if (_isInitializing) {
+      return const Scaffold(
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              CircularProgressIndicator(),
+              SizedBox(height: 16),
+              Text('アプリを起動中...'),
+            ],
+          ),
+        ),
+      );
+    }
+
     final authService = AuthService();
 
     // Firebase Authの認証状態を監視
     return StreamBuilder(
       stream: authService.authStateChanges,
       builder: (context, snapshot) {
-        // 接続待ちの場合はローディング表示
-        if (snapshot.connectionState == ConnectionState.waiting) {
+        // 接続待ちまたは初期状態の場合はローディング表示
+        if (snapshot.connectionState == ConnectionState.waiting ||
+            snapshot.connectionState == ConnectionState.none) {
           return const Scaffold(
             body: Center(
               child: Column(
@@ -65,7 +98,7 @@ class _AuthWrapperState extends State<AuthWrapper> {
                 children: [
                   CircularProgressIndicator(),
                   SizedBox(height: 16),
-                  Text('アプリを起動中...'),
+                  Text('認証状態を確認中...'),
                 ],
               ),
             ),
