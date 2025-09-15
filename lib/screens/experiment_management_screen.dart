@@ -945,6 +945,60 @@ class _ExperimentManagementScreenState extends State<ExperimentManagementScreen>
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
+                  // タグ表示エリア
+                  const SizedBox(height: 4),
+                  Wrap(
+                    spacing: 4,
+                    runSpacing: 4,
+                    children: [
+                      // 未評価タグ
+                      if (!creatorToParticipant &&
+                          (_experiment.status == ExperimentStatus.ongoing ||
+                           _experiment.status == ExperimentStatus.waitingEvaluation))
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: Colors.orange.withValues(alpha: 0.15),
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(
+                              color: Colors.orange.withValues(alpha: 0.4),
+                              width: 0.5,
+                            ),
+                          ),
+                          child: const Text(
+                            '未評価',
+                            style: TextStyle(
+                              fontSize: 10,
+                              color: Colors.orange,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      // 事後アンケート未送信タグ
+                      if (_experiment.postSurveyUrl != null &&
+                          _experiment.postSurveyUrl!.isNotEmpty &&
+                          !_hasPostSurveyUrlSent(participant.uid))
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: Colors.blue.withValues(alpha: 0.15),
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(
+                              color: Colors.blue.withValues(alpha: 0.4),
+                              width: 0.5,
+                            ),
+                          ),
+                          child: const Text(
+                            '事後アンケート未送信',
+                            style: TextStyle(
+                              fontSize: 10,
+                              color: Colors.blue,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
                 ],
               ),
             ),
