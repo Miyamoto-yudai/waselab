@@ -3,8 +3,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../services/message_service.dart';
 import '../services/auth_service.dart';
+import '../services/user_service.dart';
 import '../models/message.dart';
 import '../models/app_user.dart';
+import '../models/avatar_color.dart';
+import '../models/avatar_design.dart';
+import '../widgets/custom_circle_avatar.dart';
 import '../widgets/user_detail_dialog.dart';
 
 class ChatScreen extends StatefulWidget {
@@ -26,17 +30,21 @@ class ChatScreen extends StatefulWidget {
 class _ChatScreenState extends State<ChatScreen> {
   final MessageService _messageService = MessageService();
   final AuthService _authService = AuthService();
+  final UserService _userService = UserService();
   final TextEditingController _messageController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
   final Map<String, GlobalKey> _messageKeys = {};
-  
+  static const double _kAvatarRadius = 18;
+  static const double _kAvatarDiameter = _kAvatarRadius * 2;
+
   String? _currentUserId;
   String? _currentUserName;
   AppUser? _currentAppUser;
+  AppUser? _otherUser;
   String? _actualConversationId;
   bool _isSending = false;
   bool _showTemplates = false;
-  
+
   // 編集・リプライ関連
   Message? _editingMessage;
   Message? _replyingToMessage;
@@ -50,41 +58,48 @@ class _ChatScreenState extends State<ChatScreen> {
     super.initState();
     _actualConversationId = widget.conversationId;
     _getCurrentUser();
+    _getOtherUser();
     if (widget.conversationId != null && widget.conversationId!.isNotEmpty) {
       _markMessagesAsRead();
     }
     _startListeningToMessages();
   }
-  
+
   void _startListeningToMessages() {
     if (_actualConversationId != null && _actualConversationId!.isNotEmpty) {
-      _messageSubscription = _messageService.getConversationMessages(_actualConversationId!).listen((messages) {
-        if (mounted) {
-          // 前回のメッセージIDリストを保持
-          final oldMessageIds = _messages.map((m) => m.id).toSet();
-          final newMessageIds = messages.map((m) => m.id).toSet();
-          
-          // 新しく追加されたメッセージがあるかチェック
-          final hasNewMessages = newMessageIds.difference(oldMessageIds).isNotEmpty;
-          final isUserMessage = hasNewMessages && messages.isNotEmpty && 
-                               messages.last.senderId == _currentUserId;
-          
-          setState(() {
-            _messages = messages;
-            _isLoadingMessages = false;
-            
-            // 新しいメッセージのGlobalKeyを追加
-            for (final message in _messages) {
-              _messageKeys[message.id] ??= GlobalKey();
+      _messageSubscription = _messageService
+          .getConversationMessages(_actualConversationId!)
+          .listen((messages) {
+            if (mounted) {
+              // 前回のメッセージIDリストを保持
+              final oldMessageIds = _messages.map((m) => m.id).toSet();
+              final newMessageIds = messages.map((m) => m.id).toSet();
+
+              // 新しく追加されたメッセージがあるかチェック
+              final hasNewMessages = newMessageIds
+                  .difference(oldMessageIds)
+                  .isNotEmpty;
+              final isUserMessage =
+                  hasNewMessages &&
+                  messages.isNotEmpty &&
+                  messages.last.senderId == _currentUserId;
+
+              setState(() {
+                _messages = messages;
+                _isLoadingMessages = false;
+
+                // 新しいメッセージのGlobalKeyを追加
+                for (final message in _messages) {
+                  _messageKeys[message.id] ??= GlobalKey();
+                }
+              });
+
+              // ユーザーが新しいメッセージを送信した場合のみスクロール
+              if (hasNewMessages && isUserMessage && _messages.isNotEmpty) {
+                _scrollToBottom();
+              }
             }
           });
-          
-          // ユーザーが新しいメッセージを送信した場合のみスクロール
-          if (hasNewMessages && isUserMessage && _messages.isNotEmpty) {
-            _scrollToBottom();
-          }
-        }
-      });
     } else {
       setState(() {
         _isLoadingMessages = false;
@@ -104,10 +119,241 @@ class _ChatScreenState extends State<ChatScreen> {
     }
   }
 
-  void _markMessagesAsRead() {
-    if (_currentUserId != null && _actualConversationId != null && _actualConversationId!.isNotEmpty) {
-      _messageService.markMessagesAsRead(_actualConversationId!, _currentUserId!);
+  Future<void> _getOtherUser() async {
+    try {
+      final user = await _userService.getUserById(widget.otherUserId);
+      if (!mounted) return;
+      setState(() {
+        _otherUser = user;
+      });
+    } catch (_) {
+      // 取得に失敗した場合は既存の情報を使い続ける
     }
+  }
+
+  void _markMessagesAsRead() {
+    if (_currentUserId != null &&
+        _actualConversationId != null &&
+        _actualConversationId!.isNotEmpty) {
+      _messageService.markMessagesAsRead(
+        _actualConversationId!,
+        _currentUserId!,
+      );
+    }
+  }
+
+  Color _resolveAvatarColor(AppUser? user) {
+    final colorId = user?.selectedColor ?? 'default';
+    final avatarColor = AvatarColors.getById(colorId);
+    return AvatarColors.getColorValue(avatarColor);
+  }
+
+  Color _resolveAvatarTextColor(Color background) {
+    return background.computeLuminance() > 0.5 ? Colors.black87 : Colors.white;
+  }
+
+  bool _shouldShowAvatar(Message current, Message? previous) {
+    if (previous == null) {
+      return true;
+    }
+    if (previous.senderId != current.senderId) {
+      return true;
+    }
+    final difference = current.createdAt.difference(previous.createdAt);
+    return difference.inMinutes > 3;
+  }
+
+  Widget _buildAvatar({required bool isMe, required bool showAvatar}) {
+    if (!showAvatar) {
+      return const SizedBox(width: _kAvatarDiameter, height: _kAvatarDiameter);
+    }
+
+    final AppUser? user = isMe ? _currentAppUser : _otherUser;
+    final String displayName = isMe
+        ? (_currentUserName ?? '')
+        : widget.otherUserName;
+    final Color backgroundColor = _resolveAvatarColor(user);
+    final textColor = _resolveAvatarTextColor(backgroundColor);
+    final String? designId = user?.selectedDesign;
+    AvatarDesign? avatarDesign;
+    if (designId != null && designId != 'default') {
+      avatarDesign = AvatarDesigns.getById(designId);
+    }
+    final designBuilder = avatarDesign?.builder;
+
+    // マイページと同じロジック: selectedDesignがdefaultの場合のみphotoUrlを使用
+    final bool usePhotoUrl = (designId == null || designId == 'default') && user?.photoUrl != null;
+
+    Widget avatar = CustomCircleAvatar(
+      frameId: user?.selectedFrame,
+      radius: _kAvatarRadius,
+      backgroundColor: backgroundColor,
+      backgroundImage: usePhotoUrl ? user?.photoUrl : null,
+      designBuilder: designBuilder,
+      child: designBuilder == null && !usePhotoUrl
+          ? Text(
+              displayName.isNotEmpty ? displayName[0].toUpperCase() : '?',
+              style: TextStyle(color: textColor, fontSize: 14),
+            )
+          : null,
+    );
+
+    final String? targetUserId = isMe ? _currentUserId : widget.otherUserId;
+    final String targetUserName = isMe
+        ? (_currentUserName ?? '')
+        : widget.otherUserName;
+
+    if (targetUserId != null && targetUserName.isNotEmpty) {
+      avatar = GestureDetector(
+        onTap: () {
+          showDialog(
+            context: context,
+            builder: (context) => UserDetailDialog(
+              userId: targetUserId,
+              userName: targetUserName,
+            ),
+          );
+        },
+        child: avatar,
+      );
+    }
+
+    return SizedBox(
+      width: _kAvatarDiameter,
+      height: _kAvatarDiameter,
+      child: avatar,
+    );
+  }
+
+  Widget _buildMessageContent(
+    BuildContext context,
+    Message message,
+    bool isMe,
+  ) {
+    final bubbleChildren = <Widget>[];
+
+    if (message.replyToContent != null && !message.isDeleted) {
+      bubbleChildren.add(
+        GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: () => _jumpToReplyMessage(message.replyToMessageId),
+          child: Container(
+            padding: const EdgeInsets.only(
+              left: 12,
+              right: 12,
+              top: 8,
+              bottom: 4,
+            ),
+            decoration: BoxDecoration(
+              border: Border(
+                left: BorderSide(
+                  color: isMe
+                      ? Colors.white.withValues(alpha: 0.5)
+                      : Colors.grey.shade400,
+                  width: 2,
+                ),
+              ),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Icon(
+                      Icons.reply,
+                      size: 12,
+                      color: isMe
+                          ? Colors.white.withValues(alpha: 0.7)
+                          : Colors.grey,
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      message.replyToSenderId == _currentUserId
+                          ? 'あなた'
+                          : widget.otherUserName,
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                        color: isMe
+                            ? Colors.white.withValues(alpha: 0.8)
+                            : Colors.grey.shade700,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  message.replyToContent!,
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: isMe
+                        ? Colors.white.withValues(alpha: 0.7)
+                        : Colors.grey.shade600,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
+    bubbleChildren.add(
+      Container(
+        key: _messageKeys[message.id],
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              message.isDeleted ? 'このメッセージは削除されました' : message.content,
+              style: TextStyle(
+                color: message.isDeleted
+                    ? Colors.grey.shade600
+                    : isMe
+                    ? Colors.white
+                    : Colors.black87,
+                fontStyle: message.isDeleted ? FontStyle.italic : null,
+              ),
+            ),
+            if (message.isEdited && !message.isDeleted)
+              Text(
+                '(編集済み)',
+                style: TextStyle(
+                  fontSize: 10,
+                  color: isMe ? Colors.white70 : Colors.grey,
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+
+    return Container(
+      constraints: BoxConstraints(
+        maxWidth: MediaQuery.of(context).size.width * 0.75,
+      ),
+      decoration: BoxDecoration(
+        color: message.isDeleted
+            ? Colors.grey.shade300
+            : isMe
+            ? const Color(0xFF8E1728)
+            : Colors.white,
+        border: isMe || message.isDeleted
+            ? null
+            : Border.all(color: Colors.grey.shade300),
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: bubbleChildren,
+        ),
+      ),
+    );
   }
 
   // テンプレート関連
@@ -128,7 +374,7 @@ class _ChatScreenState extends State<ChatScreen> {
   List<Map<String, dynamic>> _getQuickTemplates() {
     final userInfo = _currentAppUser?.name ?? '[お名前]';
     String affiliation = '';
-    
+
     if (_currentAppUser != null && _currentAppUser!.isWasedaUser) {
       affiliation = '早稲田大学';
       if (_currentAppUser!.department != null) {
@@ -139,13 +385,14 @@ class _ChatScreenState extends State<ChatScreen> {
       }
       affiliation += 'の';
     }
-    
+
     return [
       {
         'type': 'intro',
         'label': '自己紹介',
         'icon': Icons.person_outline,
-        'template': 'お世話になっております。\n'
+        'template':
+            'お世話になっております。\n'
             '$affiliation$userInfoと申します。\n\n'
             '実験を拝見し、大変興味を持ちました。\n'
             'ぜひ参加させていただきたく、ご連絡差し上げました。\n\n'
@@ -157,7 +404,8 @@ class _ChatScreenState extends State<ChatScreen> {
         'type': 'question',
         'label': '質問',
         'icon': Icons.help_outline,
-        'template': 'お世話になっております。$userInfoです。\n\n'
+        'template':
+            'お世話になっております。$userInfoです。\n\n'
             '実験について、以下の点をお伺いできますでしょうか。\n\n'
             '1. \n'
             '2. \n\n'
@@ -168,7 +416,8 @@ class _ChatScreenState extends State<ChatScreen> {
         'type': 'thanks',
         'label': 'お礼',
         'icon': Icons.favorite,
-        'template': 'お世話になっております。$userInfoです。\n\n'
+        'template':
+            'お世話になっております。$userInfoです。\n\n'
             '先日は実験でお世話になり、\n'
             '誠にありがとうございました。\n\n'
             '貴重な経験をさせていただき、大変勉強になりました。\n'
@@ -178,7 +427,8 @@ class _ChatScreenState extends State<ChatScreen> {
         'type': 'schedule',
         'label': '日程調整',
         'icon': Icons.calendar_today,
-        'template': 'お世話になっております。$userInfoです。\n\n'
+        'template':
+            'お世話になっております。$userInfoです。\n\n'
             '実験に参加させていただきたく存じます。\n\n'
             '私の参加可能な日時は以下の通りです：\n'
             '・\n'
@@ -190,7 +440,8 @@ class _ChatScreenState extends State<ChatScreen> {
         'type': 'requirements',
         'label': '参加条件',
         'icon': Icons.checklist,
-        'template': 'お世話になっております。$userInfoです。\n\n'
+        'template':
+            'お世話になっております。$userInfoです。\n\n'
             '実験への参加を検討しております。\n'
             '参加条件について確認させていただけますでしょうか。\n\n'
             'ご確認のほど、よろしくお願いいたします。',
@@ -199,7 +450,8 @@ class _ChatScreenState extends State<ChatScreen> {
         'type': 'access',
         'label': 'アクセス',
         'icon': Icons.location_on,
-        'template': 'お世話になっております。$userInfoです。\n\n'
+        'template':
+            'お世話になっております。$userInfoです。\n\n'
             '実験会場へのアクセスについて、\n'
             '詳細を教えていただけますでしょうか。\n\n'
             'よろしくお願いいたします。',
@@ -235,7 +487,7 @@ class _ChatScreenState extends State<ChatScreen> {
           replyToContent: _replyingToMessage?.content,
           replyToSenderId: _replyingToMessage?.senderId,
         );
-        
+
         if (_actualConversationId == null || _actualConversationId!.isEmpty) {
           setState(() {
             _actualConversationId = conversationId;
@@ -244,15 +496,12 @@ class _ChatScreenState extends State<ChatScreen> {
         }
         _cancelReply();
       }
-      
+
       _messageController.clear();
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('送信に失敗しました: $e'),
-            backgroundColor: Colors.red,
-          ),
+          SnackBar(content: Text('送信に失敗しました: $e'), backgroundColor: Colors.red),
         );
       }
     } finally {
@@ -278,22 +527,22 @@ class _ChatScreenState extends State<ChatScreen> {
 
   // ジャンプ処理のデバウンス用
   DateTime? _lastJumpTime;
-  
+
   // リプライ元へジャンプ
   void _jumpToReplyMessage(String? replyToMessageId) {
     if (replyToMessageId == null) return;
-    
+
     // デバウンス処理：連続クリックを防ぐ
     final now = DateTime.now();
-    if (_lastJumpTime != null && 
+    if (_lastJumpTime != null &&
         now.difference(_lastJumpTime!).inMilliseconds < 500) {
       return;
     }
     _lastJumpTime = now;
-    
+
     // リプライ元メッセージが現在のリストに存在するか確認
     final hasMessage = _messages.any((msg) => msg.id == replyToMessageId);
-    
+
     if (!hasMessage) {
       // メッセージが見つからない場合
       ScaffoldMessenger.of(context).showSnackBar(
@@ -305,18 +554,18 @@ class _ChatScreenState extends State<ChatScreen> {
       );
       return;
     }
-    
+
     // GlobalKeyを取得
     final key = _messageKeys[replyToMessageId];
     if (key?.currentContext == null) {
       return;
     }
-    
+
     // ハイライト表示を先に設定
     setState(() {
       _highlightedMessageId = replyToMessageId;
     });
-    
+
     // スクロール処理
     Scrollable.ensureVisible(
       key!.currentContext!,
@@ -324,7 +573,7 @@ class _ChatScreenState extends State<ChatScreen> {
       curve: Curves.easeInOut,
       alignment: 0.3, // メッセージを画面上部寄りに表示
     );
-    
+
     // 3秒後にハイライトを解除
     Future.delayed(const Duration(seconds: 3), () {
       if (mounted && _highlightedMessageId == replyToMessageId) {
@@ -338,7 +587,7 @@ class _ChatScreenState extends State<ChatScreen> {
   // メッセージ長押しメニュー
   void _showMessageOptions(BuildContext context, Message message) {
     final isMe = message.senderId == _currentUserId;
-    
+
     showModalBottomSheet(
       context: context,
       builder: (context) => Container(
@@ -446,9 +695,7 @@ class _ChatScreenState extends State<ChatScreen> {
               Navigator.pop(context);
               await _deleteMessage(message);
             },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.red,
-            ),
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
             child: const Text('削除'),
           ),
         ],
@@ -470,10 +717,7 @@ class _ChatScreenState extends State<ChatScreen> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('削除に失敗しました: $e'),
-            backgroundColor: Colors.red,
-          ),
+          SnackBar(content: Text('削除に失敗しました: $e'), backgroundColor: Colors.red),
         );
       }
     }
@@ -484,10 +728,12 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   Future<void> _showForwardDialog(Message message) async {
-    final conversations = await _messageService.getUserConversations(_currentUserId!).first;
-    
+    final conversations = await _messageService
+        .getUserConversations(_currentUserId!)
+        .first;
+
     if (!mounted) return;
-    
+
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -502,26 +748,34 @@ class _ChatScreenState extends State<ChatScreen> {
                   itemCount: conversations.length,
                   itemBuilder: (context, index) {
                     final conversation = conversations[index];
-                    final otherUserId = conversation.participantIds
-                        .firstWhere((id) => id != _currentUserId);
-                    final otherUserName = conversation.participantNames[otherUserId] ?? 'Unknown';
-                    
+                    final otherUserId = conversation.participantIds.firstWhere(
+                      (id) => id != _currentUserId,
+                    );
+                    final otherUserName =
+                        conversation.participantNames[otherUserId] ?? 'Unknown';
+
                     if (otherUserId == widget.otherUserId) {
                       return const SizedBox.shrink();
                     }
-                    
+
                     return ListTile(
                       leading: CircleAvatar(
                         backgroundColor: const Color(0xFF8E1728),
                         child: Text(
-                          otherUserName.isNotEmpty ? otherUserName[0].toUpperCase() : '?',
+                          otherUserName.isNotEmpty
+                              ? otherUserName[0].toUpperCase()
+                              : '?',
                           style: const TextStyle(color: Colors.white),
                         ),
                       ),
                       title: Text(otherUserName),
                       onTap: () async {
                         Navigator.pop(context);
-                        await _sendForwardedMessage(message, otherUserId, otherUserName);
+                        await _sendForwardedMessage(
+                          message,
+                          otherUserId,
+                          otherUserName,
+                        );
                       },
                     );
                   },
@@ -537,12 +791,16 @@ class _ChatScreenState extends State<ChatScreen> {
     );
   }
 
-  Future<void> _sendForwardedMessage(Message originalMessage, String receiverId, String receiverName) async {
+  Future<void> _sendForwardedMessage(
+    Message originalMessage,
+    String receiverId,
+    String receiverName,
+  ) async {
     try {
-      final originalSenderName = originalMessage.senderId == _currentUserId 
-          ? 'あなた' 
+      final originalSenderName = originalMessage.senderId == _currentUserId
+          ? 'あなた'
           : widget.otherUserName;
-      
+
       await _messageService.forwardMessage(
         originalMessageId: originalMessage.id,
         senderId: _currentUserId!,
@@ -552,7 +810,7 @@ class _ChatScreenState extends State<ChatScreen> {
         forwardedContent: originalMessage.content,
         originalSenderName: originalSenderName,
       );
-      
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -564,10 +822,7 @@ class _ChatScreenState extends State<ChatScreen> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('転送に失敗しました: $e'),
-            backgroundColor: Colors.red,
-          ),
+          SnackBar(content: Text('転送に失敗しました: $e'), backgroundColor: Colors.red),
         );
       }
     }
@@ -577,12 +832,8 @@ class _ChatScreenState extends State<ChatScreen> {
   Widget build(BuildContext context) {
     if (_currentUserId == null) {
       return Scaffold(
-        appBar: AppBar(
-          title: Text(widget.otherUserName),
-        ),
-        body: const Center(
-          child: CircularProgressIndicator(),
-        ),
+        appBar: AppBar(title: Text(widget.otherUserName)),
+        body: const Center(child: CircularProgressIndicator()),
       );
     }
 
@@ -611,15 +862,21 @@ class _ChatScreenState extends State<ChatScreen> {
             child: _isLoadingMessages
                 ? const Center(
                     child: CircularProgressIndicator(
-                      valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF8E1728)),
+                      valueColor: AlwaysStoppedAnimation<Color>(
+                        Color(0xFF8E1728),
+                      ),
                     ),
                   )
                 : _messages.isEmpty
-                    ? Center(
-                        child: Column(
+                ? Center(
+                    child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Icon(Icons.chat_bubble_outline, size: 64, color: Colors.grey[400]),
+                        Icon(
+                          Icons.chat_bubble_outline,
+                          size: 64,
+                          color: Colors.grey[400],
+                        ),
                         const SizedBox(height: 16),
                         const Text(
                           'メッセージを開始しましょう',
@@ -631,7 +888,10 @@ class _ChatScreenState extends State<ChatScreen> {
                         ),
                         const SizedBox(height: 8),
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 8,
+                          ),
                           decoration: BoxDecoration(
                             color: Colors.blue.withValues(alpha: 0.1),
                             borderRadius: BorderRadius.circular(20),
@@ -639,11 +899,18 @@ class _ChatScreenState extends State<ChatScreen> {
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              Icon(Icons.lightbulb_outline, size: 16, color: Colors.blue[700]),
+                              Icon(
+                                Icons.lightbulb_outline,
+                                size: 16,
+                                color: Colors.blue[700],
+                              ),
                               const SizedBox(width: 4),
                               Text(
                                 '下のテンプレートボタンから始められます',
-                                style: TextStyle(color: Colors.blue[700], fontSize: 14),
+                                style: TextStyle(
+                                  color: Colors.blue[700],
+                                  fontSize: 14,
+                                ),
                               ),
                             ],
                           ),
@@ -652,166 +919,81 @@ class _ChatScreenState extends State<ChatScreen> {
                     ),
                   )
                 : ListView.builder(
-                  controller: _scrollController,
-                  padding: const EdgeInsets.all(16),
-                  itemCount: _messages.length,
-                  itemBuilder: (context, index) {
-                    final message = _messages[index];
-                    final isMe = message.senderId == _currentUserId;
-                    final isHighlighted = message.id == _highlightedMessageId;
-
-                    return GestureDetector(
-                      onLongPress: () => _showMessageOptions(context, message),
-                      child: AnimatedContainer(
-                        duration: const Duration(milliseconds: 300),
-                        margin: const EdgeInsets.symmetric(vertical: 4),
-                        padding: isHighlighted 
-                            ? const EdgeInsets.all(4)
-                            : EdgeInsets.zero,
-                        decoration: isHighlighted
-                            ? BoxDecoration(
-                                color: Colors.amber.withValues(alpha: 0.2),
-                                borderRadius: BorderRadius.circular(8),
-                              )
-                            : null,
-                        child: Row(
-                          mainAxisAlignment: isMe ? MainAxisAlignment.end : MainAxisAlignment.start,
-                          children: [
-                            Flexible(
-                              child: Container(
-                                constraints: BoxConstraints(
-                                  maxWidth: MediaQuery.of(context).size.width * 0.75,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: message.isDeleted
-                                      ? Colors.grey.shade300
-                                      : isMe
-                                          ? const Color(0xFF8E1728)
-                                          : Colors.white,
-                                  border: isMe || message.isDeleted
-                                      ? null
-                                      : Border.all(color: Colors.grey.shade300),
-                                  borderRadius: BorderRadius.circular(16),
-                                ),
-                                child: ClipRRect(
-                                  borderRadius: BorderRadius.circular(16),
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      // Discord風リプライ表示
-                                      if (message.replyToContent != null && !message.isDeleted)
-                                        GestureDetector(
-                                          behavior: HitTestBehavior.opaque,
-                                          onTap: () => _jumpToReplyMessage(message.replyToMessageId),
-                                          child: Container(
-                                            padding: const EdgeInsets.only(
-                                              left: 12,
-                                              right: 12,
-                                              top: 8,
-                                              bottom: 4,
-                                            ),
-                                            decoration: BoxDecoration(
-                                              border: Border(
-                                                left: BorderSide(
-                                                  color: isMe 
-                                                      ? Colors.white.withValues(alpha: 0.5)
-                                                      : Colors.grey.shade400,
-                                                  width: 2,
-                                                ),
-                                              ),
-                                            ),
-                                            child: Column(
-                                              crossAxisAlignment: CrossAxisAlignment.start,
-                                              children: [
-                                                Row(
-                                                  children: [
-                                                    Icon(
-                                                      Icons.reply,
-                                                      size: 12,
-                                                      color: isMe 
-                                                          ? Colors.white.withValues(alpha: 0.7)
-                                                          : Colors.grey,
-                                                    ),
-                                                    const SizedBox(width: 4),
-                                                    Text(
-                                                      message.replyToSenderId == _currentUserId 
-                                                          ? 'あなた' 
-                                                          : widget.otherUserName,
-                                                      style: TextStyle(
-                                                        fontSize: 11,
-                                                        fontWeight: FontWeight.bold,
-                                                        color: isMe 
-                                                            ? Colors.white.withValues(alpha: 0.8)
-                                                            : Colors.grey.shade700,
-                                                      ),
-                                                    ),
-                                                  ],
-                                                ),
-                                                const SizedBox(height: 2),
-                                                Text(
-                                                  message.replyToContent!,
-                                                  style: TextStyle(
-                                                    fontSize: 11,
-                                                    color: isMe 
-                                                        ? Colors.white.withValues(alpha: 0.7)
-                                                        : Colors.grey.shade600,
-                                                  ),
-                                                  maxLines: 1,
-                                                  overflow: TextOverflow.ellipsis,
-                                                ),
-                                              ],
-                                            ),
-                                          ),
-                                        ),
-                                      // メッセージ本体
-                                      Container(
-                                        key: _messageKeys[message.id],
-                                        padding: const EdgeInsets.symmetric(
-                                          horizontal: 12,
-                                          vertical: 8,
-                                        ),
-                                        child: Column(
-                                            crossAxisAlignment: CrossAxisAlignment.start,
-                                            children: [
-                                              Text(
-                                                message.isDeleted 
-                                                    ? 'このメッセージは削除されました' 
-                                                    : message.content,
-                                                style: TextStyle(
-                                                  color: message.isDeleted
-                                                      ? Colors.grey.shade600
-                                                      : isMe
-                                                          ? Colors.white
-                                                          : Colors.black87,
-                                                  fontStyle: message.isDeleted 
-                                                      ? FontStyle.italic 
-                                                      : null,
-                                                ),
-                                              ),
-                                              if (message.isEdited && !message.isDeleted)
-                                                Text(
-                                                  '(編集済み)',
-                                                  style: TextStyle(
-                                                    fontSize: 10,
-                                                    color: isMe 
-                                                        ? Colors.white70 
-                                                        : Colors.grey,
-                                                  ),
-                                                ),
-                                            ],
-                                          ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ),
+                    controller: _scrollController,
+                    padding: const EdgeInsets.all(16),
+                    itemCount: _messages.length,
+                    itemBuilder: (context, index) {
+                      final message = _messages[index];
+                      final isMe = message.senderId == _currentUserId;
+                      final isHighlighted = message.id == _highlightedMessageId;
+                      final previousMessage = index > 0
+                          ? _messages[index - 1]
+                          : null;
+                      final shouldShowAvatar = _shouldShowAvatar(
+                        message,
+                        previousMessage,
+                      );
+                      final showOtherAvatar = !isMe && shouldShowAvatar;
+                      final showCurrentUserAvatar = isMe && shouldShowAvatar;
+                      final messageContent = _buildMessageContent(
+                        context,
+                        message,
+                        isMe,
+                      );
+                      final rowChildren = <Widget>[];
+                      if (!isMe) {
+                        rowChildren
+                          ..add(
+                            _buildAvatar(
+                              isMe: false,
+                              showAvatar: showOtherAvatar,
                             ),
-                          ],
+                          )
+                          ..add(const SizedBox(width: 8));
+                      }
+
+                      rowChildren.add(Flexible(child: messageContent));
+
+                      if (isMe) {
+                        rowChildren
+                          ..add(const SizedBox(width: 8))
+                          ..add(
+                            _buildAvatar(
+                              isMe: true,
+                              showAvatar: showCurrentUserAvatar,
+                            ),
+                          );
+                      }
+
+                      return GestureDetector(
+                        onLongPress: () =>
+                            _showMessageOptions(context, message),
+                        child: AnimatedContainer(
+                          duration: const Duration(milliseconds: 300),
+                          margin: const EdgeInsets.symmetric(vertical: 4),
+                          padding: isHighlighted
+                              ? const EdgeInsets.all(4)
+                              : EdgeInsets.zero,
+                          decoration: isHighlighted
+                              ? BoxDecoration(
+                                  color: Colors.amber.withValues(alpha: 0.2),
+                                  borderRadius: BorderRadius.circular(8),
+                                )
+                              : null,
+                          child: Align(
+                            alignment: isMe
+                                ? Alignment.centerRight
+                                : Alignment.centerLeft,
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: rowChildren,
+                            ),
+                          ),
                         ),
-                      ),
-                    );
-                  },
-                ),
+                      );
+                    },
+                  ),
           ),
           // 編集中/リプライ中の表示
           if (_editingMessage != null || _replyingToMessage != null)
@@ -838,7 +1020,9 @@ class _ChatScreenState extends State<ChatScreen> {
                           ),
                         ),
                         Text(
-                          _editingMessage?.content ?? _replyingToMessage?.content ?? '',
+                          _editingMessage?.content ??
+                              _replyingToMessage?.content ??
+                              '',
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: const TextStyle(fontSize: 12),
@@ -848,7 +1032,9 @@ class _ChatScreenState extends State<ChatScreen> {
                   ),
                   IconButton(
                     icon: const Icon(Icons.close, size: 20),
-                    onPressed: _editingMessage != null ? _cancelEdit : _cancelReply,
+                    onPressed: _editingMessage != null
+                        ? _cancelEdit
+                        : _cancelReply,
                   ),
                 ],
               ),
@@ -865,25 +1051,30 @@ class _ChatScreenState extends State<ChatScreen> {
                       scrollDirection: Axis.horizontal,
                       padding: const EdgeInsets.symmetric(horizontal: 8),
                       children: _getQuickTemplates()
-                          .map((template) => Padding(
-                                padding: const EdgeInsets.symmetric(horizontal: 4),
-                                child: ActionChip(
-                                  avatar: Icon(
-                                    template['icon'] as IconData,
-                                    size: 18,
-                                    color: const Color(0xFF8E1728),
-                                  ),
-                                  label: Text(
-                                    template['label'] as String,
-                                    style: const TextStyle(
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.w500,
-                                    ),
-                                  ),
-                                  backgroundColor: Colors.white,
-                                  onPressed: () => _selectTemplate(template['type'] as String),
+                          .map(
+                            (template) => Padding(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 4,
+                              ),
+                              child: ActionChip(
+                                avatar: Icon(
+                                  template['icon'] as IconData,
+                                  size: 18,
+                                  color: const Color(0xFF8E1728),
                                 ),
-                              ))
+                                label: Text(
+                                  template['label'] as String,
+                                  style: const TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                                backgroundColor: Colors.white,
+                                onPressed: () =>
+                                    _selectTemplate(template['type'] as String),
+                              ),
+                            ),
+                          )
                           .toList(),
                     ),
                   )
@@ -924,7 +1115,9 @@ class _ChatScreenState extends State<ChatScreen> {
                       textInputAction: TextInputAction.send,
                       onSubmitted: (_) => _sendMessage(),
                       decoration: InputDecoration(
-                        hintText: _editingMessage != null ? '編集内容を入力' : 'メッセージを入力',
+                        hintText: _editingMessage != null
+                            ? '編集内容を入力'
+                            : 'メッセージを入力',
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(24),
                           borderSide: BorderSide.none,
