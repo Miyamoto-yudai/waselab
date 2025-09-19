@@ -6,8 +6,8 @@ class AppConstants {
   static const String privacyPolicyUrl = 'https://waselab-support.notion.site/privacy-policy';
   static const String termsOfServiceUrl = 'https://waselab-support.notion.site/terms-of-service';
   
-  // 支援関連URL
-  static const String payPayDonationUrl = 'https://qr.paypay.ne.jp/p2p01_7K0lVcK1GgYSHfg6';
+  // 支援関連
+  static const String payPayId = 'miyamoto_yudai';
   static const String githubSponsorsUrl = 'https://github.com/sponsors/Miyamoto-yudai';
   
   // 開発依頼フォーム

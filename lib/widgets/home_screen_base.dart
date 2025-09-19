@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import '../models/experiment.dart';
 import '../widgets/experiment_card.dart';
-import '../widgets/support_banner.dart';
 import '../services/preference_service.dart';
 
 /// ホーム画面の共通ベースウィジェット
@@ -325,8 +324,8 @@ class _HomeScreenBaseState extends State<HomeScreenBase> {
       margin: const EdgeInsets.only(right: 4),
       height: 24,
       child: Material(
-        color: isSelected 
-          ? const Color(0xFF8E1728).withOpacity(0.1)
+        color: isSelected
+          ? const Color(0xFF8E1728).withValues(alpha: 0.1)
           : Colors.grey.shade100,
         borderRadius: BorderRadius.circular(12),
         child: InkWell(
@@ -389,8 +388,6 @@ class _HomeScreenBaseState extends State<HomeScreenBase> {
     return Scaffold(
       body: Column(
         children: [
-          // 支援バナー
-          const SupportBanner(),
           // AppBar
           AnimatedContainer(
             duration: const Duration(milliseconds: 300),
@@ -523,8 +520,8 @@ class _HomeScreenBaseState extends State<HomeScreenBase> {
                         children: [
                           Expanded(
                             child: Material(
-                              color: _showOnlyAvailable 
-                                ? const Color(0xFF8E1728).withOpacity(0.1)
+                              color: _showOnlyAvailable
+                                ? const Color(0xFF8E1728).withValues(alpha: 0.1)
                                 : Colors.grey.shade100,
                               borderRadius: BorderRadius.circular(20),
                               child: InkWell(

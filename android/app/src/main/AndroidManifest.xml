@@ -70,11 +70,18 @@
             <data android:mimeType="vnd.android.cursor.item/event"/>
         </intent>
         <package android:name="com.google.android.calendar"/>
+        <!-- PayPay App Package -->
+        <package android:name="jp.ne.paypay.android.app"/>
         <!-- Web browser intents -->
         <intent>
             <action android:name="android.intent.action.VIEW"/>
             <category android:name="android.intent.category.BROWSABLE"/>
             <data android:scheme="https"/>
+        </intent>
+        <!-- PayPay Intent -->
+        <intent>
+            <action android:name="android.intent.action.VIEW"/>
+            <data android:scheme="paypay"/>
         </intent>
     </queries>
 </manifest>
