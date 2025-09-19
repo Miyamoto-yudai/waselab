@@ -111,14 +111,29 @@ class FCMService {
     }
 
     try {
+      // 通常のユーザーコレクションに保存
       await _firestore.collection('users').doc(user.uid).set({
         'fcmToken': token,
         'fcmTokenUpdatedAt': FieldValue.serverTimestamp(),
         'platform': defaultTargetPlatform == TargetPlatform.iOS ? 'ios' : 'android',
         'lastActive': FieldValue.serverTimestamp(),
       }, SetOptions(merge: true));
+
+      // 管理者かどうかをチェックして、管理者の場合はadminsコレクションにも保存
+      try {
+        final adminDoc = await _firestore.collection('admins').doc(user.uid).get();
+        if (adminDoc.exists) {
+          await _firestore.collection('admins').doc(user.uid).set({
+            'fcmToken': token,
+            'fcmTokenUpdatedAt': FieldValue.serverTimestamp(),
+            'platform': defaultTargetPlatform == TargetPlatform.iOS ? 'ios' : 'android',
+          }, SetOptions(merge: true));
+        }
+      } catch (e) {
+        // 管理者コレクションへのアクセスエラーは無視（通常ユーザーの場合）
+      }
     } catch (e) {
-      
+      // Firestoreへの書き込みが失敗した場合はCloud Functionsを使用
       try {
         final callable = _functions.httpsCallable('updateUserFCMToken');
         await callable.call({'token': token});
@@ -133,15 +148,29 @@ class FCMService {
 
     try {
       await _messaging.deleteToken();
-      
+
+      // usersコレクションから削除
       await _firestore.collection('users').doc(user.uid).update({
         'fcmToken': FieldValue.delete(),
         'fcmTokenUpdatedAt': FieldValue.serverTimestamp(),
       });
-      
+
+      // 管理者の場合はadminsコレクションからも削除
+      try {
+        final adminDoc = await _firestore.collection('admins').doc(user.uid).get();
+        if (adminDoc.exists) {
+          await _firestore.collection('admins').doc(user.uid).update({
+            'fcmToken': FieldValue.delete(),
+            'fcmTokenUpdatedAt': FieldValue.serverTimestamp(),
+          });
+        }
+      } catch (e) {
+        // 管理者コレクションへのアクセスエラーは無視
+      }
+
       _fcmToken = null;
     } catch (e) {
-      
+      // Firestoreへの書き込みが失敗した場合はCloud Functionsを使用
       try {
         final callable = _functions.httpsCallable('removeFCMToken');
         await callable.call();

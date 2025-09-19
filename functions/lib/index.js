@@ -169,12 +169,19 @@ exports.sendMessageNotification = functions.firestore
                 .get();
             const notificationPromises = [];
             for (const adminDoc of adminsSnapshot.docs) {
-                const adminData = adminDoc.data();
                 const adminId = adminDoc.id;
-                // 管理者のFCMトークンを取得
-                if (adminData.fcmToken) {
+                // 管理者のユーザードキュメントからFCMトークンを取得
+                const userDoc = await db.collection("users").doc(adminId).get();
+                if (!userDoc.exists) {
+                    console.log(`User document not found for admin ${adminId}`);
+                    continue;
+                }
+                const userData = userDoc.data();
+                const fcmToken = userData === null || userData === void 0 ? void 0 : userData.fcmToken;
+                // FCMトークンがある場合はプッシュ通知を送信
+                if (fcmToken) {
                     // プッシュ通知を送信
-                    const promise = sendPushNotification(adminData.fcmToken, "新しいお問い合わせ", `${senderName}さんからお問い合わせがあります`, {
+                    const promise = sendPushNotification(fcmToken, "新しいお問い合わせ", `${senderName}さんからお問い合わせがあります`, {
                         type: "support_message",
                         senderId: message.senderId,
                         senderName,
@@ -185,9 +192,10 @@ exports.sendMessageNotification = functions.firestore
                         console.error(`Failed to send push to admin ${adminId}:`, error);
                     });
                     notificationPromises.push(promise);
+                    console.log(`Sending push notification to admin ${adminId}`);
                 }
                 else {
-                    console.log(`Admin ${adminId} has no FCM token`);
+                    console.log(`Admin ${adminId} has no FCM token in users collection`);
                 }
                 // 管理者用の通知をFirestoreに作成
                 const adminNotificationRef = db.collection("admin_notifications").doc();
