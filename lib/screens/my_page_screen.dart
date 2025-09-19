@@ -5,6 +5,7 @@ import '../models/app_user.dart';
 import '../widgets/custom_circle_avatar.dart';
 import 'login_screen.dart';
 import 'evaluation_history_screen.dart';
+import 'history_screen.dart';
 import 'icon_change_screen.dart';
 import 'monthly_report_screen.dart';
 import '../models/avatar_design.dart';
@@ -28,6 +29,7 @@ class _MyPageScreenState extends State<MyPageScreen> {
   final TextEditingController _bioController = TextEditingController();
   final TextEditingController _departmentController = TextEditingController();
   final TextEditingController _gradeController = TextEditingController();
+  final TextEditingController _studentIdController = TextEditingController();
 
   @override
   void initState() {
@@ -60,6 +62,7 @@ class _MyPageScreenState extends State<MyPageScreen> {
               _bioController.text = user?.bio ?? '';
               _departmentController.text = user?.department ?? '';
               _gradeController.text = user?.grade ?? '';
+              _studentIdController.text = user?.studentId ?? '';
               _isLoading = false;
             });
           }
@@ -100,6 +103,7 @@ class _MyPageScreenState extends State<MyPageScreen> {
         bio: _bioController.text.trim(),
         department: _departmentController.text.trim(),
         grade: _gradeController.text.trim(),
+        studentId: _currentUser!.isWasedaUser ? _studentIdController.text.trim() : null,
       );
 
       await _loadUserData();
@@ -288,6 +292,7 @@ class _MyPageScreenState extends State<MyPageScreen> {
                                         _bioController.text = _currentUser?.bio ?? '';
                                         _departmentController.text = _currentUser?.department ?? '';
                                         _gradeController.text = _currentUser?.grade ?? '';
+                                        _studentIdController.text = _currentUser?.studentId ?? '';
                                       });
                                     },
                                     icon: const Icon(Icons.close, size: 16),
@@ -342,6 +347,18 @@ class _MyPageScreenState extends State<MyPageScreen> {
                           ),
                         ),
                         const SizedBox(height: 6),
+                        // 学籍番号がある場合は表示
+                        if (_currentUser!.studentId != null && _currentUser!.studentId!.isNotEmpty) ...[
+                          Text(
+                            '学籍番号: ${_currentUser!.studentId}',
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: Colors.grey[700],
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                        ],
                         Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
@@ -433,7 +450,14 @@ class _MyPageScreenState extends State<MyPageScreen> {
                                 title: '評価待ち',
                                 count: 0,
                                 color: Colors.orange,
-                                onTap: () {},
+                                onTap: () {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) => const HistoryScreen(),
+                                    ),
+                                  );
+                                },
                               ),
                             ),
                             const SizedBox(width: 8),
@@ -443,7 +467,14 @@ class _MyPageScreenState extends State<MyPageScreen> {
                                 title: '参加予定',
                                 count: _currentUser?.scheduledExperiments ?? 0,
                                 color: Colors.blue,
-                                onTap: () {},
+                                onTap: () {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) => const HistoryScreen(),
+                                    ),
+                                  );
+                                },
                               ),
                             ),
                           ],
@@ -790,6 +821,16 @@ class _MyPageScreenState extends State<MyPageScreen> {
                           ],
                         ),
                         const SizedBox(height: 16),
+                        // 学籍番号フィールド（早稲田ユーザーのみ表示）
+                        if (_currentUser!.isWasedaUser) ...[
+                          _buildProfileField(
+                            label: '学籍番号',
+                            controller: _studentIdController,
+                            isEditing: _isEditing,
+                            hintText: '例: 1G20XXXX',
+                          ),
+                          const SizedBox(height: 16),
+                        ],
                         _buildProfileField(
                           label: '学部・学科',
                           controller: _departmentController,

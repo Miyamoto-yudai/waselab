@@ -32,6 +32,7 @@ class AppUser {
   final String? selectedDesign;      // 選択中のアイコンデザインID
   final List<String> unlockedColors; // 解放済みアイコンカラーIDリスト
   final String? selectedColor;       // 選択中のアイコンカラーID
+  final String? studentId;            // 学籍番号（早稲田学生のみ）
 
   AppUser({
     required this.uid,
@@ -63,6 +64,7 @@ class AppUser {
     this.selectedDesign = 'default',
     this.unlockedColors = const ['default'], // デフォルトカラーは最初から解放
     this.selectedColor = 'default',
+    this.studentId,
   });
 
   /// Firestoreのドキュメントからユーザーを作成
@@ -99,6 +101,7 @@ class AppUser {
       selectedDesign: data['selectedDesign'] ?? 'default',
       unlockedColors: List<String>.from(data['unlockedColors'] ?? ['default']),
       selectedColor: data['selectedColor'] ?? 'default',
+      studentId: data['studentId'],
     );
   }
 
@@ -138,6 +141,7 @@ class AppUser {
       'selectedDesign': selectedDesign,
       'unlockedColors': unlockedColors,
       'selectedColor': selectedColor,
+      'studentId': studentId,
     };
   }
 
@@ -157,6 +161,7 @@ class AppUser {
     bool emailVerified = false,
     String? gender,
     int? age,
+    String? studentId,
   }) {
     final isWaseda = isWasedaEmail(email);
     
@@ -171,6 +176,7 @@ class AppUser {
       emailVerified: emailVerified,
       gender: gender,
       age: age,
+      studentId: studentId,
     );
   }
 }

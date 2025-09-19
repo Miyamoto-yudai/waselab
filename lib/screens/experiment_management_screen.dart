@@ -8,6 +8,7 @@ import '../services/user_service.dart';
 import '../services/auth_service.dart';
 import '../services/flexible_schedule_service.dart';
 import '../services/google_calendar_service.dart';
+import '../services/message_service.dart';
 import '../widgets/custom_circle_avatar.dart';
 import '../models/avatar_design.dart';
 import 'chat_screen.dart';
@@ -36,7 +37,8 @@ class _ExperimentManagementScreenState extends State<ExperimentManagementScreen>
   final AuthService _authService = AuthService();
   final FlexibleScheduleService _scheduleService = FlexibleScheduleService();
   final GoogleCalendarService _calendarService = GoogleCalendarService();
-  
+  final MessageService _messageService = MessageService();
+
   late Experiment _experiment;
   List<AppUser> _participants = [];
   bool _isLoading = true;
@@ -340,6 +342,17 @@ class _ExperimentManagementScreenState extends State<ExperimentManagementScreen>
 
   /// 参加者への一括メッセージ送信
   Future<void> _sendBulkMessage() async {
+    // 参加者がいない場合は終了
+    if (_participants.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('参加者がいません'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+
     final messageController = TextEditingController();
     final result = await showDialog<bool>(
       context: context,
@@ -348,7 +361,7 @@ class _ExperimentManagementScreenState extends State<ExperimentManagementScreen>
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Text('すべての参加者にメッセージを送信します'),
+            Text('${_participants.length}名の参加者全員にメッセージを送信します'),
             const SizedBox(height: 16),
             TextField(
               controller: messageController,
@@ -377,14 +390,113 @@ class _ExperimentManagementScreenState extends State<ExperimentManagementScreen>
     );
 
     if (result == true && messageController.text.isNotEmpty) {
-      // TODO: 一括メッセージ送信機能の実装
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('メッセージを送信しました'),
-            backgroundColor: Colors.green,
+      // 送信中のダイアログを表示
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => const AlertDialog(
+          content: Row(
+            children: [
+              CircularProgressIndicator(),
+              SizedBox(width: 16),
+              Text('メッセージを送信中...'),
+            ],
           ),
-        );
+        ),
+      );
+
+      int successCount = 0;
+      int failureCount = 0;
+      final List<String> failedParticipants = [];
+
+      // 現在のユーザー情報を取得
+      final currentUser = _currentUser;
+      if (currentUser == null) {
+        if (mounted) {
+          Navigator.pop(context); // 送信中ダイアログを閉じる
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('ユーザー情報の取得に失敗しました'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+        return;
+      }
+
+      // 各参加者にメッセージを送信
+      for (final participant in _participants) {
+        try {
+          // 実験に関するメッセージとして送信
+          final message = '【実験: ${_experiment.title}】\n${messageController.text}';
+
+          await _messageService.sendMessage(
+            senderId: currentUser.uid,
+            receiverId: participant.uid,
+            content: message,
+            senderName: currentUser.name,
+            receiverName: participant.name,
+          );
+          successCount++;
+        } catch (e) {
+          failureCount++;
+          failedParticipants.add(participant.name);
+        }
+      }
+
+      // 送信中ダイアログを閉じる
+      if (mounted) {
+        Navigator.pop(context);
+      }
+
+      // 結果を表示
+      if (mounted) {
+        if (failureCount == 0) {
+          // 全員に送信成功
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('$successCount名全員にメッセージを送信しました'),
+              backgroundColor: Colors.green,
+            ),
+          );
+        } else if (successCount == 0) {
+          // 全員に送信失敗
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('メッセージの送信に失敗しました'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        } else {
+          // 一部成功、一部失敗
+          final failedNames = failedParticipants.join(', ');
+          showDialog(
+            context: context,
+            builder: (context) => AlertDialog(
+              title: const Text('送信結果'),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('✅ 送信成功: $successCount名'),
+                  Text('❌ 送信失敗: $failureCount名'),
+                  if (failedParticipants.isNotEmpty) ...[
+                    const SizedBox(height: 8),
+                    const Text('送信失敗した参加者:',
+                        style: TextStyle(fontWeight: FontWeight.bold)),
+                    Text(failedNames, style: const TextStyle(fontSize: 12)),
+                  ],
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('閉じる'),
+                ),
+              ],
+            ),
+          );
+        }
       }
     }
   }

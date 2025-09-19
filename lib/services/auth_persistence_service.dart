@@ -191,7 +191,7 @@ class AuthPersistenceService {
 
       if (kDebugMode) {
         print('[AuthPersistence] Checking saved credentials:');
-        print('[AuthPersistence]   - Email: ${email != null ? email : "NULL"}');
+        print('[AuthPersistence]   - Email: ${email ?? "NULL"}');
         print('[AuthPersistence]   - Method: ${authMethod ?? "NULL"}');
         print('[AuthPersistence]   - Has Auth: $hasAuth');
       }

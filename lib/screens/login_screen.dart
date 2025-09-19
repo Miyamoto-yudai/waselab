@@ -25,6 +25,7 @@ class _LoginScreenState extends State<LoginScreen> {
   final _passwordController = TextEditingController();
   final _nameController = TextEditingController();
   final _ageController = TextEditingController();
+  final _studentIdController = TextEditingController();
   
   // 性別選択
   String? _selectedGender;
@@ -33,6 +34,7 @@ class _LoginScreenState extends State<LoginScreen> {
   bool _isLogin = true; // true: ログイン画面, false: 新規登録画面
   bool _isLoading = false; // ローディング状態
   bool _obscurePassword = true; // パスワード表示/非表示
+  bool _isWasedaEmail = false; // 早稲田メールアドレスかどうか
 
   @override
   void dispose() {
@@ -41,6 +43,7 @@ class _LoginScreenState extends State<LoginScreen> {
     _passwordController.dispose();
     _nameController.dispose();
     _ageController.dispose();
+    _studentIdController.dispose();
     super.dispose();
   }
 
@@ -117,6 +120,7 @@ class _LoginScreenState extends State<LoginScreen> {
       name: _nameController.text.trim(),
       gender: _selectedGender,
       age: int.tryParse(_ageController.text),
+      studentId: _isWasedaEmail && _studentIdController.text.trim().isNotEmpty ? _studentIdController.text.trim() : null,
     );
 
     if (!mounted) return;
@@ -386,6 +390,30 @@ class _LoginScreenState extends State<LoginScreen> {
                           },
                         ),
                         const SizedBox(height: 16),
+
+                        // 学籍番号フィールド（早稲田メールアドレスの場合のみ）
+                        if (_isWasedaEmail)
+                          TextFormField(
+                            controller: _studentIdController,
+                            enabled: !_isLoading,
+                            decoration: const InputDecoration(
+                              labelText: '学籍番号（任意）',
+                              hintText: '例: 1G20XXXX',
+                              helperText: '教員の方は入力不要です',
+                              prefixIcon: Icon(Icons.badge),
+                              border: OutlineInputBorder(),
+                            ),
+                            validator: (value) {
+                              if (value != null && value.trim().isNotEmpty) {
+                                // 学籍番号の簡易的な形式チェック
+                                if (!RegExp(r'^[0-9A-Z]{7,10}$').hasMatch(value.trim().toUpperCase())) {
+                                  return '学籍番号の形式が正しくありません';
+                                }
+                              }
+                              return null; // 任意フィールドなのでnullを返す
+                            },
+                          ),
+                        if (_isWasedaEmail) const SizedBox(height: 16),
                       ],
 
                       // メールアドレスフィールド
@@ -408,6 +436,13 @@ class _LoginScreenState extends State<LoginScreen> {
                             return '正しいメールアドレスを入力してください';
                           }
                           return null;
+                        },
+                        onChanged: (value) {
+                          // 早稲田メールかどうかをチェック
+                          setState(() {
+                            _isWasedaEmail = value.toLowerCase().endsWith('.waseda.jp') ||
+                                           value.toLowerCase().endsWith('@waseda.jp');
+                          });
                         },
                       ),
                       const SizedBox(height: 16),

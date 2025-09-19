@@ -50,6 +50,7 @@ class AuthService {
     required String name,
     String? gender,
     int? age,
+    String? studentId,
   }) async {
     try {
 
@@ -74,6 +75,7 @@ class AuthService {
           emailVerified: false, // 初期状態は未認証
           gender: gender,
           age: age,
+          studentId: studentId,
         );
 
         await _firestore.collection('users')

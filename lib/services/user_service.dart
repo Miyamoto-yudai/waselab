@@ -47,14 +47,16 @@ class UserService {
     String? bio,
     String? department,
     String? grade,
+    String? studentId,
   }) async {
     final updateData = <String, dynamic>{};
-    
+
     if (name != null) updateData['name'] = name;
     if (bio != null) updateData['bio'] = bio;
     if (department != null) updateData['department'] = department;
     if (grade != null) updateData['grade'] = grade;
-    
+    if (studentId != null) updateData['studentId'] = studentId;
+
     if (updateData.isNotEmpty) {
       await _firestore.collection('users').doc(userId).update(updateData);
     }

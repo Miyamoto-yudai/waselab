@@ -2061,36 +2061,61 @@ class _ExperimentDetailScreenState extends State<ExperimentDetailScreen> {
     if (widget.experiment.hasEvaluated(userId)) {
       return false;
     }
-    
+
     // 実験が完了している場合はキャンセル不可
     if (widget.experiment.status == ExperimentStatus.completed) {
       return false;
     }
-    
+
     // アンケート型は常にキャンセル可能
     if (widget.experiment.type == ExperimentType.survey) {
       return true;
     }
-    
+
+    // 予約がある場合は予約のキャンセル可否を使用
+    if (_currentUserReservation != null) {
+      return _currentUserReservation!.canCancel(widget.experiment, slot: _reservedSlot);
+    }
+
     // 固定日時の実験の場合
     if (widget.experiment.fixedExperimentDate != null) {
       final now = DateTime.now();
       final experimentDate = widget.experiment.fixedExperimentDate!;
-      
-      // 実験日の1日前までキャンセル可能
-      final cancelDeadline = experimentDate.subtract(const Duration(days: 1));
-      return now.isBefore(cancelDeadline);
-    }
-    
-    // 柔軟なスケジュールの場合
-    if (widget.experiment.allowFlexibleSchedule) {
-      // 予約がある場合は予約のキャンセル可否をチェック
-      if (_currentUserReservation != null) {
-        return _currentUserReservation!.canCancel(widget.experiment, slot: _reservedSlot);
+
+      // 時刻情報がある場合
+      if (widget.experiment.fixedExperimentTime != null) {
+        final hour = widget.experiment.fixedExperimentTime!['hour'] ?? 0;
+        final minute = widget.experiment.fixedExperimentTime!['minute'] ?? 0;
+        final scheduledDateTime = DateTime(
+          experimentDate.year,
+          experimentDate.month,
+          experimentDate.day,
+          hour,
+          minute,
+        );
+
+        // 実施日時の予約締切日数前までキャンセル可能
+        final deadline = scheduledDateTime.subtract(Duration(days: widget.experiment.reservationDeadlineDays));
+        return now.isBefore(deadline);
       }
-      return true; // 予約がない場合はキャンセル可能
+
+      // 日付のみの場合は当日の0:00を基準にする
+      final startOfDay = DateTime(
+        experimentDate.year,
+        experimentDate.month,
+        experimentDate.day,
+      );
+      final deadline = startOfDay.subtract(Duration(days: widget.experiment.reservationDeadlineDays));
+      return now.isBefore(deadline);
     }
-    
+
+    // 実験期間がある場合
+    if (widget.experiment.experimentPeriodStart != null) {
+      final now = DateTime.now();
+      final deadline = widget.experiment.experimentPeriodStart!.subtract(Duration(days: widget.experiment.reservationDeadlineDays));
+      return now.isBefore(deadline);
+    }
+
     // その他の場合はキャンセル可能
     return true;
   }

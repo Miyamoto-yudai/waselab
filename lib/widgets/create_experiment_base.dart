@@ -12,11 +12,13 @@ import 'survey_template_selector.dart';
 class CreateExperimentBase extends StatefulWidget {
   final bool isDemo;
   final Future<void> Function(Map<String, dynamic>) onSave;
-  
+  final String? currentUserId;
+
   const CreateExperimentBase({
     super.key,
     this.isDemo = false,
     required this.onSave,
+    this.currentUserId,
   });
 
   @override
@@ -49,8 +51,8 @@ class _CreateExperimentBaseState extends State<CreateExperimentBase> {
   // 選択項目
   ExperimentType _selectedType = ExperimentType.onsite;
   bool _isPaid = false;
-  bool _allowFlexibleSchedule = false;
-  ScheduleType _scheduleType = ScheduleType.fixed; // スケジュールタイプ
+  bool _allowFlexibleSchedule = true;
+  ScheduleType _scheduleType = ScheduleType.reservation; // スケジュールタイプ
   DateTime? _recruitmentStartDate;
   DateTime? _recruitmentEndDate;
   DateTime? _experimentPeriodStart;
@@ -482,6 +484,9 @@ class _CreateExperimentBaseState extends State<CreateExperimentBase> {
 
   /// プレビュー用の実験オブジェクトを作成
   Experiment _createPreviewExperiment() {
+    // 現在のユーザーIDを取得（デモ版の場合は 'demo_user' を使用）
+    final currentUserId = widget.currentUserId ?? 'demo_user';
+
     return Experiment(
       id: 'preview',
       title: _titleController.text.isEmpty ? 'タイトル未入力' : _titleController.text,
@@ -491,7 +496,7 @@ class _CreateExperimentBaseState extends State<CreateExperimentBase> {
       location: _locationController.text.isEmpty ? '場所未定' : _locationController.text,
       type: _selectedType,
       isPaid: _isPaid,
-      creatorId: 'demo_user',
+      creatorId: currentUserId,
       createdAt: DateTime.now(),
       recruitmentStartDate: _recruitmentStartDate,
       recruitmentEndDate: _recruitmentEndDate,
@@ -770,6 +775,22 @@ class _CreateExperimentBaseState extends State<CreateExperimentBase> {
         _currentStep--;
       });
       _pageController.previousPage(
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeInOut,
+      );
+      // ステップ変更時に下書きを保存
+      _saveDraft();
+    }
+  }
+
+  /// 特定のステップへ直接移動
+  void _goToStep(int step) {
+    if (step >= 0 && step <= 5 && step != _currentStep) {
+      setState(() {
+        _currentStep = step;
+      });
+      _pageController.animateToPage(
+        step,
         duration: const Duration(milliseconds: 300),
         curve: Curves.easeInOut,
       );
@@ -2151,7 +2172,7 @@ class _CreateExperimentBaseState extends State<CreateExperimentBase> {
                 _isLabExperiment ? '研究室' : '実施者',
                 previewExperiment.labName!,
               ),
-          ]),
+          ], targetStep: 0),
           const SizedBox(height: 16),
           
           _buildConfirmationSection('実験詳細', [
@@ -2163,13 +2184,7 @@ class _CreateExperimentBaseState extends State<CreateExperimentBase> {
             ),
             if (previewExperiment.duration != null)
               _buildConfirmationItem('所要時間', '${previewExperiment.duration}分'),
-            if (_selectedType == ExperimentType.survey && _surveyUrlController.text.trim().isNotEmpty)
-              _buildConfirmationItem('アンケートURL', _surveyUrlController.text.trim()),
-            if (_selectedType != ExperimentType.survey && _preSurveyUrlController.text.trim().isNotEmpty)
-              _buildConfirmationItem('事前アンケートURL', _preSurveyUrlController.text.trim()),
-            if (_selectedType != ExperimentType.survey && _surveyUrlController.text.trim().isNotEmpty)
-              _buildConfirmationItem('事後アンケートURL', _surveyUrlController.text.trim()),
-          ]),
+          ], targetStep: 1),
           const SizedBox(height: 16),
           
           _buildConfirmationSection('日程', [
@@ -2219,9 +2234,9 @@ class _CreateExperimentBaseState extends State<CreateExperimentBase> {
                 '予約締切',
                 '${_reservationDeadlineController.text}日前',
               ),
-          ]),
+          ], targetStep: 2),
           const SizedBox(height: 16),
-          
+
           if (previewExperiment.maxParticipants != null || _requirements.isNotEmpty || _consentItems.isNotEmpty)
             _buildConfirmationSection('募集要項', [
               if (previewExperiment.maxParticipants != null)
@@ -2230,26 +2245,52 @@ class _CreateExperimentBaseState extends State<CreateExperimentBase> {
                 _buildConfirmationItem('参加条件', _requirements.join('、')),
               if (_consentItems.isNotEmpty)
                 _buildConfirmationItem('特別な同意項目', _consentItems.join('、')),
-            ]),
+            ], targetStep: 3),
+
+          // アンケート設定セクション（URLが設定されている場合のみ表示）
+          if ((_selectedType == ExperimentType.survey && _surveyUrlController.text.trim().isNotEmpty) ||
+              (_selectedType != ExperimentType.survey && (_preSurveyUrlController.text.trim().isNotEmpty || _surveyUrlController.text.trim().isNotEmpty))) ...[
+            const SizedBox(height: 16),
+            _buildConfirmationSection('アンケート設定', [
+              if (_selectedType == ExperimentType.survey && _surveyUrlController.text.trim().isNotEmpty)
+                _buildConfirmationItem('アンケートURL', _surveyUrlController.text.trim()),
+              if (_selectedType != ExperimentType.survey && _preSurveyUrlController.text.trim().isNotEmpty)
+                _buildConfirmationItem('事前アンケートURL', _preSurveyUrlController.text.trim()),
+              if (_selectedType != ExperimentType.survey && _surveyUrlController.text.trim().isNotEmpty)
+                _buildConfirmationItem('事後アンケートURL', _surveyUrlController.text.trim()),
+            ], targetStep: 4),
+          ],
         ],
       ),
     );
   }
 
   /// 確認セクション
-  Widget _buildConfirmationSection(String title, List<Widget> items) {
+  Widget _buildConfirmationSection(String title, List<Widget> items, {int? targetStep}) {
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              title,
-              style: const TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-              ),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  title,
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                if (targetStep != null)
+                  IconButton(
+                    icon: const Icon(Icons.edit, size: 20),
+                    color: const Color(0xFF8E1728),
+                    tooltip: '編集',
+                    onPressed: () => _goToStep(targetStep),
+                  ),
+              ],
             ),
             const SizedBox(height: 12),
             ...items,

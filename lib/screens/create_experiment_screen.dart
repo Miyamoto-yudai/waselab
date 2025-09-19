@@ -233,9 +233,11 @@ class CreateExperimentScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final auth = FirebaseAuth.instance;
     return CreateExperimentBase(
       isDemo: false,
       onSave: _handleSave,
+      currentUserId: auth.currentUser?.uid,
     );
   }
 }

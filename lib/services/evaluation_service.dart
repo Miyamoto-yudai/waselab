@@ -156,6 +156,9 @@ class EvaluationService {
           'participantEvaluations.$evaluatorId.participantEvaluated': true,
           'participantEvaluations.$evaluatorId.participantEvaluatedAt': Timestamp.fromDate(DateTime.now()),
         };
+
+        // 参加者の参加予定実験数を減らす
+        await _userService.decrementScheduledExperiments(evaluatorId);
       }
       
       // 相互評価が完了したかチェック

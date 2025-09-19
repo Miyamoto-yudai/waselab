@@ -80,7 +80,7 @@ void main() async {
 
   debugPrint('[main.dart] All initialization completed');
   debugPrint('[main.dart] Final user state: ${FirebaseAuth.instance.currentUser?.uid} (${FirebaseAuth.instance.currentUser?.email})');
-  final startupDuration = DateTime.now().difference(DateTime.parse(DateTime.now().toIso8601String().split('T')[0] + 'T00:00:00'));
+  final startupDuration = DateTime.now().difference(DateTime.parse('${DateTime.now().toIso8601String().split('T')[0]}T00:00:00'));
   debugPrint('[main.dart] Total startup time: $startupDuration');
 
   // 初期化完了後にアプリを起動
