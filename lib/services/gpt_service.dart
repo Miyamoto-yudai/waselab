@@ -1,5 +1,4 @@
 import 'package:cloud_functions/cloud_functions.dart';
-import 'package:flutter/foundation.dart';
 import '../models/survey_template.dart';
 
 /// GPT-5を使用したアンケート生成サービス
@@ -28,11 +27,6 @@ class GPTService {
     String? referenceFormUrl,  // 参考にするGoogle FormsのURL
   }) async {
     try {
-      debugPrint('=== GPT-5アンケート生成開始 ===');
-      debugPrint('実験タイトル: $experimentTitle');
-      debugPrint('目的: $purpose');
-      debugPrint('対象者: $targetAudience');
-      debugPrint('モデル: $modelName');
 
       // Firebase Functionsを呼び出し
       final HttpsCallable callable = _functions.httpsCallable(
@@ -69,26 +63,18 @@ class GPTService {
         },
       };
 
-      debugPrint('Calling Firebase Function with data: ${requestData.toString()}');
 
       // 関数を実行
       final result = await callable.call(requestData);
       final data = result.data as Map<String, dynamic>;
 
       if (data['success'] == true) {
-        debugPrint('GPT-5生成成功');
-        debugPrint('生成された質問数: ${data['questions']?.length ?? 0}');
         return data;
       } else {
-        debugPrint('GPT-5生成失敗: ${data['error']}');
         return null;
       }
     } catch (e) {
-      debugPrint('GPTService Error: $e');
       if (e is FirebaseFunctionsException) {
-        debugPrint('Firebase Functions Error Code: ${e.code}');
-        debugPrint('Firebase Functions Error Message: ${e.message}');
-        debugPrint('Firebase Functions Error Details: ${e.details}');
 
         // エラー情報を返す
         return {
@@ -108,13 +94,9 @@ class GPTService {
   /// 生成されたアンケートをプレビュー用のテンプレートに変換
   static SurveyTemplate? convertGPTResponseToTemplate(Map<String, dynamic> gptResponse) {
     try {
-      debugPrint('=== GPT Response Conversion Start ===');
-      debugPrint('Response keys: ${gptResponse.keys.toList()}');
 
       // successがfalseの場合
       if (gptResponse['success'] != true) {
-        debugPrint('Conversion failed: success is false');
-        debugPrint('Error: ${gptResponse['error']}');
         return null;
       }
 
@@ -124,39 +106,31 @@ class GPTService {
       // まずgeneratedTemplateを探す
       if (gptResponse['generatedTemplate'] != null) {
         templateData = gptResponse['generatedTemplate'] as Map<String, dynamic>;
-        debugPrint('Found generatedTemplate');
       }
       // なければ直接questionsがあるか確認（GPT-5形式）
       else if (gptResponse['questions'] != null) {
         templateData = gptResponse;
-        debugPrint('Using direct response as template data (GPT-5 format)');
       }
       // どちらもない場合はエラー
       else {
-        debugPrint('No template data found in response');
         return null;
       }
 
-      debugPrint('Template data keys: ${templateData.keys.toList()}');
 
       // 質問項目の変換
       final questions = <SurveyQuestion>[];
       if (templateData['questions'] != null) {
         final questionsList = templateData['questions'] as List<dynamic>;
-        debugPrint('Found ${questionsList.length} questions');
 
         for (final q in questionsList) {
           try {
             questions.add(SurveyQuestion.fromJson(q as Map<String, dynamic>));
           } catch (e) {
-            debugPrint('Error parsing question: $e');
-            debugPrint('Question data: $q');
           }
         }
       }
 
       // テンプレートの作成
-      debugPrint('Creating template with ${questions.length} questions');
 
       final template = SurveyTemplate(
         id: 'gpt_generated_${DateTime.now().millisecondsSinceEpoch}',
@@ -169,13 +143,8 @@ class GPTService {
         estimatedMinutes: templateData['estimatedMinutes'] ?? 10,
       );
 
-      debugPrint('Template created successfully');
-      debugPrint('=== GPT Response Conversion End ===');
       return template;
-    } catch (e, stack) {
-      debugPrint('Error converting GPT response to template: $e');
-      debugPrint('Stack trace: $stack');
-      debugPrint('Raw response: ${gptResponse.toString()}');
+    } catch (e) {
       return null;
     }
   }
@@ -223,7 +192,6 @@ class GPTService {
       final result = await callable.call({'apiKey': apiKey});
       return result.data['valid'] == true;
     } catch (e) {
-      debugPrint('API Key validation error: $e');
       return false;
     }
   }
@@ -236,7 +204,6 @@ class GPTService {
       final models = result.data['models'] as List<dynamic>?;
       return models?.cast<String>() ?? ['gpt-5'];
     } catch (e) {
-      debugPrint('Error fetching available models: $e');
       return ['gpt-5']; // デフォルト値
     }
   }

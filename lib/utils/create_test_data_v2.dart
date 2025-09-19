@@ -111,14 +111,12 @@ class TestDataCreatorV2 {
     final creatorEmail = currentUser.email ?? 'unknown@example.com';
     final now = DateTime.now();
     
-    print('多様な実験データを$count件作成開始...');
     
     // タイプ別の作成数を計算
     final surveyCount = (count * typeDistribution['survey']!).round();
     final onlineCount = (count * typeDistribution['online']!).round();
     final onsiteCount = count - surveyCount - onlineCount;
     
-    print('内訳: アンケート=$surveyCount件, オンライン=$onlineCount件, 対面=$onsiteCount件');
     
     // タイプ別のリストを作成
     final List<String> typeSequence = [];
@@ -251,14 +249,11 @@ class TestDataCreatorV2 {
           await _saveExperimentSlots(docRef.id, experimentStart, experimentEnd, duration);
         }
         
-        print('実験データ作成 ${i + 1}/$count: $title');
         
       } catch (e) {
-        print('実験データ作成エラー: $e');
       }
     }
     
-    print('$count件の多様な実験データを作成完了');
   }
   
   /// 参加条件を生成
@@ -403,10 +398,8 @@ class TestDataCreatorV2 {
         currentDate = currentDate.add(const Duration(days: 1));
       }
       
-      print('  → $slotCount個の予約スロットを作成');
       
     } catch (e) {
-      print('予約スロット作成エラー: $e');
     }
   }
 }

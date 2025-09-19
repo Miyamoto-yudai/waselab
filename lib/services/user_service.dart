@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/app_user.dart';
 
@@ -18,7 +17,6 @@ class UserService {
       }
       return null;
     } catch (e) {
-      debugPrint('Error fetching user by ID: $e');
       return null;
     }
   }
@@ -31,7 +29,6 @@ class UserService {
       }
       return null;
     } catch (e) {
-      debugPrint('Error getting user: $e');
       return null;
     }
   }
@@ -81,11 +78,9 @@ class UserService {
           await _firestore.collection('users').doc(userId).update({
             'scheduledExperiments': 0,
           });
-          debugPrint('Initialized scheduledExperiments field for user: $userId');
         }
       }
     } catch (e) {
-      debugPrint('Error initializing scheduledExperiments field: $e');
     }
   }
 

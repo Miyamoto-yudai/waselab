@@ -16,7 +16,6 @@ class TestDataCreatorFixed {
     final creatorId = currentUser.uid;
     final creatorEmail = currentUser.email ?? 'unknown@example.com';
     
-    print('テストデータ作成: creatorId=$creatorId, email=$creatorEmail');
     
     // 3つの実験データ
     final experiments = [
@@ -108,14 +107,11 @@ class TestDataCreatorFixed {
         // individualの場合は特別な処理なし（参加者と個別調整）
         
         createdCount++;
-        print('実験データ作成 ${i + 1}/3: ${exp['title']}');
         
       } catch (e) {
-        print('エラー: $e');
       }
     }
     
-    print('完了: $createdCount件の実験データを作成しました');
   }
   
   /// 実験の予約スロットを作成
@@ -165,6 +161,5 @@ class TestDataCreatorFixed {
       }
     }
     
-    print('  → 予約スロットを作成しました');
   }
 }

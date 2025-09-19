@@ -24,7 +24,6 @@ class GoogleCalendarService {
   Future<bool> isCalendarEnabled() async {
     final prefs = await SharedPreferences.getInstance();
     final enabled = prefs.getBool(_calendarEnabledKey) ?? false;
-    debugPrint('GoogleCalendarService.isCalendarEnabled: $enabled');
     return enabled;
   }
   
@@ -32,27 +31,21 @@ class GoogleCalendarService {
   Future<void> setCalendarEnabled(bool enabled) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(_calendarEnabledKey, enabled);
-    debugPrint('GoogleCalendarService.setCalendarEnabled: $enabled saved');
   }
   
   /// Google認証とカレンダーアクセスの許可を取得
   Future<bool> requestCalendarPermission() async {
     try {
-      debugPrint('GoogleCalendarService.requestCalendarPermission: Starting Google Sign In');
       final account = await _googleSignIn.signIn();
       if (account == null) {
-        debugPrint('Google認証がキャンセルされました');
         return false;
       }
       
-      debugPrint('GoogleCalendarService.requestCalendarPermission: Signed in as ${account.email}');
       final prefs = await SharedPreferences.getInstance();
       await prefs.setBool(_calendarPermissionKey, true);
       await prefs.setString('google_user_email', account.email);
-      debugPrint('GoogleCalendarService.requestCalendarPermission: Permission saved');
       return true;
     } catch (e) {
-      debugPrint('Google認証エラー: $e');
       return false;
     }
   }
@@ -61,7 +54,6 @@ class GoogleCalendarService {
   Future<bool> hasCalendarPermission() async {
     final prefs = await SharedPreferences.getInstance();
     final hasPermission = prefs.getBool(_calendarPermissionKey) ?? false;
-    debugPrint('GoogleCalendarService.hasCalendarPermission: stored permission = $hasPermission');
     
     // SharedPreferencesに保存されたフラグを信頼する
     // サイレントサインインは実際にカレンダーAPIを使用する時に行う
@@ -76,7 +68,6 @@ class GoogleCalendarService {
       await prefs.setBool(_calendarPermissionKey, false);
       await prefs.setBool(_calendarEnabledKey, false);
     } catch (e) {
-      debugPrint('カレンダー連携解除エラー: $e');
     }
   }
   
@@ -88,7 +79,6 @@ class GoogleCalendarService {
   }) async {
     try {
       if (!await isCalendarEnabled()) {
-        debugPrint('カレンダー連携が無効です');
         return null;
       }
       
@@ -116,11 +106,9 @@ class GoogleCalendarService {
         
         return reservationId;
       } else {
-        debugPrint('カレンダーを開けませんでした');
         return null;
       }
     } catch (e) {
-      debugPrint('カレンダーイベント追加エラー: $e');
       return null;
     }
   }
@@ -129,7 +117,6 @@ class GoogleCalendarService {
   Future<bool> removeEventFromCalendar(String eventId) async {
     // URLスキームでは削除ができないため、
     // ユーザーに手動で削除してもらう必要がある
-    debugPrint('カレンダーイベントの削除は手動で行ってください');
     return true;
   }
   
@@ -148,10 +135,8 @@ class GoogleCalendarService {
         'calendarUrl': FieldValue.delete(),
       });
       
-      debugPrint('カレンダー情報を削除しました（イベントは手動で削除してください）');
       return true;
     } catch (e) {
-      debugPrint('カレンダー情報削除エラー: $e');
       return false;
     }
   }
@@ -168,7 +153,6 @@ class GoogleCalendarService {
   }) async {
     try {
       if (!await isCalendarEnabled()) {
-        debugPrint('カレンダー連携が無効です');
         return null;
       }
       
@@ -197,11 +181,9 @@ class GoogleCalendarService {
       if (result) {
         return 'quick-add-${DateTime.now().millisecondsSinceEpoch}';
       } else {
-        debugPrint('カレンダーを開けませんでした');
         return null;
       }
     } catch (e) {
-      debugPrint('クイックカレンダーイベント追加エラー: $e');
       return null;
     }
   }
@@ -215,7 +197,6 @@ class GoogleCalendarService {
     required DateTime endTime,
   }) async {
     try {
-      debugPrint('Opening calendar for platform: ${kIsWeb ? "Web" : defaultTargetPlatform.toString()}');
       
       if (kIsWeb) {
         // Web環境: ブラウザでGoogleカレンダーを開く
@@ -257,7 +238,6 @@ class GoogleCalendarService {
         }
       }
     } catch (e) {
-      debugPrint('Error opening calendar: $e');
       // エラーが発生した場合はWebブラウザで開く
       return await _openCalendarOnWeb(
         title: title,
@@ -286,7 +266,6 @@ class GoogleCalendarService {
         endTime: endTime,
       );
 
-      debugPrint('Opening web calendar URL: $calendarUrl');
 
       final uri = Uri.parse(calendarUrl);
 
@@ -305,10 +284,8 @@ class GoogleCalendarService {
           uri,
           mode: mode,
         );
-        debugPrint('Successfully opened calendar URL with mode: $mode');
         return true;
       } catch (launchError) {
-        debugPrint('Failed to launch URL with mode $mode, trying fallback: $launchError');
 
         // フォールバック: アプリ内ブラウザで開く
         try {
@@ -316,10 +293,8 @@ class GoogleCalendarService {
             uri,
             mode: LaunchMode.inAppWebView,
           );
-          debugPrint('Opened calendar in app web view as fallback');
           return true;
         } catch (inAppError) {
-          debugPrint('Failed to open in app web view: $inAppError');
 
           // 最終フォールバック: プラットフォームデフォルト
           try {
@@ -327,16 +302,13 @@ class GoogleCalendarService {
               uri,
               mode: LaunchMode.platformDefault,
             );
-            debugPrint('Opened calendar with platform default as final fallback');
             return true;
           } catch (finalError) {
-            debugPrint('All attempts to open calendar failed: $finalError');
             return false;
           }
         }
       }
     } catch (e) {
-      debugPrint('Error opening web calendar: $e');
       return false;
     }
   }
@@ -350,7 +322,6 @@ class GoogleCalendarService {
     required DateTime endTime,
   }) async {
     try {
-      debugPrint('Opening Google Calendar on iOS');
 
       // GoogleカレンダーのURLを作成
       final calendarUrl = _createGoogleCalendarUrl(
@@ -370,10 +341,8 @@ class GoogleCalendarService {
           uri,
           mode: LaunchMode.externalNonBrowserApplication,
         );
-        debugPrint('Opened calendar with external non-browser application mode on iOS');
         return true;
       } catch (nonBrowserError) {
-        debugPrint('Non-browser mode failed, trying external application: $nonBrowserError');
 
         // 通常の外部アプリケーションモードで試す
         try {
@@ -381,10 +350,8 @@ class GoogleCalendarService {
             uri,
             mode: LaunchMode.externalApplication,
           );
-          debugPrint('Opened calendar with external application mode on iOS');
           return true;
         } catch (externalError) {
-          debugPrint('External application mode failed, falling back to web: $externalError');
 
           // 最終的なフォールバック：Webブラウザで開く
           return await _openCalendarOnWeb(
@@ -397,7 +364,6 @@ class GoogleCalendarService {
         }
       }
     } catch (e) {
-      debugPrint('Error opening iOS calendar: $e');
       // エラーが発生した場合はWebブラウザにフォールバック
       return await _openCalendarOnWeb(
         title: title,
@@ -418,7 +384,6 @@ class GoogleCalendarService {
     required DateTime endTime,
   }) async {
     try {
-      debugPrint('Attempting to open Google Calendar app directly on Android using AndroidIntent');
 
       // Android Intentを使用してGoogleカレンダーアプリを直接起動
       try {
@@ -442,12 +407,9 @@ class GoogleCalendarService {
 
         // Intentを起動
         await intent.launch();
-        debugPrint('Successfully launched Google Calendar app with AndroidIntent');
         return true;
 
       } catch (intentError) {
-        debugPrint('AndroidIntent failed: $intentError');
-        debugPrint('Trying alternative approach with URL...');
 
         // AndroidIntentが失敗した場合、URLを使用
         final calendarUrl = _createGoogleCalendarUrl(
@@ -468,10 +430,8 @@ class GoogleCalendarService {
             uri,
             mode: LaunchMode.externalApplication,
           );
-          debugPrint('Opened calendar URL with external application mode');
           return true;
         } catch (urlError) {
-          debugPrint('ExternalApplication mode failed: $urlError');
 
           // 最終フォールバック: Webブラウザで開く
           return await _openCalendarOnWeb(
@@ -484,7 +444,6 @@ class GoogleCalendarService {
         }
       }
     } catch (e) {
-      debugPrint('Error opening Android calendar: $e');
       // エラーが発生した場合はWebブラウザにフォールバック
       return await _openCalendarOnWeb(
         title: title,

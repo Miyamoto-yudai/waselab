@@ -32,15 +32,12 @@ class _AdminSupportChatManagementScreenState extends State<AdminSupportChatManag
   @override
   void initState() {
     super.initState();
-    debugPrint('===== AdminSupportChatManagementScreen initState =====');
     _initializeAdmin();
-    debugPrint('Calling _loadSupportConversations from initState...');
     _loadSupportConversations();
     // 10秒ごとにサポート会話を更新
     Future.delayed(Duration.zero, () {
       Timer.periodic(const Duration(seconds: 10), (timer) {
         if (mounted) {
-          debugPrint('Periodic reload of support conversations...');
           _loadSupportConversations();
         } else {
           timer.cancel();
@@ -59,58 +56,46 @@ class _AdminSupportChatManagementScreenState extends State<AdminSupportChatManag
   }
 
   Future<void> _loadSupportConversations() async {
-    debugPrint('===== START _loadSupportConversations =====');
     try {
       _unreadCounts.clear();
       _lastMessages.clear();
       _usersCache.clear();
       
       // メッセージコレクションから直接support_team関連のメッセージを取得
-      debugPrint('Loading support messages directly from messages collection...');
       
       QuerySnapshot messagesAsReceiver;
       QuerySnapshot messagesAsSender;
       
       try {
         // support_teamが受信者のメッセージを取得
-        debugPrint('Querying messages where receiverId == support_team...');
         messagesAsReceiver = await FirebaseFirestore.instance
             .collection('messages')
             .where('receiverId', isEqualTo: 'support_team')
             .orderBy('createdAt', descending: true)
             .get();
-        debugPrint('Query 1 successful: ${messagesAsReceiver.docs.length} docs');
       } catch (e) {
-        debugPrint('ERROR querying receiverId: $e');
         // インデックスエラーの場合、orderByなしで試す
         messagesAsReceiver = await FirebaseFirestore.instance
             .collection('messages')
             .where('receiverId', isEqualTo: 'support_team')
             .get();
-        debugPrint('Fallback query 1: ${messagesAsReceiver.docs.length} docs');
       }
       
       try {
         // support_teamが送信者のメッセージを取得
-        debugPrint('Querying messages where senderId == support_team...');
         messagesAsSender = await FirebaseFirestore.instance
             .collection('messages')
             .where('senderId', isEqualTo: 'support_team')
             .orderBy('createdAt', descending: true)
             .get();
-        debugPrint('Query 2 successful: ${messagesAsSender.docs.length} docs');
       } catch (e) {
-        debugPrint('ERROR querying senderId: $e');
         // インデックスエラーの場合、orderByなしで試す
         messagesAsSender = await FirebaseFirestore.instance
             .collection('messages')
             .where('senderId', isEqualTo: 'support_team')
             .get();
-        debugPrint('Fallback query 2: ${messagesAsSender.docs.length} docs');
       }
       
-      debugPrint('Found ${messagesAsReceiver.docs.length} messages to support_team');
-      debugPrint('Found ${messagesAsSender.docs.length} messages from support_team');
       
       // ユーザーIDごとにメッセージをグループ化
       final Map<String, List<QueryDocumentSnapshot>> userMessages = {};
@@ -118,8 +103,6 @@ class _AdminSupportChatManagementScreenState extends State<AdminSupportChatManag
       for (var doc in messagesAsReceiver.docs) {
         final data = doc.data() as Map<String, dynamic>;
         final senderId = data['senderId'] as String? ?? '';
-        debugPrint('Message from $senderId to support_team: ${data['content']}');
-        debugPrint('  ConversationId: ${data['conversationId']}');
         if (senderId != 'support_team' && senderId.isNotEmpty) {
           userMessages.putIfAbsent(senderId, () => []).add(doc);
         }
@@ -133,14 +116,10 @@ class _AdminSupportChatManagementScreenState extends State<AdminSupportChatManag
         }
       }
       
-      debugPrint('Found conversations with ${userMessages.length} users');
       
       // 各ユーザーの情報を取得
-      debugPrint('Total unique users found: ${userMessages.keys.length}');
-      debugPrint('User IDs: ${userMessages.keys.toList()}');
       
       for (var userId in userMessages.keys) {
-        debugPrint('=== Processing user: $userId ===');
         
         if (userId.isNotEmpty) {
           // ユーザー情報を取得
@@ -151,8 +130,6 @@ class _AdminSupportChatManagementScreenState extends State<AdminSupportChatManag
           
           if (userDoc.exists) {
             final userData = userDoc.data()!;
-            debugPrint('User document found for $userId');
-            debugPrint('User data: $userData');
             
             // AppUserにデータを変換
             if (userData['createdAt'] != null && userData['createdAt'] is! Timestamp) {
@@ -160,7 +137,6 @@ class _AdminSupportChatManagementScreenState extends State<AdminSupportChatManag
             }
             
             final userName = userData['name'] ?? userData['displayName'] ?? userData['email']?.split('@')[0] ?? 'ユーザー';
-            debugPrint('Resolved user name: $userName');
             
             _usersCache[userId] = AppUser(
               uid: userId,
@@ -174,10 +150,8 @@ class _AdminSupportChatManagementScreenState extends State<AdminSupportChatManag
               badCount: userData['badCount'] ?? 0,
             );
           } else {
-            debugPrint('User document NOT found for $userId');
             // ユーザードキュメントが存在しない場合でも表示できるように
             final fallbackName = userId.length > 8 ? 'ユーザー (ID: ${userId.substring(0, 8)}...)' : 'ユーザー';
-            debugPrint('Using fallback name: $fallbackName');
             
             _usersCache[userId] = AppUser(
               uid: userId,
@@ -228,19 +202,13 @@ class _AdminSupportChatManagementScreenState extends State<AdminSupportChatManag
         }
       }
       
-      debugPrint('=== Final _usersCache content ===');
-      debugPrint('Total cached users: ${_usersCache.length}');
       _usersCache.forEach((id, user) {
-        debugPrint('  User ID: $id, Name: ${user.name}');
       });
 
       if (mounted) {
-        debugPrint('Calling setState to update UI');
         setState(() {});
       }
     } catch (e) {
-      debugPrint('サポート会話の読み込みエラー: $e');
-      debugPrint('Error stack trace: $e');
     }
   }
 
@@ -263,14 +231,12 @@ class _AdminSupportChatManagementScreenState extends State<AdminSupportChatManag
         _selectedConversationId = conversationId;
       });
       
-      debugPrint('Selected conversation ID: $conversationId');
 
       // 選択した会話のメッセージを既読にする
       await _markMessagesAsRead(conversationId);
       _unreadCounts[userId] = 0;
       if (mounted) setState(() {});
     } catch (e) {
-      debugPrint('会話ID取得エラー: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -298,7 +264,6 @@ class _AdminSupportChatManagementScreenState extends State<AdminSupportChatManag
 
       await batch.commit();
     } catch (e) {
-      debugPrint('メッセージの既読処理エラー: $e');
     }
   }
 
@@ -323,7 +288,6 @@ class _AdminSupportChatManagementScreenState extends State<AdminSupportChatManag
       
       // 会話IDが変更された場合は更新
       if (_selectedConversationId != conversationId) {
-        debugPrint('Updating conversation ID from $_selectedConversationId to $conversationId');
         setState(() {
           _selectedConversationId = conversationId;
         });

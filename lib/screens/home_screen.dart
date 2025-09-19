@@ -1,12 +1,9 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/experiment.dart';
 import '../models/app_user.dart';
 import '../services/auth_service.dart';
 import '../services/message_service.dart';
-import '../utils/test_firestore.dart';
-import '../utils/test_firestore_debug.dart';
 import '../widgets/home_screen_base.dart';
 import 'create_experiment_screen.dart';
 import 'login_screen.dart';
@@ -39,14 +36,6 @@ class _HomeScreenState extends State<HomeScreen> {
     _loadCurrentUser();
     _loadUnreadMessages();
     _loadExperiments();
-    
-    // デバッグ用：Firestoreの状態を確認（非同期で実行）
-    if (!kReleaseMode) {
-      Future(() async {
-        await TestFirestore.checkExperiments();
-        await FirestoreDebugger.generateFullReport();
-      });
-    }
   }
 
   /// 現在のユーザー情報を取得
@@ -59,7 +48,6 @@ class _HomeScreenState extends State<HomeScreen> {
         });
       }
     } catch (e) {
-      debugPrint('ユーザー情報の取得エラー: $e');
     }
   }
 

@@ -64,7 +64,6 @@ class _HistoryScreenState extends State<HistoryScreen> with TickerProviderStateM
           final reservationsStream = _reservationService.getUserReservations(user.uid);
           reservations = await reservationsStream.first;
         } catch (e) {
-          debugPrint('予約情報の取得エラー（無視）: $e');
         }
         
         if (mounted) {
@@ -84,7 +83,6 @@ class _HistoryScreenState extends State<HistoryScreen> with TickerProviderStateM
         }
       }
     } catch (e) {
-      debugPrint('データ取得エラー: $e');
       if (mounted) {
         setState(() {
           _isLoading = false;

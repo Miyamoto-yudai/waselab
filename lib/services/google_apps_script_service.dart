@@ -1,6 +1,5 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
-import 'package:flutter/foundation.dart';
 import '../models/survey_template.dart';
 
 /// Google Apps Script Web App と連携するサービス
@@ -23,7 +22,6 @@ class GoogleAppsScriptService {
       }
       return [];
     } catch (e) {
-      debugPrint('Error fetching templates: $e');
       return [];
     }
   }
@@ -53,7 +51,6 @@ class GoogleAppsScriptService {
       }
       return null;
     } catch (e) {
-      debugPrint('Error creating form from template: $e');
       return null;
     }
   }
@@ -86,7 +83,6 @@ class GoogleAppsScriptService {
       }
       return null;
     } catch (e) {
-      debugPrint('Error creating form from JSON: $e');
       return null;
     }
   }
@@ -117,7 +113,6 @@ class GoogleAppsScriptService {
       }
       return null;
     } catch (e) {
-      debugPrint('Error cloning template form: $e');
       return null;
     }
   }

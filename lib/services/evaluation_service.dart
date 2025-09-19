@@ -1,5 +1,4 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:flutter/foundation.dart';
 import '../models/experiment.dart';
 import '../models/experiment_evaluation.dart';
 import 'user_service.dart';
@@ -19,7 +18,6 @@ class EvaluationService {
     required EvaluationType type,
     String? comment,
   }) async {
-    debugPrint('Creating evaluation - experimentId: $experimentId, evaluatorId: $evaluatorId, evaluatedUserId: $evaluatedUserId');
     
     try {
       // まず実験を取得して検証
@@ -29,22 +27,18 @@ class EvaluationService {
           .get();
       
       if (!experimentDoc.exists) {
-        debugPrint('Experiment not found: $experimentId');
         throw Exception('実験が見つかりません');
       }
       
       final experiment = Experiment.fromFirestore(experimentDoc);
-      debugPrint('Experiment loaded - creatorId: ${experiment.creatorId}, participants: ${experiment.participants}');
       
       // 評価可能かチェック
       if (!experiment.canEvaluate(evaluatorId)) {
-        debugPrint('User cannot evaluate - evaluatorId: $evaluatorId');
         throw Exception('この実験を評価する権限がありません');
       }
       
       // 既に評価済みかチェック
       if (experiment.hasEvaluated(evaluatorId)) {
-        debugPrint('User has already evaluated - evaluatorId: $evaluatorId');
         throw Exception('既に評価済みです');
       }
       
@@ -58,12 +52,10 @@ class EvaluationService {
         comment: comment,
       );
       
-      debugPrint('Creating evaluation document...');
       
       // evaluationsコレクションに評価を追加
       await _firestore.collection('evaluations').add(evaluation.toFirestore());
       
-      debugPrint('Updating experiment document...');
       
       // 実験のevaluationsフィールドを更新
       final evaluations = Map<String, Map<String, dynamic>>.from(
@@ -89,7 +81,6 @@ class EvaluationService {
       
       await _firestore.collection('experiments').doc(experimentId).update(updateData);
       
-      debugPrint('Updating user statistics for user: $evaluatedUserId');
       
       // 無償実験の場合はポイントを3倍にする
       final pointsToAdd = type == EvaluationType.good ? 
@@ -110,22 +101,17 @@ class EvaluationService {
           }
           
           if (userUpdateData.isNotEmpty) {
-            debugPrint('Updating user document with: $userUpdateData');
             await _firestore.collection('users').doc(evaluatedUserId).update(userUpdateData);
-            debugPrint('User statistics updated successfully');
           }
         } else {
-          debugPrint('User document not found: $evaluatedUserId');
           // ユーザードキュメントがない場合は作成
           await _firestore.collection('users').doc(evaluatedUserId).set({
             'goodCount': type == EvaluationType.good ? 1 : 0,
             'badCount': type == EvaluationType.bad ? 1 : 0,
             'points': pointsToAdd,
           }, SetOptions(merge: true));
-          debugPrint('User document created with initial statistics');
         }
       } catch (userUpdateError) {
-        debugPrint('Error updating user statistics: $userUpdateError');
         // ユーザー統計の更新に失敗しても評価自体は成功とする
       }
       
@@ -151,11 +137,9 @@ class EvaluationService {
           pointsAwarded: pointsToAdd,
         );
       } catch (notificationError) {
-        debugPrint('通知送信エラー（無視）: $notificationError');
       }
       
       // 個別の参加者評価状態を更新
-      debugPrint('Updating individual participant evaluation status...');
       
       // participantEvaluationsフィールドを更新（実験者と参加者の個別評価管理）
       Map<String, dynamic> participantEvaluations = {};
@@ -201,17 +185,13 @@ class EvaluationService {
         if (creatorEvaluated && participantEvaluated) {
           participantEvaluations['participantEvaluations.$targetUserId.mutuallyCompleted'] = true;
           participantEvaluations['participantEvaluations.$targetUserId.completedAt'] = Timestamp.fromDate(DateTime.now());
-          debugPrint('Mutual evaluation completed for participant: $targetUserId');
         }
       }
       
       // participantEvaluationsを更新
       await _firestore.collection('experiments').doc(experimentId).update(participantEvaluations);
       
-      debugPrint('Successfully created evaluation for experiment: $experimentId');
-    } catch (e, stackTrace) {
-      debugPrint('Error creating evaluation: $e');
-      debugPrint('Stack trace: $stackTrace');
+    } catch (e) {
       rethrow;
     }
   }
@@ -234,7 +214,6 @@ class EvaluationService {
       
       return userEval['mutuallyCompleted'] ?? false;
     } catch (e) {
-      debugPrint('Error checking mutual evaluation: $e');
       return false;
     }
   }
@@ -262,7 +241,6 @@ class EvaluationService {
         'status': experiment.status.name,
       };
     } catch (e) {
-      debugPrint('Error getting evaluation status: $e');
       return {'canEvaluate': false, 'hasEvaluated': false};
     }
   }
@@ -270,7 +248,6 @@ class EvaluationService {
   /// ユーザーの評価履歴を取得
   Future<List<ExperimentEvaluation>> getUserEvaluations(String userId) async {
     try {
-      debugPrint('Getting evaluations for user: $userId');
       
       // 評価者として（orderByを削除してクライアント側でソート）
       final asEvaluator = await _firestore
@@ -278,7 +255,6 @@ class EvaluationService {
           .where('evaluatorId', isEqualTo: userId)
           .get();
       
-      debugPrint('Found ${asEvaluator.docs.length} evaluations as evaluator');
       
       // 被評価者として（orderByを削除してクライアント側でソート）
       final asEvaluated = await _firestore
@@ -286,7 +262,6 @@ class EvaluationService {
           .where('evaluatedUserId', isEqualTo: userId)
           .get();
       
-      debugPrint('Found ${asEvaluated.docs.length} evaluations as evaluated');
       
       final evaluations = [
         ...asEvaluator.docs.map((doc) => ExperimentEvaluation.fromFirestore(doc)),
@@ -296,12 +271,9 @@ class EvaluationService {
       // 日付でソート
       evaluations.sort((a, b) => b.createdAt.compareTo(a.createdAt));
       
-      debugPrint('Total evaluations found: ${evaluations.length}');
       
       return evaluations;
     } catch (e) {
-      debugPrint('Error getting user evaluations: $e');
-      debugPrint('Stack trace: ${StackTrace.current}');
       return [];
     }
   }
@@ -316,9 +288,7 @@ class EvaluationService {
         'actualStartDate': Timestamp.fromDate(DateTime.now()),
       });
       
-      debugPrint('Started evaluation for experiment: $experimentId');
     } catch (e) {
-      debugPrint('Error starting evaluation: $e');
       throw Exception('評価開始に失敗しました');
     }
   }

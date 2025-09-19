@@ -22,37 +22,6 @@ class CreateExperimentScreen extends StatelessWidget {
       throw Exception('ユーザーが見つかりません');
     }
 
-    // データ整合性チェック（デバッグ用）
-    debugPrint('=== 実験作成データ確認 ===');
-    debugPrint('タイトル: ${data['title']}');
-    debugPrint('説明: ${data['description']}');
-    debugPrint('詳細: ${data['detailedContent']}');
-    debugPrint('報酬: ${data['reward']}');
-    debugPrint('場所: ${data['location']}');
-    debugPrint('タイプ: ${data['type']}');
-    debugPrint('有償: ${data['isPaid']}');
-    debugPrint('募集開始日: ${data['recruitmentStartDate']}');
-    debugPrint('募集終了日: ${data['recruitmentEndDate']}');
-    debugPrint('実験期間開始: ${data['experimentPeriodStart']}');
-    debugPrint('実験期間終了: ${data['experimentPeriodEnd']}');
-    debugPrint('柔軟なスケジュール: ${data['allowFlexibleSchedule']}');
-    debugPrint('研究室名: ${data['labName']}');
-    debugPrint('所要時間: ${data['duration']}');
-    debugPrint('最大参加者数: ${data['maxParticipants']}');
-    debugPrint('参加条件: ${data['requirements']}');
-    debugPrint('同意項目: ${data['consentItems']}');
-    debugPrint('日時スロット数: ${(data['dateTimeSlots'] as List?)?.length ?? 0}');
-    debugPrint('同時実験可能人数: ${data['simultaneousCapacity']}');
-    debugPrint('固定実験日: ${data['fixedExperimentDate']}');
-    debugPrint('固定実験時刻: ${data['fixedExperimentTime']}');
-    debugPrint('予約締切日数: ${data['reservationDeadlineDays']}');
-    debugPrint('アンケートURL: ${data['surveyUrl']}');
-    debugPrint('事前アンケートURL: ${data['preSurveyUrl']}');
-    debugPrint('事後アンケートURL: ${data['postSurveyUrl']}');
-    debugPrint('事前アンケートテンプレートID: ${data['preSurveyTemplateId']}');
-    debugPrint('事後アンケートテンプレートID: ${data['postSurveyTemplateId']}');
-    debugPrint('研究室/個人: ${data['isLabExperiment']}');
-    debugPrint('=========================');
 
     // 初回実験作成かつカレンダー連携が無効の場合、プロンプトを表示
     final isFirstExperiment = await PreferenceService.isFirstExperimentCreated();
@@ -120,7 +89,6 @@ class CreateExperimentScreen extends StatelessWidget {
       final dateTimeSlots = data['dateTimeSlots'] as List<dynamic>?;
       
       if (dateTimeSlots != null && dateTimeSlots.isNotEmpty) {
-        debugPrint('Creating slots from dateTimeSlots: ${dateTimeSlots.length}');
         
         for (final slotData in dateTimeSlots) {
           final slot = slotData as Map<String, dynamic>;
@@ -164,9 +132,6 @@ class CreateExperimentScreen extends StatelessWidget {
         final endDate = data['experimentPeriodEnd'] as DateTime?;
         final simultaneousCapacity = data['simultaneousCapacity'] as int? ?? 1;
         
-        debugPrint('Creating slots - allowFlexible: ${data['allowFlexibleSchedule']}, timeSlots: ${timeSlots.length}');
-        debugPrint('Period: $startDate to $endDate');
-        debugPrint('TimeSlots data: $timeSlots');
         
         if (startDate != null && endDate != null && timeSlots.isNotEmpty) {
           // 実験期間内の各日付に対してスロットを生成
@@ -182,7 +147,6 @@ class CreateExperimentScreen extends StatelessWidget {
               return slot['weekday'] == weekday;
             }).toList();
             
-            debugPrint('Date: $currentDate, weekday: $weekday, found slots: ${daySlots.length}');
             
             for (final slotData in daySlots) {
               final slot = slotData as Map<String, dynamic>;
@@ -225,22 +189,17 @@ class CreateExperimentScreen extends StatelessWidget {
       }
       
       // スロットを一括作成
-      debugPrint('Total slots to create: ${slots.length}');
       if (slots.isNotEmpty) {
         await reservationService.createMultipleSlots(slots);
-        debugPrint('Slots created successfully');
       } else {
-        debugPrint('No slots to create');
       }
     } else if (data['fixedExperimentDate'] != null && data['fixedExperimentTime'] != null) {
       // 固定日時の場合のスロット作成
-      debugPrint('Creating fixed date slot');
       final fixedDate = data['fixedExperimentDate'] as DateTime;
       final fixedTime = data['fixedExperimentTime'] as Map<String, int>;
       final simultaneousCapacity = data['simultaneousCapacity'] as int? ?? 1;
       final duration = data['duration'] as int? ?? 60;
       
-      debugPrint('Fixed date: $fixedDate, time: $fixedTime, duration: $duration');
       
       final slotStartTime = DateTime(
         fixedDate.year,
@@ -263,9 +222,7 @@ class CreateExperimentScreen extends StatelessWidget {
       );
       
       await reservationService.createSlot(slot);
-      debugPrint('Fixed slot created successfully');
     } else {
-      debugPrint('No slot creation needed - allowFlexible: ${data['allowFlexibleSchedule']}, fixedDate: ${data['fixedExperimentDate']}');
     }
     
     // 初回実験作成を記録

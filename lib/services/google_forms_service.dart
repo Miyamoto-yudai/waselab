@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:cloud_functions/cloud_functions.dart';
 import '../models/survey_template.dart';
@@ -62,8 +61,6 @@ class GoogleFormsService {
       
       return null;
     } on FirebaseFunctionsException catch (e) {
-      debugPrint('Firebase Functions Error: ${e.code} - ${e.message}');
-      debugPrint('Details: ${e.details}');
       
       // エラー情報を返す（UIで表示するため）
       return {
@@ -73,7 +70,6 @@ class GoogleFormsService {
         'details': e.details,
       };
     } catch (e) {
-      debugPrint('Error creating Google Form via Functions: $e');
       return {
         'success': false,
         'error': e.toString(),
@@ -100,7 +96,6 @@ class GoogleFormsService {
       }
       return false;
     } catch (e) {
-      debugPrint('Error opening Google Form: $e');
       return false;
     }
   }
@@ -119,7 +114,6 @@ class GoogleFormsService {
       }
       return false;
     } catch (e) {
-      debugPrint('Error opening new Google Form: $e');
       return false;
     }
   }
@@ -143,7 +137,6 @@ class GoogleFormsService {
       }
       return false;
     } catch (e) {
-      debugPrint('Error opening existing form: $e');
       return false;
     }
   }
@@ -154,7 +147,6 @@ class GoogleFormsService {
       final questionsText = template.exportQuestionsAsText();
       await Clipboard.setData(ClipboardData(text: questionsText));
     } catch (e) {
-      debugPrint('Error copying to clipboard: $e');
     }
   }
   

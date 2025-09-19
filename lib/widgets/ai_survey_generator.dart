@@ -193,7 +193,6 @@ class _AISurveyGeneratorState extends State<AISurveyGenerator> {
       }
 
     } catch (e) {
-      debugPrint('Generation error: $e');
 
       // リトライロジック
       if (_retryCount < _maxRetries) {
@@ -317,7 +316,6 @@ class _AISurveyGeneratorState extends State<AISurveyGenerator> {
         }
       }
     } catch (e) {
-      debugPrint('Error launching URL: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(

@@ -32,16 +32,13 @@ class _SettingsScreenState extends State<SettingsScreen> with WidgetsBindingObse
   @override
   void initState() {
     super.initState();
-    debugPrint('SettingsScreen.initState: Starting');
     WidgetsBinding.instance.addObserver(this);
     _loadSettings();
   }
   
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    debugPrint('SettingsScreen.didChangeAppLifecycleState: $state');
     if (state == AppLifecycleState.resumed) {
-      debugPrint('SettingsScreen: App resumed, reloading settings');
       _loadSettings();
     }
   }
@@ -69,27 +66,21 @@ class _SettingsScreenState extends State<SettingsScreen> with WidgetsBindingObse
   }
   
   Future<void> _loadCalendarSettings() async {
-    debugPrint('SettingsScreen._loadCalendarSettings: Starting load');
     try {
       // まず保存された設定を読み込む
       final enabled = await _calendarService.isCalendarEnabled();
-      debugPrint('SettingsScreen._loadCalendarSettings: enabled = $enabled');
       
       // 接続状態を確認（enabledの値に関わらず）
       final connected = await _calendarService.hasCalendarPermission();
-      debugPrint('SettingsScreen._loadCalendarSettings: connected = $connected');
       
       if (mounted) {
         setState(() {
           _calendarEnabled = enabled;
           _calendarConnected = connected;
         });
-        debugPrint('SettingsScreen._loadCalendarSettings: State updated - enabled=$_calendarEnabled, connected=$_calendarConnected');
       } else {
-        debugPrint('SettingsScreen._loadCalendarSettings: Widget not mounted, skipping setState');
       }
     } catch (e) {
-      debugPrint('カレンダー設定読み込みエラー: $e');
       if (mounted) {
         setState(() {
           _calendarEnabled = false;
@@ -216,14 +207,12 @@ class _SettingsScreenState extends State<SettingsScreen> with WidgetsBindingObse
   
   @override
   void dispose() {
-    debugPrint('SettingsScreen.dispose: Screen being disposed');
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }
   
   @override
   Widget build(BuildContext context) {
-    debugPrint('SettingsScreen.build: Building with calendarEnabled=$_calendarEnabled, calendarConnected=$_calendarConnected');
     return Scaffold(
       appBar: AppBar(
         title: const Text('設定'),
@@ -339,12 +328,10 @@ class _SettingsScreenState extends State<SettingsScreen> with WidgetsBindingObse
                     : 'Googleカレンダーと連携していません'),
                   value: _calendarEnabled,
                   onChanged: (value) async {
-                    debugPrint('SettingsScreen: Calendar toggle changed to $value');
                     if (value) {
                       // カレンダー連携を有効にする
                       if (!_calendarConnected) {
                         // まだ認証していない場合は認証を行う
-                        debugPrint('SettingsScreen: Requesting calendar permission');
                         final success = await _calendarService.requestCalendarPermission();
                         if (success) {
                           await _calendarService.setCalendarEnabled(true);
@@ -353,7 +340,6 @@ class _SettingsScreenState extends State<SettingsScreen> with WidgetsBindingObse
                               _calendarEnabled = true;
                               _calendarConnected = true;
                             });
-                            debugPrint('SettingsScreen: Calendar enabled and connected');
                             ScaffoldMessenger.of(context).showSnackBar(
                               const SnackBar(
                                 content: Text('Googleカレンダーと連携しました'),
@@ -362,7 +348,6 @@ class _SettingsScreenState extends State<SettingsScreen> with WidgetsBindingObse
                             );
                           }
                         } else {
-                          debugPrint('SettingsScreen: Calendar permission request failed');
                           if (mounted) {
                             ScaffoldMessenger.of(context).showSnackBar(
                               const SnackBar(
@@ -374,21 +359,17 @@ class _SettingsScreenState extends State<SettingsScreen> with WidgetsBindingObse
                         }
                       } else {
                         // すでに認証済みの場合は有効化のみ
-                        debugPrint('SettingsScreen: Re-enabling calendar (already connected)');
                         await _calendarService.setCalendarEnabled(true);
                         setState(() {
                           _calendarEnabled = true;
                         });
-                        debugPrint('SettingsScreen: Calendar re-enabled');
                       }
                     } else {
                       // カレンダー連携を無効にする（接続は維持）
-                      debugPrint('SettingsScreen: Disabling calendar');
                       await _calendarService.setCalendarEnabled(false);
                       setState(() {
                         _calendarEnabled = false;
                       });
-                      debugPrint('SettingsScreen: Calendar disabled (connection maintained)');
                     }
                   },
                 ),

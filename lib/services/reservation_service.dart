@@ -1,5 +1,4 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:flutter/foundation.dart';
 import '../models/experiment_slot.dart';
 import '../models/experiment_reservation.dart';
 import 'notification_service.dart';
@@ -57,7 +56,6 @@ class ReservationService {
       
       return slots;
     } catch (e) {
-      debugPrint('Error in getSlotsByDate: $e');
       return [];
     }
   }
@@ -150,7 +148,6 @@ class ReservationService {
         await _calendarService.removeReservationFromCalendar(reservationId);
       }
     } catch (e) {
-      debugPrint('カレンダーイベント削除エラー（無視）: $e');
     }
     
     await _firestore.runTransaction((transaction) async {
@@ -222,7 +219,6 @@ class ReservationService {
         }
       }
     } catch (notificationError) {
-      debugPrint('通知送信エラー（無視）: $notificationError');
     }
   }
 

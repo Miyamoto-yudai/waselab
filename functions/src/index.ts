@@ -200,20 +200,95 @@ export const sendMessageNotification = functions.firestore
         return null;
       }
 
+      // サポートチーム宛のメッセージの場合、管理者に通知を送信
+      if (message.receiverId === "support_team") {
+        console.log("Support message detected, notifying admins");
+
+        // 送信者情報を取得
+        const senderDoc = await db.collection("users").doc(message.senderId).get();
+        const senderName = senderDoc.exists
+          ? senderDoc.data()?.name || "ユーザー"
+          : "ユーザー";
+
+        const messagePreview =
+          message.content.length > 100
+            ? message.content.substring(0, 100) + "..."
+            : message.content;
+
+        // アクティブな管理者を取得
+        const adminsSnapshot = await db.collection("admins")
+          .where("isActive", "==", true)
+          .get();
+
+        const notificationPromises: Promise<any>[] = [];
+
+        for (const adminDoc of adminsSnapshot.docs) {
+          const adminData = adminDoc.data();
+          const adminId = adminDoc.id;
+
+          // 管理者のFCMトークンを取得
+          if (adminData.fcmToken) {
+            // プッシュ通知を送信
+            const promise = sendPushNotification(
+              adminData.fcmToken,
+              "新しいお問い合わせ",
+              `${senderName}さんからお問い合わせがあります`,
+              {
+                type: "support_message",
+                senderId: message.senderId,
+                senderName,
+                message: messagePreview,
+                conversationId: message.conversationId,
+                messageId: context.params.messageId,
+              }
+            ).catch((error) => {
+              console.error(`Failed to send push to admin ${adminId}:`, error);
+            });
+            notificationPromises.push(promise);
+          } else {
+            console.log(`Admin ${adminId} has no FCM token`);
+          }
+
+          // 管理者用の通知をFirestoreに作成
+          const adminNotificationRef = db.collection("admin_notifications").doc();
+          const adminNotificationPromise = adminNotificationRef.set({
+            adminId,
+            type: "support_message",
+            title: "新しいお問い合わせ",
+            body: `${senderName}さんからお問い合わせがあります`,
+            message: messagePreview,
+            senderName,
+            senderId: message.senderId,
+            conversationId: message.conversationId,
+            isRead: false,
+            createdAt: admin.firestore.FieldValue.serverTimestamp(),
+          }).catch((error) => {
+            console.error(`Failed to create notification for admin ${adminId}:`, error);
+          });
+          notificationPromises.push(adminNotificationPromise);
+        }
+
+        // すべての通知送信を並列実行
+        await Promise.all(notificationPromises);
+        console.log(`Support message notifications sent to ${adminsSnapshot.size} admins`);
+        return null;
+      }
+
+      // 通常のメッセージ通知処理
       const senderDoc = await db.collection("users").doc(message.senderId).get();
       const senderName = senderDoc.exists
         ? senderDoc.data()?.name || "ユーザー"
         : "ユーザー";
 
       const receiverDoc = await db.collection("users").doc(message.receiverId).get();
-      
+
       if (!receiverDoc.exists) {
         console.log(`Receiver ${message.receiverId} not found`);
         return null;
       }
 
       const receiverData = receiverDoc.data() as UserData;
-      
+
       const messagePreview =
         message.content.length > 50
           ? message.content.substring(0, 50) + "..."
@@ -237,7 +312,7 @@ export const sendMessageNotification = functions.firestore
       } else {
         console.log(`User ${message.receiverId} has no FCM token`);
       }
-      
+
       return null;
     } catch (error) {
       console.error("Error in sendMessageNotification:", error);

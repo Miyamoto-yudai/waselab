@@ -52,6 +52,7 @@ class _ChatScreenState extends State<ChatScreen> {
   List<Message> _messages = [];
   StreamSubscription<List<Message>>? _messageSubscription;
   bool _isLoadingMessages = true;
+  bool _isFirstLoad = true;
 
   @override
   void initState() {
@@ -94,8 +95,13 @@ class _ChatScreenState extends State<ChatScreen> {
                 }
               });
 
-              // ユーザーが新しいメッセージを送信した場合のみスクロール
-              if (hasNewMessages && isUserMessage && _messages.isNotEmpty) {
+              // 初回読み込み時の処理
+              if (_isFirstLoad && _messages.isNotEmpty) {
+                _isFirstLoad = false;
+                // 未読メッセージの位置または最下部へスクロール
+                _scrollToFirstUnreadMessage();
+              } else if (hasNewMessages && isUserMessage && _messages.isNotEmpty) {
+                // ユーザーが新しいメッセージを送信した場合のスクロール
                 _scrollToBottom();
               }
             }
@@ -181,16 +187,13 @@ class _ChatScreenState extends State<ChatScreen> {
     }
     final designBuilder = avatarDesign?.builder;
 
-    // マイページと同じロジック: selectedDesignがdefaultの場合のみphotoUrlを使用
-    final bool usePhotoUrl = (designId == null || designId == 'default') && user?.photoUrl != null;
-
+    // マイページと同じロジック: photoUrlは使用せず、デザインかイニシャルのみ表示
     Widget avatar = CustomCircleAvatar(
       frameId: user?.selectedFrame,
       radius: _kAvatarRadius,
       backgroundColor: backgroundColor,
-      backgroundImage: usePhotoUrl ? user?.photoUrl : null,
       designBuilder: designBuilder,
-      child: designBuilder == null && !usePhotoUrl
+      child: designId == null || designId == 'default'
           ? Text(
               displayName.isNotEmpty ? displayName[0].toUpperCase() : '?',
               style: TextStyle(color: textColor, fontSize: 14),
@@ -523,6 +526,38 @@ class _ChatScreenState extends State<ChatScreen> {
         );
       }
     });
+  }
+
+  void _scrollToFirstUnreadMessage() {
+    // 現在のユーザーが受信者である未読メッセージを探す
+    int firstUnreadIndex = -1;
+    for (int i = 0; i < _messages.length; i++) {
+      final message = _messages[i];
+      if (message.receiverId == _currentUserId && !message.isRead) {
+        firstUnreadIndex = i;
+        break;
+      }
+    }
+
+    // 未読メッセージが見つかった場合、その位置へスクロール
+    if (firstUnreadIndex != -1) {
+      final messageId = _messages[firstUnreadIndex].id;
+      final key = _messageKeys[messageId];
+
+      if (key?.currentContext != null) {
+        Future.delayed(const Duration(milliseconds: 300), () {
+          Scrollable.ensureVisible(
+            key!.currentContext!,
+            duration: const Duration(milliseconds: 500),
+            curve: Curves.easeInOut,
+            alignment: 0.1, // メッセージを画面上部寄りに表示
+          );
+        });
+      }
+    } else {
+      // 未読メッセージがない場合は最下部（最新メッセージ）へスクロール
+      _scrollToBottom();
+    }
   }
 
   // ジャンプ処理のデバウンス用

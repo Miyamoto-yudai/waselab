@@ -45,7 +45,6 @@ class _HomeScreenState extends State<HomeScreen> {
         });
       }
     } catch (e) {
-      debugPrint('ユーザー情報の取得エラー: $e');
     }
   }
 
@@ -118,9 +117,7 @@ class _HomeScreenState extends State<HomeScreen> {
       }
       await batch.commit();
       
-      debugPrint('サンプルデータを作成しました');
     } catch (e) {
-      debugPrint('サンプルデータの作成に失敗: $e');
     }
   }
 

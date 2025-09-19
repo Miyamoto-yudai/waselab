@@ -78,7 +78,6 @@ class _MyPageScreenState extends State<MyPageScreen> {
         }
       }
     } catch (e) {
-      debugPrint('ユーザー情報の取得エラー: $e');
       if (mounted) {
         setState(() {
           _isLoading = false;

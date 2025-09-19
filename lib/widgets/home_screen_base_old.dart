@@ -66,43 +66,36 @@ class _HomeScreenBaseState extends State<HomeScreenBase> {
   
   List<Experiment> get filteredExperiments {
     List<Experiment> filtered = List.from(widget.experiments);
-    debugPrint('HomeScreenBase: 初期実験数: ${filtered.length}, _showOnlyAvailable: $_showOnlyAvailable');
     
     // 参加可能な実験のみフィルター
     if (_showOnlyAvailable && widget.currentUserId != null) {
-      debugPrint('参加可能フィルター有効');
       final now = DateTime.now();
       final beforeFilterCount = filtered.length;
       filtered = filtered.where((experiment) {
         // 既に参加している実験は除外
         if (experiment.participants.contains(widget.currentUserId)) {
-          debugPrint('除外: ${experiment.title} - 既に参加');
           return false;
         }
         
         // 最大参加者数に達している実験は除外
         if (experiment.maxParticipants != null && 
             experiment.participants.length >= experiment.maxParticipants!) {
-          debugPrint('除外: ${experiment.title} - 参加者数上限');
           return false;
         }
         
         // 募集期間外の実験は除外
         if (experiment.recruitmentEndDate != null && 
             experiment.recruitmentEndDate!.isBefore(now)) {
-          debugPrint('除外: ${experiment.title} - 募集期間外 (募集終了: ${experiment.recruitmentEndDate})');
           return false;
         }
         
         // ステータスが募集中以外の実験は除外
         if (experiment.status != ExperimentStatus.recruiting) {
-          debugPrint('除外: ${experiment.title} - ステータス: ${experiment.status.name}');
           return false;
         }
         
         return true;
       }).toList();
-      debugPrint('参加可能フィルター後: $beforeFilterCount -> ${filtered.length}');
     }
     
     // 検索フィルター
@@ -197,7 +190,6 @@ class _HomeScreenBaseState extends State<HomeScreenBase> {
         break;
     }
     
-    debugPrint('最終的な実験数: ${filtered.length}');
     return filtered;
   }
 

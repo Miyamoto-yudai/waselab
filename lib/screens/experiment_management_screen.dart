@@ -79,7 +79,6 @@ class _ExperimentManagementScreenState extends State<ExperimentManagementScreen>
         });
       }
     } catch (e) {
-      debugPrint('データ読み込みエラー: $e');
       if (mounted) {
         setState(() => _isLoading = false);
       }
@@ -160,7 +159,6 @@ class _ExperimentManagementScreenState extends State<ExperimentManagementScreen>
         );
       }
     } catch (e) {
-      debugPrint('アンケートURL送信エラー: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(

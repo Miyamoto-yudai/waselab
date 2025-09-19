@@ -99,7 +99,6 @@ class _EvaluationHistoryScreenState extends State<EvaluationHistoryScreen>
         setState(() => _isLoading = false);
       }
     } catch (e) {
-      debugPrint('Error loading evaluations: $e');
       if (mounted) {
         setState(() => _isLoading = false);
       }

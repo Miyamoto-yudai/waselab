@@ -1,13 +1,14 @@
+import 'dart:async';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
-import 'package:flutter/foundation.dart';
 import '../models/admin.dart';
 import '../models/app_user.dart';
 import '../models/message.dart';
 import '../models/conversation.dart';
 import '../models/experiment.dart';
 import 'notification_service.dart';
+import 'debug_service.dart';
 
 /// 管理者サービスクラス
 class AdminService {
@@ -26,36 +27,57 @@ class AdminService {
   /// 管理者モードの切り替え
   void setAdminMode(bool mode) {
     _isAdminMode = mode;
-    debugPrint('管理者モード切り替え: $mode');
   }
 
   /// 現在のユーザーが管理者権限を持っているか確認
+  /// 認証状態に影響を与えないよう、慎重にエラーハンドリングを行う
   Future<bool> hasAdminPrivileges() async {
     try {
+      // 現在のユーザーを取得
       final user = _auth.currentUser;
-      if (user == null) return false;
+      if (user == null) {
+        // ユーザーがログインしていない場合
+        return false;
+      }
 
-      // 権限エラーを避けるため、エラーハンドリングを強化
+      // ユーザーの認証状態が不安定な場合はチェックをスキップ
+      // reload()を呼ばないことで、認証状態への影響を最小限にする
+      if (user.emailVerified == null && user.email != null && !user.email!.contains('@gmail.com')) {
+        // メール認証ユーザーで検証状態が不明な場合は、安全のためfalseを返す
+        return false;
+      }
+
+      // タイムアウトを設定して、権限チェックが長引かないようにする
       try {
         final adminDoc = await _firestore
             .collection('admins')
             .doc(user.uid)
-            .get();
+            .get()
+            .timeout(
+              const Duration(seconds: 2), // タイムアウトを短縮
+              onTimeout: () {
+                // タイムアウトした場合は権限なしとして扱う
+                throw TimeoutException('Admin check timeout');
+              },
+            );
 
+        // ドキュメントが存在すれば管理者
         return adminDoc.exists;
       } on FirebaseException catch (e) {
         // 権限エラーの場合は false を返す（通常のユーザー）
         if (e.code == 'permission-denied') {
-          // 権限エラーは通常のユーザーなので、エラーログを出力しない
+          // 権限エラーは通常のユーザーなので、静かに false を返す
           return false;
         }
-        // その他のFirebaseエラー
-        debugPrint('Firestore エラー: ${e.code} - ${e.message}');
+        // その他のFirebaseエラーも権限なしとして扱う
+        return false;
+      } on TimeoutException {
+        // タイムアウトエラーの場合も権限なしとして扱う
         return false;
       }
     } catch (e) {
-      // その他の予期しないエラー
-      debugPrint('管理者権限確認で予期しないエラー: $e');
+      // その他の予期しないエラーは権限なしとして扱う
+      // 認証状態に影響を与えないようにする
       return false;
     }
   }
@@ -73,10 +95,8 @@ class AdminService {
 
       if (adminDoc.exists) {
         _currentAdmin = Admin.fromFirestore(adminDoc);
-        debugPrint('管理者情報を再読み込みしました');
       }
     } catch (e) {
-      debugPrint('管理者情報再読み込みエラー: $e');
     }
   }
 
@@ -97,12 +117,8 @@ class AdminService {
   }) async {
     try {
       // デバッグ情報
-      debugPrint('========== 管理者ログイン開始 ==========');
-      debugPrint('メールアドレス: $email');
-      debugPrint('パスワード長: ${password.length}文字');
 
       // まず、通常のユーザーとしてログインを試みる
-      debugPrint('Step 1: Firebase認証を試行中...');
 
       // Firebaseで認証
       final UserCredential userCredential = await _auth.signInWithEmailAndPassword(
@@ -111,19 +127,12 @@ class AdminService {
       );
 
       if (userCredential.user == null) {
-        debugPrint('エラー: userCredentialがnull');
-        await _auth.signOut();
+        // 注意: ここでsignOut()を呼ばないことで、通常ユーザーの認証状態への影響を防ぐ
         return '認証に失敗しました';
       }
 
-      debugPrint('Step 2: 認証成功！');
-      debugPrint('UID: ${userCredential.user!.uid}');
-      debugPrint('メール: ${userCredential.user!.email}');
-      debugPrint('メール認証済み: ${userCredential.user!.emailVerified}');
 
       // 管理者権限を確認
-      debugPrint('Step 3: Firestoreから管理者権限を確認中...');
-      debugPrint('取得しようとしているドキュメント: admins/${userCredential.user!.uid}');
       
       DocumentSnapshot adminDoc;
       try {
@@ -131,42 +140,31 @@ class AdminService {
             .collection('admins')
             .doc(userCredential.user!.uid)
             .get();
-        debugPrint('Firestoreアクセス成功');
       } catch (firestoreError) {
-        debugPrint('Firestoreアクセスエラー: $firestoreError');
-        await _auth.signOut();
+        // 管理者権限確認失敗時もsignOut()を呼ばない
+        // 通常のユーザーがログインしたままにしておく
         return 'Firestore権限エラー: $firestoreError';
       }
 
-      debugPrint('管理者ドキュメント存在: ${adminDoc.exists}');
       
       if (adminDoc.exists) {
         final data = adminDoc.data();
-        debugPrint('管理者データ: $data');
       }
 
       if (!adminDoc.exists) {
-        debugPrint('エラー: adminsコレクションにドキュメントが見つかりません');
-        debugPrint('探しているUID: ${userCredential.user!.uid}');
-        
+
         // デバッグ用：adminsコレクションの読み取りは権限エラーになる可能性があるため削除
         // 代わりにUIDのみを出力
-        debugPrint('このUIDの管理者ドキュメントが存在しません');
-        debugPrint('Firebaseコンソールで admins/${userCredential.user!.uid} が存在するか確認してください');
-        
-        await _auth.signOut();
+
+        // 管理者でない場合も、通常ユーザーとしてログインしたままにしておく
+        // これにより、通常ユーザーが管理者ログインを試みてもログアウトされない
         return '管理者権限がありません\nUID: ${userCredential.user!.uid}\nadminsコレクションにこのUIDのドキュメントが見つかりません';
       }
 
       final admin = Admin.fromFirestore(adminDoc);
-      debugPrint('Step 4: 管理者オブジェクト作成成功');
-      debugPrint('管理者名: ${admin.name}');
-      debugPrint('役割: ${admin.role}');
-      debugPrint('アクティブ: ${admin.isActive}');
       
       if (!admin.isActive) {
-        debugPrint('エラー: 管理者アカウントが無効化されています');
-        await _auth.signOut();
+        // 無効化された管理者の場合も、通常ユーザーとしてログインしたままにしておく
         return '管理者アカウントが無効化されています';
       }
 
@@ -189,17 +187,9 @@ class AdminService {
 
       return null; // 成功
     } on FirebaseAuthException catch (e) {
-      debugPrint('========== Firebase認証エラー ==========');
-      debugPrint('エラーコード: ${e.code}');
-      debugPrint('エラーメッセージ: ${e.message}');
-      debugPrint('詳細: $e');
-      
-      // Firebase認証エラーの場合も念のためサインアウト
-      try {
-        await _auth.signOut();
-      } catch (signOutError) {
-        debugPrint('サインアウト中にエラー: $signOutError');
-      }
+
+      // Firebase認証エラーの場合もsignOut()を呼ばない
+      // これにより、管理者ログインの失敗が通常ユーザーの認証に影響しない
       
       switch (e.code) {
         case 'user-not-found':
@@ -218,16 +208,9 @@ class AdminService {
           return 'エラーが発生しました\nコード: ${e.code}\n詳細: ${e.message}';
       }
     } catch (e) {
-      debugPrint('========== 予期しないエラー ==========');
-      debugPrint('エラー: $e');
-      
-      // エラーが発生した場合は必ずサインアウト
-      try {
-        await _auth.signOut();
-        debugPrint('エラー後のサインアウト完了');
-      } catch (signOutError) {
-        debugPrint('サインアウト中にエラー: $signOutError');
-      }
+
+      // エラーが発生した場合もsignOut()を呼ばない
+      // 管理者ログインの失敗が通常ユーザーの認証状態に影響しないようにする
       
       return 'エラーが発生しました: $e';
     }
@@ -242,10 +225,8 @@ class AdminService {
           'fcmToken': fcmToken,
           'fcmTokenUpdatedAt': FieldValue.serverTimestamp(),
         });
-        debugPrint('管理者FCMトークンを保存しました: $fcmToken');
       }
     } catch (e) {
-      debugPrint('FCMトークン保存エラー: $e');
     }
   }
 
@@ -267,73 +248,41 @@ class AdminService {
       }
       return tokens;
     } catch (e) {
-      debugPrint('管理者FCMトークン取得エラー: $e');
       return [];
     }
   }
 
   /// サポートメッセージが送信されたときに管理者に通知を送る
+  /// Cloud Functionsで自動的にプッシュ通知が送信されるため、
+  /// ここではFirestoreへの通知記録のみを行う（重複送信を防ぐ）
   Future<void> notifyAdminsOfSupportMessage({
     required String senderName,
     required String message,
   }) async {
     try {
-      // すべてのアクティブな管理者を取得
-      final adminsSnapshot = await _firestore
-          .collection('admins')
-          .where('isActive', isEqualTo: true)
-          .get();
+      // Cloud Functionsがmessagesコレクションの変更を検知して
+      // 自動的に管理者にプッシュ通知を送信するため、
+      // ここではログ記録のみ行う
 
-      if (adminsSnapshot.docs.isEmpty) {
-        debugPrint('通知を送信する管理者が見つかりません');
-        return;
-      }
-
-      // 各管理者に通知を作成
-      final batch = _firestore.batch();
-      for (final adminDoc in adminsSnapshot.docs) {
-        final adminId = adminDoc.id;
-        final notificationRef = _firestore.collection('admin_notifications').doc();
-
-        batch.set(notificationRef, {
-          'adminId': adminId,
-          'type': 'support_message',
-          'title': '新しいお問い合わせ',
-          'body': '$senderNameさんからお問い合わせがあります',
-          'message': message.length > 100 ? '${message.substring(0, 100)}...' : message,
-          'senderName': senderName,
-          'isRead': false,
-          'createdAt': FieldValue.serverTimestamp(),
-        });
-
-        // FCMトークンがある場合はプッシュ通知も送信を試みる
-        final fcmToken = adminDoc.data()['fcmToken'] as String?;
-        if (fcmToken != null && fcmToken.isNotEmpty) {
-          // プッシュ通知の送信（エラーが起きても処理は継続）
-          _notificationService.sendPushNotification(
-            token: fcmToken,
-            title: '新しいお問い合わせ',
-            body: '$senderNameさんからお問い合わせがあります',
-            data: {
-              'type': 'support_message',
-              'senderId': senderName,
-              'message': message.length > 100 ? '${message.substring(0, 100)}...' : message,
-            },
-          ).catchError((e) {
-            debugPrint('プッシュ通知送信エラー（無視）: $e');
-          });
-        }
-      }
-
-      await batch.commit();
-      debugPrint('${adminsSnapshot.docs.length}人の管理者に通知を作成しました');
+      return;
     } catch (e) {
-      debugPrint('管理者への通知送信エラー: $e');
     }
   }
 
   /// 管理者ログアウト
   Future<void> signOut() async {
+    // デバッグログ記録
+    AuthDebugService().log(
+      '🔴 AdminService.signOut() called',
+      type: LogType.critical,
+      stackTrace: StackTrace.current,
+      data: {
+        'currentAdmin': _currentAdmin?.uid,
+        'currentUser': _auth.currentUser?.uid,
+        'timestamp': DateTime.now().toIso8601String(),
+      },
+    );
+
     if (_currentAdmin != null) {
       // FCMトークンをクリア
       try {
@@ -342,7 +291,6 @@ class AdminService {
           'fcmTokenUpdatedAt': FieldValue.delete(),
         });
       } catch (e) {
-        debugPrint('FCMトークンクリアエラー: $e');
       }
 
       await _logAdminActivity(
@@ -378,7 +326,6 @@ class AdminService {
       final snapshot = await query.get();
       return snapshot.docs.map((doc) => AppUser.fromFirestore(doc)).toList();
     } catch (e) {
-      debugPrint('ユーザー一覧取得エラー: $e');
       return [];
     }
   }
@@ -413,7 +360,6 @@ class AdminService {
 
       return usersMap.values.toList();
     } catch (e) {
-      debugPrint('ユーザー検索エラー: $e');
       return [];
     }
   }
@@ -450,7 +396,6 @@ class AdminService {
         'conversationCount': conversationsSnapshot.docs.length,
       };
     } catch (e) {
-      debugPrint('ユーザー詳細取得エラー: $e');
       return null;
     }
   }
@@ -490,7 +435,6 @@ class AdminService {
 
       return chatHistory;
     } catch (e) {
-      debugPrint('チャット履歴取得エラー: $e');
       return [];
     }
   }
@@ -577,7 +521,6 @@ class AdminService {
       
       return true;
     } catch (e) {
-      debugPrint('ユーザーステータス更新エラー: $e');
       return false;
     }
   }
@@ -612,7 +555,6 @@ class AdminService {
 
       return true;
     } catch (e) {
-      debugPrint('サポートメッセージ送信エラー: $e');
       return false;
     }
   }
@@ -657,7 +599,6 @@ class AdminService {
 
       return true;
     } catch (e) {
-      debugPrint('お知らせ送信エラー: $e');
       return false;
     }
   }
@@ -696,7 +637,6 @@ class AdminService {
         'newUsersThisMonth': newUsersThisMonth,
       };
     } catch (e) {
-      debugPrint('統計情報取得エラー: $e');
       return {
         'totalUsers': 0,
         'activeUsers': 0,
@@ -720,7 +660,6 @@ class AdminService {
         'timestamp': FieldValue.serverTimestamp(),
       });
     } catch (e) {
-      debugPrint('管理者活動ログ記録エラー: $e');
     }
   }
 
@@ -737,7 +676,6 @@ class AdminService {
       final admin = Admin.fromFirestore(adminDoc);
       return admin.isActive;
     } catch (e) {
-      debugPrint('管理者権限確認エラー: $e');
       return false;
     }
   }

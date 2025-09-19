@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Auth Persistence Test</title>
+    <style>
+        body {
+            font-family: monospace;
+            padding: 20px;
+            background: #f0f0f0;
+        }
+        iframe {
+            width: 100%;
+            height: 600px;
+            border: 2px solid #333;
+            margin: 20px 0;
+        }
+        .logs {
+            background: black;
+            color: lime;
+            padding: 10px;
+            height: 200px;
+            overflow-y: scroll;
+            margin: 10px 0;
+        }
+        button {
+            padding: 10px 20px;
+            margin: 5px;
+            font-size: 16px;
+        }
+    </style>
+</head>
+<body>
+    <h1>認証永続化テスト - Chrome</h1>
+
+    <div>
+        <button onclick="reloadFrame()">🔄 アプリをリロード</button>
+        <button onclick="clearLogs()">🗑️ ログクリア</button>
+        <button onclick="checkAuth()">🔍 認証状態確認</button>
+    </div>
+
+    <iframe id="appFrame" src="http://localhost:50311"></iframe>
+
+    <h3>デバッグログ</h3>
+    <div id="logs" class="logs"></div>
+
+    <script>
+        const logsDiv = document.getElementById('logs');
+        const appFrame = document.getElementById('appFrame');
+
+        function addLog(message) {
+            const time = new Date().toTimeString().split(' ')[0];
+            logsDiv.innerHTML += `[${time}] ${message}<br>`;
+            logsDiv.scrollTop = logsDiv.scrollHeight;
+        }
+
+        function reloadFrame() {
+            addLog('🔄 リロード開始...');
+            appFrame.src = appFrame.src;
+            setTimeout(() => {
+                addLog('✅ リロード完了');
+                checkAuth();
+            }, 3000);
+        }
+
+        function clearLogs() {
+            logsDiv.innerHTML = '';
+            addLog('🗑️ ログをクリアしました');
+        }
+
+        function checkAuth() {
+            try {
+                // iframeの内容にアクセスを試みる（CORS制限があるかもしれない）
+                const iframeDoc = appFrame.contentDocument || appFrame.contentWindow.document;
+                const bodyText = iframeDoc.body.innerText;
+
+                if (bodyText.includes('ログイン')) {
+                    addLog('❌ ログイン画面が表示されています');
+                } else if (bodyText.includes('ホーム') || bodyText.includes('実験')) {
+                    addLog('✅ ホーム画面が表示されています（ログイン維持）');
+                } else {
+                    addLog('⚠️ 画面の状態を判定できません');
+                }
+            } catch (e) {
+                addLog('⚠️ CORS制限によりiframe内容を確認できません');
+                addLog('👉 ブラウザで直接 http://localhost:50311 を開いて確認してください');
+            }
+        }
+
+        // 初期ログ
+        addLog('🚀 テストページを開始しました');
+        addLog('📍 アプリURL: http://localhost:50311');
+
+        // 3秒後に初回チェック
+        setTimeout(() => {
+            addLog('🔍 初回認証状態チェック...');
+            checkAuth();
+        }, 3000);
+    </script>
+</body>
+</html>

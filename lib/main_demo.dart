@@ -13,7 +13,6 @@ import 'shared/app_wrapper.dart';
 void main() {
   // リリースモードではデバッグツールを無効化して高速化
   if (kReleaseMode) {
-    debugPrint = (String? message, {int? wrapWidth}) {};
   }
   
   runApp(const WaseLaboApp(

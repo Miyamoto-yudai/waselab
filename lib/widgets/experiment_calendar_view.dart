@@ -49,8 +49,6 @@ class _ExperimentCalendarViewState extends State<ExperimentCalendarView> {
       final endDate = widget.experiment.experimentPeriodEnd ?? 
           DateTime.now().add(const Duration(days: 30));
       
-      debugPrint('Loading slots for experiment: ${widget.experiment.id}');
-      debugPrint('Period: $startDate to $endDate');
       
       // 期間内の全スロットを取得
       DateTime currentDate = startDate;
@@ -66,17 +64,14 @@ class _ExperimentCalendarViewState extends State<ExperimentCalendarView> {
           if (slots.isNotEmpty) {
             final dateKey = DateTime(currentDate.year, currentDate.month, currentDate.day);
             tempSlots[dateKey] = slots;
-            debugPrint('Found ${slots.length} slots for $dateKey');
           }
         } catch (e) {
-          debugPrint('Error loading slots for $currentDate: $e');
           // 個別の日付でエラーが発生しても続行
         }
         
         currentDate = currentDate.add(const Duration(days: 1));
       }
       
-      debugPrint('Total dates with slots: ${tempSlots.length}');
       
       setState(() {
         _slotsByDate = tempSlots;
@@ -94,9 +89,7 @@ class _ExperimentCalendarViewState extends State<ExperimentCalendarView> {
           );
         }
       }
-    } catch (e, stackTrace) {
-      debugPrint('Error in _loadSlots: $e');
-      debugPrint('StackTrace: $stackTrace');
+    } catch (e) {
       setState(() => _isLoading = false);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

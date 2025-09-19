@@ -61,11 +61,6 @@ class _ExperimentDetailScreenState extends State<ExperimentDetailScreen> {
     // 同意項目のチェック状態を初期化
     _detailConsentChecked = List.filled(widget.experiment.consentItems.length, false);
     // デバッグ: consentItemsの内容を確認
-    debugPrint('=== ExperimentDetailScreen: consentItems確認 ===');
-    debugPrint('実験タイトル: ${widget.experiment.title}');
-    debugPrint('consentItems数: ${widget.experiment.consentItems.length}');
-    debugPrint('consentItems内容: ${widget.experiment.consentItems}');
-    debugPrint('=======================================');
     _checkParticipation();
     _loadExperimenterName();
     _loadUserReservation();
@@ -128,7 +123,6 @@ class _ExperimentDetailScreenState extends State<ExperimentDetailScreen> {
             });
           } catch (e) {
             // スロット情報が取得できない場合は予約情報のみ保持
-            debugPrint('スロット情報の取得エラー（無視）: $e');
             setState(() {
               _currentUserReservation = reservation;
             });
@@ -137,7 +131,6 @@ class _ExperimentDetailScreenState extends State<ExperimentDetailScreen> {
       }
     } catch (e) {
       // 予約情報が取得できなくても実験詳細は表示する
-      debugPrint('予約情報の取得エラー（無視）: $e');
     }
   }
 
@@ -700,7 +693,6 @@ class _ExperimentDetailScreenState extends State<ExperimentDetailScreen> {
         }
       }
     } catch (e) {
-      debugPrint('カレンダー連携エラー: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -813,7 +805,6 @@ class _ExperimentDetailScreenState extends State<ExperimentDetailScreen> {
             );
           }
         } catch (e) {
-          debugPrint('カレンダー登録エラー: $e');
         }
       }
 
@@ -948,7 +939,6 @@ class _ExperimentDetailScreenState extends State<ExperimentDetailScreen> {
         }
       }
     } catch (e) {
-      debugPrint('参加申請エラー: $e');
       setState(() => _isLoading = false);
       
       if (mounted) {

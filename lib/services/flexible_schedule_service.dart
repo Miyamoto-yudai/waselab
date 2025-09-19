@@ -1,5 +1,4 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:flutter/foundation.dart';
 import '../models/experiment.dart';
 import '../services/notification_service.dart';
 import '../services/google_calendar_service.dart';
@@ -88,11 +87,9 @@ class FlexibleScheduleService {
             });
           }
         } catch (e) {
-          debugPrint('実験作成者のカレンダー登録エラー: $e');
         }
       }
     } catch (e) {
-      debugPrint('日程設定エラー: $e');
       rethrow;
     }
   }
@@ -144,7 +141,6 @@ class FlexibleScheduleService {
       
       return eventId;
     } catch (e) {
-      debugPrint('参加者のカレンダー登録エラー: $e');
       return null;
     }
   }
@@ -176,7 +172,6 @@ class FlexibleScheduleService {
               try {
                 await _calendarService.removeEventFromCalendar(eventIds['creator']);
               } catch (e) {
-                debugPrint('実験作成者のカレンダー削除エラー: $e');
               }
             }
             
@@ -185,7 +180,6 @@ class FlexibleScheduleService {
               try {
                 await _calendarService.removeEventFromCalendar(eventIds['participant']);
               } catch (e) {
-                debugPrint('参加者のカレンダー削除エラー: $e');
               }
             }
           }
@@ -205,7 +199,6 @@ class FlexibleScheduleService {
         );
       }
     } catch (e) {
-      debugPrint('日程キャンセルエラー: $e');
       rethrow;
     }
   }

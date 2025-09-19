@@ -56,8 +56,10 @@ class NavigationScreenState extends State<NavigationScreen> {
     _loadPendingSurveys();
     _loadUnreadNotifications();
     _loadCurrentUser();
-    // 管理者権限チェックを遅延実行（画面が完全に読み込まれた後）
-    Future.delayed(const Duration(milliseconds: 500), () {
+    // 管理者権限チェックを遅延実行（画面が完全に読み込まれ、認証状態が安定した後）
+    // より長い遅延にすることで、Firebase Authの状態に影響を与えないようにする
+    // 特にメール認証の場合、認証状態の復元に時間がかかることがある
+    Future.delayed(const Duration(seconds: 5), () {
       if (mounted) {
         _checkAdminPrivileges();
       }
@@ -66,11 +68,32 @@ class NavigationScreenState extends State<NavigationScreen> {
   }
 
   Future<void> _checkAdminPrivileges() async {
-    final hasAdmin = await _adminService.hasAdminPrivileges();
-    if (mounted) {
-      setState(() {
-        _hasAdminPrivileges = hasAdmin;
-      });
+    try {
+      // 現在のユーザーが存在することを確認
+      final currentUser = _authService.currentUser;
+      if (currentUser == null) {
+        if (mounted) {
+          setState(() {
+            _hasAdminPrivileges = false;
+          });
+        }
+        return;
+      }
+
+      // 管理者権限チェック（エラーハンドリング強化済み）
+      final hasAdmin = await _adminService.hasAdminPrivileges();
+      if (mounted) {
+        setState(() {
+          _hasAdminPrivileges = hasAdmin;
+        });
+      }
+    } catch (e) {
+      // エラーが発生した場合は管理者権限なしとして扱う
+      if (mounted) {
+        setState(() {
+          _hasAdminPrivileges = false;
+        });
+      }
     }
   }
 
@@ -140,7 +163,6 @@ class NavigationScreenState extends State<NavigationScreen> {
         });
       }
     } catch (e) {
-      debugPrint('Error loading pending evaluations: $e');
     }
   }
 
@@ -176,7 +198,6 @@ class NavigationScreenState extends State<NavigationScreen> {
         });
       }
     } catch (e) {
-      debugPrint('Error loading pending surveys: $e');
     }
   }
 

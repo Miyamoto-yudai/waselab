@@ -29,15 +29,12 @@ class NotificationService {
           type == NotificationType.experimentCompleted ||
           type == NotificationType.experimentStarted) {
         shouldSendNotification = prefs.getBool('experiment_notifications') ?? true;
-        print('実験通知設定: $shouldSendNotification (type=${type.value})');
       } else if (type == NotificationType.message) {
         shouldSendNotification = prefs.getBool('message_notifications') ?? true;
-        print('メッセージ通知設定: $shouldSendNotification');
       }
 
       // 通知が無効の場合は作成しない
       if (!shouldSendNotification) {
-        print('通知設定が無効のため、通知を作成しません: type=${type.value}');
         return;
       }
       
@@ -52,11 +49,8 @@ class NotificationService {
         data: data,
       );
 
-      print('通知を作成します: type=${type.value}, userId=$userId, title=$title');
       final docRef = await _firestore.collection(_collection).add(notification.toFirestore());
-      print('通知が正常に作成されました: docId=${docRef.id}, type=${type.value}, userId=$userId');
     } catch (e) {
-      print('通知の作成に失敗しました: $e');
       rethrow;
     }
   }
@@ -94,7 +88,6 @@ class NotificationService {
       
       return count;
     } catch (e) {
-      print('未読通知数の取得に失敗しました: $e');
       return 0;
     }
   }
@@ -123,7 +116,6 @@ class NotificationService {
           .doc(notificationId)
           .update({'isRead': true});
     } catch (e) {
-      print('通知の既読処理に失敗しました: $e');
       rethrow;
     }
   }
@@ -144,7 +136,6 @@ class NotificationService {
 
       await batch.commit();
     } catch (e) {
-      print('すべての通知の既読処理に失敗しました: $e');
       rethrow;
     }
   }
@@ -154,7 +145,6 @@ class NotificationService {
     try {
       await _firestore.collection(_collection).doc(notificationId).delete();
     } catch (e) {
-      print('通知の削除に失敗しました: $e');
       rethrow;
     }
   }
@@ -177,7 +167,6 @@ class NotificationService {
 
       await batch.commit();
     } catch (e) {
-      print('古い通知の削除に失敗しました: $e');
     }
   }
 
@@ -397,9 +386,7 @@ class NotificationService {
         'body': body,
         'data': data ?? {},
       });
-      print('プッシュ通知を送信しました: $title');
     } catch (e) {
-      print('プッシュ通知の送信に失敗しました: $e');
       // エラーが発生してもアプリの動作は継続
     }
   }
@@ -430,7 +417,6 @@ class NotificationService {
       
       await batch.commit();
     } catch (e) {
-      print('全体通知の送信に失敗しました: $e');
       rethrow;
     }
   }

@@ -3,6 +3,7 @@ import '../models/app_user.dart';
 import '../services/auth_service.dart';
 import '../services/experiment_service.dart';
 import '../widgets/custom_circle_avatar.dart';
+import '../models/avatar_color.dart';
 import '../models/avatar_design.dart';
 import '../screens/evaluation_history_screen.dart';
 
@@ -23,7 +24,7 @@ class UserDetailDialog extends StatefulWidget {
 class _UserDetailDialogState extends State<UserDetailDialog> {
   final AuthService _authService = AuthService();
   final ExperimentService _experimentService = ExperimentService();
-  
+
   AppUser? _user;
   int _createdExperiments = 0;
   int _participatedExperiments = 0;
@@ -42,11 +43,14 @@ class _UserDetailDialogState extends State<UserDetailDialog> {
       final userDoc = await _authService.getUserDocument(widget.userId);
       if (userDoc != null && userDoc.exists) {
         // 募集した実験数を取得
-        final createdExps = await _experimentService.getUserCreatedExperiments(widget.userId);
-        
+        final createdExps = await _experimentService.getUserCreatedExperiments(
+          widget.userId,
+        );
+
         // 参加した実験数を取得
-        final participatedExps = await _experimentService.getUserParticipatedExperiments(widget.userId);
-        
+        final participatedExps = await _experimentService
+            .getUserParticipatedExperiments(widget.userId);
+
         setState(() {
           _user = AppUser.fromFirestore(userDoc);
           _createdExperiments = createdExps.length;
@@ -60,16 +64,66 @@ class _UserDetailDialogState extends State<UserDetailDialog> {
         });
       }
     } catch (e) {
-      debugPrint('Error loading user details: $e');
       setState(() {
         _isLoading = false;
       });
     }
   }
 
+  String _getDisplayName() {
+    final name = _user?.name;
+    if (name != null && name.isNotEmpty) {
+      return name;
+    }
+    return widget.userName;
+  }
+
+  Color _resolveAvatarColor(AppUser? user) {
+    final colorId = user?.selectedColor ?? 'default';
+    final avatarColor = AvatarColors.getById(colorId);
+    return AvatarColors.getColorValue(avatarColor);
+  }
+
+  Color _resolveAvatarTextColor(Color background) {
+    return background.computeLuminance() > 0.5 ? Colors.black87 : Colors.white;
+  }
+
+  Widget _buildHeaderAvatar() {
+    final user = _user;
+    final backgroundColor = _resolveAvatarColor(user);
+    final textColor = _resolveAvatarTextColor(backgroundColor);
+    final trimmedName = _getDisplayName().trim();
+    final initial = trimmedName.isNotEmpty
+        ? trimmedName.substring(0, 1).toUpperCase()
+        : '?';
+    final designId = user?.selectedDesign;
+    AvatarDesign? avatarDesign;
+    if (designId != null && designId != 'default') {
+      avatarDesign = AvatarDesigns.getById(designId);
+    }
+
+    // マイページと同じロジック: photoUrlは使用せず、デザインかイニシャルのみ表示
+    return CustomCircleAvatar(
+      frameId: user?.selectedFrame,
+      radius: 30,
+      backgroundColor: backgroundColor,
+      designBuilder: avatarDesign?.builder,
+      child: designId == null || designId == 'default'
+          ? Text(
+              initial,
+              style: TextStyle(
+                color: textColor,
+                fontSize: 24,
+                fontWeight: FontWeight.bold,
+              ),
+            )
+          : null,
+    );
+  }
+
   String _getAffiliation() {
     if (_user == null) return '情報なし';
-    
+
     if (_user!.isWasedaUser) {
       String affiliation = '早稲田大学';
       if (_user!.department != null) {
@@ -80,21 +134,21 @@ class _UserDetailDialogState extends State<UserDetailDialog> {
       }
       return affiliation;
     }
-    
+
     return '一般';
   }
 
   String _getUserType() {
     if (_user == null) return '不明';
-    
+
     if (_user!.isWasedaUser) {
       // 学部情報があれば学生とみなす
       if (_user!.department != null || _user!.grade != null) {
         return '学生';
       }
-      return '教職員';
+      return '学生・教職員';
     }
-    
+
     return '一般';
   }
 
@@ -112,19 +166,13 @@ class _UserDetailDialogState extends State<UserDetailDialog> {
             width: 100,
             child: Text(
               label,
-              style: TextStyle(
-                color: Colors.grey[600],
-                fontSize: 14,
-              ),
+              style: TextStyle(color: Colors.grey[600], fontSize: 14),
             ),
           ),
           Expanded(
             child: Text(
               value,
-              style: const TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w500,
-              ),
+              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
             ),
           ),
         ],
@@ -138,10 +186,7 @@ class _UserDetailDialogState extends State<UserDetailDialog> {
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: color.withValues(alpha: 0.3),
-          width: 1,
-        ),
+        border: Border.all(color: color.withValues(alpha: 0.3), width: 1),
       ),
       child: Column(
         children: [
@@ -156,19 +201,18 @@ class _UserDetailDialogState extends State<UserDetailDialog> {
             ),
           ),
           const SizedBox(height: 4),
-          Text(
-            label,
-            style: TextStyle(
-              fontSize: 12,
-              color: Colors.grey[600],
-            ),
-          ),
+          Text(label, style: TextStyle(fontSize: 12, color: Colors.grey[600])),
         ],
       ),
     );
   }
 
-  Widget _buildEvaluationStat(String label, int count, IconData icon, Color color) {
+  Widget _buildEvaluationStat(
+    String label,
+    int count,
+    IconData icon,
+    Color color,
+  ) {
     return Column(
       children: [
         Row(
@@ -199,21 +243,24 @@ class _UserDetailDialogState extends State<UserDetailDialog> {
     );
   }
 
-  Widget _buildEarningsCard(String label, int amount, IconData icon, Color color, {required bool isTotal}) {
+  Widget _buildEarningsCard(
+    String label,
+    int amount,
+    IconData icon,
+    Color color, {
+    required bool isTotal,
+  }) {
     final formattedAmount = amount.toString().replaceAllMapped(
       RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
       (Match m) => '${m[1]},',
     );
-    
+
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: color.withValues(alpha: 0.3),
-          width: 1,
-        ),
+        border: Border.all(color: color.withValues(alpha: 0.3), width: 1),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -249,9 +296,7 @@ class _UserDetailDialogState extends State<UserDetailDialog> {
   @override
   Widget build(BuildContext context) {
     return Dialog(
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       child: Container(
         width: 400,
         constraints: BoxConstraints(
@@ -264,31 +309,14 @@ class _UserDetailDialogState extends State<UserDetailDialog> {
             // ヘッダー部分（固定）
             Row(
               children: [
-                CustomCircleAvatar(
-                  frameId: _user?.selectedFrame,
-                  radius: 30,
-                  backgroundColor: const Color(0xFF8E1728),
-                  designBuilder: _user?.selectedDesign != null && _user?.selectedDesign != 'default'
-                      ? AvatarDesigns.getById(_user!.selectedDesign!).builder
-                      : null,
-                  child: _user?.selectedDesign == null || _user?.selectedDesign == 'default'
-                      ? Text(
-                          widget.userName.isNotEmpty ? widget.userName[0] : '?',
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 24,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        )
-                      : null,
-                ),
+                _buildHeaderAvatar(),
                 const SizedBox(width: 16),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        widget.userName,
+                        _getDisplayName(),
                         style: const TextStyle(
                           fontSize: 20,
                           fontWeight: FontWeight.bold,
@@ -296,7 +324,10 @@ class _UserDetailDialogState extends State<UserDetailDialog> {
                       ),
                       const SizedBox(height: 4),
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 2,
+                        ),
                         decoration: BoxDecoration(
                           color: const Color(0xFF8E1728).withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(12),
@@ -320,229 +351,269 @@ class _UserDetailDialogState extends State<UserDetailDialog> {
               ],
             ),
             const Divider(height: 24),
-            
+
             // コンテンツ部分（スクロール可能）
             Expanded(
               child: _isLoading
-                ? const Center(
-                    child: CircularProgressIndicator(
-                      valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF8E1728)),
-                    ),
-                  )
-                : SingleChildScrollView(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-              // ユーザー情報
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: Colors.grey[50],
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'プロフィール',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.black87,
+                  ? const Center(
+                      child: CircularProgressIndicator(
+                        valueColor: AlwaysStoppedAnimation<Color>(
+                          Color(0xFF8E1728),
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 12),
-                    _buildInfoRow('所属', _getAffiliation(), icon: Icons.school),
-                    if (_user != null && _user!.gender != null)
-                      _buildInfoRow('性別', _user!.gender!, icon: Icons.person),
-                    if (_user != null && _user!.age != null)
-                      _buildInfoRow('年齢', '${_user!.age}歳', icon: Icons.cake),
-                    if (_user != null && _user!.bio != null && _user!.bio!.isNotEmpty)
-                      _buildInfoRow('自己紹介', _user!.bio!, icon: Icons.info_outline),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 16),
-              
-              // 実験統計
-              const Text(
-                '実験統計',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black87,
-                ),
-              ),
-              const SizedBox(height: 8),
-              Row(
-                children: [
-                  Expanded(
-                    child: _buildStatCard(
-                      '募集した実験',
-                      _createdExperiments,
-                      Icons.science,
-                      Colors.blue,
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: _buildStatCard(
-                      '参加した実験',
-                      _participatedExperiments,
-                      Icons.group,
-                      Colors.green,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              
-              // 評価統計
-              if (_user != null) ...[  
-                const Text(
-                  '評価統計',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.black87,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [
-                        Colors.green.withValues(alpha: 0.05),
-                        Colors.red.withValues(alpha: 0.05),
-                      ],
-                      stops: _user!.goodCount + _user!.badCount > 0
-                          ? [_user!.goodCount / (_user!.goodCount + _user!.badCount), 
-                             _user!.goodCount / (_user!.goodCount + _user!.badCount)]
-                          : [0.5, 0.5],
-                    ),
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(
-                      color: Colors.grey.withValues(alpha: 0.2),
-                      width: 1,
-                    ),
-                  ),
-                  child: Column(
-                    children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                      children: [
-                        _buildEvaluationStat(
-                          'Good',
-                          _user!.goodCount,
-                          Icons.thumb_up,
-                          Colors.green,
-                        ),
-                        Container(
-                          width: 1,
-                          height: 40,
-                          color: Colors.grey[300],
-                        ),
-                        _buildEvaluationStat(
-                          'Bad',
-                          _user!.badCount,
-                          Icons.thumb_down,
-                          Colors.red,
-                        ),
-                      ],
-                    ),
-                    if (_user!.goodCount + _user!.badCount > 0) ...[  
-                      const SizedBox(height: 12),
-                      ClipRRect(
-                        borderRadius: BorderRadius.circular(8),
-                        child: LinearProgressIndicator(
-                          value: _user!.goodCount / (_user!.goodCount + _user!.badCount),
-                          backgroundColor: Colors.red.withValues(alpha: 0.2),
-                          valueColor: AlwaysStoppedAnimation<Color>(
-                            Colors.green.withValues(alpha: 0.6),
+                    )
+                  : SingleChildScrollView(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // ユーザー情報
+                          Container(
+                            padding: const EdgeInsets.all(16),
+                            decoration: BoxDecoration(
+                              color: Colors.grey[50],
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text(
+                                  'プロフィール',
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.black87,
+                                  ),
+                                ),
+                                const SizedBox(height: 12),
+                                _buildInfoRow(
+                                  '所属',
+                                  _getAffiliation(),
+                                  icon: Icons.school,
+                                ),
+                                if (_user != null && _user!.gender != null)
+                                  _buildInfoRow(
+                                    '性別',
+                                    _user!.gender!,
+                                    icon: Icons.person,
+                                  ),
+                                if (_user != null && _user!.age != null)
+                                  _buildInfoRow(
+                                    '年齢',
+                                    '${_user!.age}歳',
+                                    icon: Icons.cake,
+                                  ),
+                                if (_user != null &&
+                                    _user!.bio != null &&
+                                    _user!.bio!.isNotEmpty)
+                                  _buildInfoRow(
+                                    '自己紹介',
+                                    _user!.bio!,
+                                    icon: Icons.info_outline,
+                                  ),
+                              ],
+                            ),
                           ),
-                          minHeight: 8,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        'Good率: ${(_user!.goodCount / (_user!.goodCount + _user!.badCount) * 100).toStringAsFixed(1)}%',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: Colors.grey[600],
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ],
-                    const SizedBox(height: 8),
-                    SizedBox(
-                      width: double.infinity,
-                      child: TextButton.icon(
-                        onPressed: () {
-                          Navigator.pop(context);
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => EvaluationHistoryScreen(
-                                userId: widget.userId,
-                                userName: widget.userName,
-                                isMyHistory: false,
+                          const SizedBox(height: 16),
+
+                          // 実験統計
+                          const Text(
+                            '実験統計',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.black87,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: _buildStatCard(
+                                  '募集した実験',
+                                  _createdExperiments,
+                                  Icons.science,
+                                  Colors.blue,
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: _buildStatCard(
+                                  '参加した実験',
+                                  _participatedExperiments,
+                                  Icons.group,
+                                  Colors.green,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 12),
+
+                          // 評価統計
+                          if (_user != null) ...[
+                            const Text(
+                              '評価統計',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.black87,
                               ),
                             ),
-                          );
-                        },
-                        icon: const Icon(Icons.history, size: 16),
-                        label: const Text('評価履歴を見る'),
-                        style: TextButton.styleFrom(
-                          foregroundColor: const Color(0xFF8E1728),
-                        ),
+                            const SizedBox(height: 8),
+                            Container(
+                              padding: const EdgeInsets.all(16),
+                              decoration: BoxDecoration(
+                                gradient: LinearGradient(
+                                  colors: [
+                                    Colors.green.withValues(alpha: 0.05),
+                                    Colors.red.withValues(alpha: 0.05),
+                                  ],
+                                  stops: _user!.goodCount + _user!.badCount > 0
+                                      ? [
+                                          _user!.goodCount /
+                                              (_user!.goodCount +
+                                                  _user!.badCount),
+                                          _user!.goodCount /
+                                              (_user!.goodCount +
+                                                  _user!.badCount),
+                                        ]
+                                      : [0.5, 0.5],
+                                ),
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(
+                                  color: Colors.grey.withValues(alpha: 0.2),
+                                  width: 1,
+                                ),
+                              ),
+                              child: Column(
+                                children: [
+                                  Row(
+                                    mainAxisAlignment:
+                                        MainAxisAlignment.spaceEvenly,
+                                    children: [
+                                      _buildEvaluationStat(
+                                        'Good',
+                                        _user!.goodCount,
+                                        Icons.thumb_up,
+                                        Colors.green,
+                                      ),
+                                      Container(
+                                        width: 1,
+                                        height: 40,
+                                        color: Colors.grey[300],
+                                      ),
+                                      _buildEvaluationStat(
+                                        'Bad',
+                                        _user!.badCount,
+                                        Icons.thumb_down,
+                                        Colors.red,
+                                      ),
+                                    ],
+                                  ),
+                                  if (_user!.goodCount + _user!.badCount >
+                                      0) ...[
+                                    const SizedBox(height: 12),
+                                    ClipRRect(
+                                      borderRadius: BorderRadius.circular(8),
+                                      child: LinearProgressIndicator(
+                                        value:
+                                            _user!.goodCount /
+                                            (_user!.goodCount +
+                                                _user!.badCount),
+                                        backgroundColor: Colors.red.withValues(
+                                          alpha: 0.2,
+                                        ),
+                                        valueColor:
+                                            AlwaysStoppedAnimation<Color>(
+                                              Colors.green.withValues(
+                                                alpha: 0.6,
+                                              ),
+                                            ),
+                                        minHeight: 8,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      'Good率: ${(_user!.goodCount / (_user!.goodCount + _user!.badCount) * 100).toStringAsFixed(1)}%',
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        color: Colors.grey[600],
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                  ],
+                                  const SizedBox(height: 8),
+                                  SizedBox(
+                                    width: double.infinity,
+                                    child: TextButton.icon(
+                                      onPressed: () {
+                                        Navigator.pop(context);
+                                        Navigator.push(
+                                          context,
+                                          MaterialPageRoute(
+                                            builder: (context) =>
+                                                EvaluationHistoryScreen(
+                                                  userId: widget.userId,
+                                                  userName: widget.userName,
+                                                  isMyHistory: false,
+                                                ),
+                                          ),
+                                        );
+                                      },
+                                      icon: const Icon(Icons.history, size: 16),
+                                      label: const Text('評価履歴を見る'),
+                                      style: TextButton.styleFrom(
+                                        foregroundColor: const Color(
+                                          0xFF8E1728,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(height: 12),
+
+                            // 収益統計
+                            if (_user!.totalEarnings > 0 ||
+                                _user!.monthlyEarnings > 0) ...[
+                              const Text(
+                                '収益統計',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.black87,
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: _buildEarningsCard(
+                                      '総収益',
+                                      _user!.totalEarnings,
+                                      Icons.account_balance_wallet,
+                                      Colors.amber,
+                                      isTotal: true,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: _buildEarningsCard(
+                                      '今月の収益',
+                                      _user!.monthlyEarnings,
+                                      Icons.trending_up,
+                                      Colors.teal,
+                                      isTotal: false,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 12),
+                            ],
+                          ],
+                        ],
                       ),
                     ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 12),
-                
-                // 収益統計
-                if (_user!.totalEarnings > 0 || _user!.monthlyEarnings > 0) ...[  
-                  const Text(
-                    '収益統計',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.black87,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: _buildEarningsCard(
-                          '総収益',
-                          _user!.totalEarnings,
-                          Icons.account_balance_wallet,
-                          Colors.amber,
-                          isTotal: true,
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: _buildEarningsCard(
-                          '今月の収益',
-                          _user!.monthlyEarnings,
-                          Icons.trending_up,
-                          Colors.teal,
-                          isTotal: false,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-                ],
-              ],
-                    ],
-                  ),
-                ),
             ),
           ],
         ),

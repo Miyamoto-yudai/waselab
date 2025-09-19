@@ -20,7 +20,6 @@ class MonthlyReportService {
       // レポートが存在しない場合は生成
       return await generateMonthlyReport(userId, year, month);
     } catch (e) {
-      print('月次レポート取得エラー: $e');
       return null;
     }
   }
@@ -156,7 +155,6 @@ class MonthlyReportService {
 
       return report;
     } catch (e) {
-      print('月次レポート生成エラー: $e');
       return null;
     }
   }
@@ -175,7 +173,6 @@ class MonthlyReportService {
           .map((doc) => MonthlyReport.fromFirestore(doc))
           .toList();
     } catch (e) {
-      print('ユーザーレポート取得エラー: $e');
       return [];
     }
   }
@@ -199,7 +196,6 @@ class MonthlyReportService {
 
       return availableMonths.toList()..sort((a, b) => b.compareTo(a));
     } catch (e) {
-      print('利用可能な月取得エラー: $e');
       return [];
     }
   }

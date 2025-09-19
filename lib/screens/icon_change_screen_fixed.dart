@@ -56,7 +56,6 @@ class _IconChangeScreenState extends State<IconChangeScreen>
         });
       }
     } catch (e) {
-      debugPrint('ユーザー情報の取得エラー: $e');
       if (mounted) {
         setState(() {
           _isLoading = false;

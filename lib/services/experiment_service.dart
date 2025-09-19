@@ -1,5 +1,4 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:flutter/foundation.dart';
 import '../models/experiment.dart';
 import '../models/notification.dart';
 import 'user_service.dart';
@@ -23,7 +22,6 @@ class ExperimentService {
       }
       return null;
     } catch (e) {
-      debugPrint('Error fetching experiment by ID: $e');
       return null;
     }
   }
@@ -36,15 +34,12 @@ class ExperimentService {
   /// ユーザーが参加した実験履歴を取得
   Future<List<Experiment>> getUserParticipatedExperiments(String userId) async {
     try {
-      debugPrint('Fetching participated experiments for user: $userId');
       
       // participantsフィールドにユーザーIDが含まれる実験を取得
       final snapshot = await _firestore
           .collection('experiments')
           .where('participants', arrayContains: userId)
           .get();
-
-      debugPrint('Found ${snapshot.docs.length} participated experiments');
       
       final experiments = snapshot.docs
           .map((doc) => Experiment.fromFirestore(doc))
@@ -60,7 +55,6 @@ class ExperimentService {
       
       return experiments;
     } catch (e) {
-      debugPrint('Error fetching participated experiments: $e');
       return [];
     }
   }
@@ -68,14 +62,11 @@ class ExperimentService {
   /// ユーザーが募集した実験履歴を取得
   Future<List<Experiment>> getUserCreatedExperiments(String userId) async {
     try {
-      debugPrint('Fetching created experiments for user: $userId');
       
       final snapshot = await _firestore
           .collection('experiments')
           .where('creatorId', isEqualTo: userId)
           .get();
-
-      debugPrint('Found ${snapshot.docs.length} created experiments');
       
       final experiments = snapshot.docs
           .map((doc) => Experiment.fromFirestore(doc))
@@ -89,7 +80,6 @@ class ExperimentService {
       
       return experiments;
     } catch (e) {
-      debugPrint('Error fetching created experiments: $e');
       return [];
     }
   }
@@ -102,7 +92,6 @@ class ExperimentService {
       );
       return docRef.id;
     } catch (e) {
-      debugPrint('Error creating experiment: $e');
       throw Exception('実験の作成に失敗しました');
     }
   }
@@ -110,7 +99,6 @@ class ExperimentService {
   /// 実験に参加
   Future<void> joinExperiment(String experimentId, String userId) async {
     try {
-      debugPrint('Joining experiment: experimentId=$experimentId, userId=$userId');
       
       // トランザクションで実験への参加を処理
       await _firestore.runTransaction((transaction) async {
@@ -120,7 +108,6 @@ class ExperimentService {
         );
         
         if (!experimentDoc.exists) {
-          debugPrint('Experiment document does not exist: $experimentId');
           throw Exception('実験が見つかりません');
         }
         
@@ -128,8 +115,6 @@ class ExperimentService {
         final participants = List<String>.from(data['participants'] ?? []);
         final creatorId = data['creatorId'] as String?;
         
-        debugPrint('Current participants: $participants');
-        debugPrint('Creator ID: $creatorId, User ID: $userId');
         
         // 自分が作成した実験には参加できない
         if (creatorId == userId) {
@@ -146,13 +131,11 @@ class ExperimentService {
         final userDoc = await transaction.get(userDocRef);
         
         if (!userDoc.exists) {
-          debugPrint('User document does not exist: $userId');
           // ユーザードキュメントが存在しない場合は参加者のみ追加
           transaction.update(experimentDoc.reference, {
             'participants': FieldValue.arrayUnion([userId]),
           });
         } else {
-          debugPrint('User document exists, updating both experiment and user');
           // 参加者を追加
           transaction.update(experimentDoc.reference, {
             'participants': FieldValue.arrayUnion([userId]),
@@ -161,7 +144,6 @@ class ExperimentService {
           // ユーザーの参加予定実験数を更新（参加済みではなく予定として）
           final userData = userDoc.data() as Map<String, dynamic>;
           final currentScheduled = userData['scheduledExperiments'] ?? 0;
-          debugPrint('Current scheduledExperiments count: $currentScheduled');
           
           // フィールドが存在しない場合は初期値を設定してから更新
           if (!userData.containsKey('scheduledExperiments')) {
@@ -175,9 +157,7 @@ class ExperimentService {
           }
         }
       });
-      
-      debugPrint('Successfully joined experiment: $experimentId');
-      
+            
       // 通知を送信（トランザクション外で実行）
       try {
         // 実験情報を取得
@@ -189,7 +169,6 @@ class ExperimentService {
 
           // 実験作成者自身が参加する場合は通知を送信しない
           if (creatorId == userId) {
-            debugPrint('実験作成者自身の参加のため、通知送信をスキップ');
             return;
           }
 
@@ -208,7 +187,6 @@ class ExperimentService {
               experimentTitle: experimentTitle,
               experimentId: experimentId,
             );
-            debugPrint('実験参加通知を送信しました: creator=$creatorId, participant=$participantName');
           }
 
           // 事前アンケートがある場合は参加者に通知を送信
@@ -225,16 +203,12 @@ class ExperimentService {
                 'experimentTitle': experimentTitle,
               },
             );
-            debugPrint('事前アンケート通知を送信しました: userId=$userId, url=$preSurveyUrl');
           }
         }
       } catch (notificationError) {
         // 通知送信に失敗しても参加処理は成功とする
-        debugPrint('通知送信エラー（無視）: $notificationError');
       }
-    } catch (e, stackTrace) {
-      debugPrint('Error joining experiment: $e');
-      debugPrint('Stack trace: $stackTrace');
+    } catch (e) {
       
       if (e.toString().contains('すでに')) {
         throw Exception('すでにこの実験に参加しています');
@@ -285,7 +259,6 @@ class ExperimentService {
         }
       });
     } catch (e) {
-      debugPrint('Error leaving experiment: $e');
       throw Exception('実験からの離脱に失敗しました');
     }
   }
@@ -299,7 +272,6 @@ class ExperimentService {
       final participants = List<String>.from(doc.data()?['participants'] ?? []);
       return participants.contains(userId);
     } catch (e) {
-      debugPrint('Error checking participation: $e');
       return false;
     }
   }
@@ -345,12 +317,9 @@ class ExperimentService {
         'actualStartDate': Timestamp.fromDate(DateTime.now()),
       });
 
-      debugPrint('Started experiment: $experimentId');
-
       // 実験作成者に通知を送信
       if (creatorId != null) {
         try {
-          debugPrint('実験開始通知を作成中: userId=$creatorId, experimentTitle=$experimentTitle');
           await _notificationService.createNotification(
             userId: creatorId,
             type: NotificationType.experimentStarted,
@@ -361,16 +330,11 @@ class ExperimentService {
               'experimentTitle': experimentTitle,
             },
           );
-          debugPrint('実験開始通知を正常に作成しました: userId=$creatorId, experimentTitle=$experimentTitle');
-        } catch (notificationError, stackTrace) {
-          debugPrint('通知作成エラー: $notificationError');
-          debugPrint('スタックトレース: $stackTrace');
+        } catch (notificationError) {
         }
       } else {
-        debugPrint('実験作成者IDがnullのため通知を送信できません');
       }
     } catch (e) {
-      debugPrint('Error starting experiment: $e');
       throw Exception('実験の開始に失敗しました');
     }
   }
@@ -382,9 +346,7 @@ class ExperimentService {
         'status': ExperimentStatus.waitingEvaluation.name,
         'actualStartDate': Timestamp.fromDate(DateTime.now()),
       });
-      debugPrint('Finished experiment and started evaluation: $experimentId');
     } catch (e) {
-      debugPrint('Error finishing experiment: $e');
       throw Exception('実験の終了処理に失敗しました');
     }
   }
@@ -400,7 +362,6 @@ class ExperimentService {
         ? ExperimentStatus.fromString(data['status'])
         : ExperimentStatus.recruiting;
     } catch (e) {
-      debugPrint('Error getting experiment status: $e');
       return null;
     }
   }
@@ -438,7 +399,6 @@ class ExperimentService {
       
       return experiments;
     } catch (e) {
-      debugPrint('Error getting pending evaluations: $e');
       return [];
     }
   }
@@ -490,11 +450,9 @@ class ExperimentService {
           );
         }
       } catch (notificationError) {
-        debugPrint('通知送信エラー（無視）: $notificationError');
       }
       
     } catch (e) {
-      debugPrint('Error canceling participation: $e');
       rethrow;
     }
   }
@@ -520,7 +478,6 @@ class ExperimentService {
         },
       );
     } catch (e) {
-      debugPrint('Error sending post survey URL notification: $e');
       rethrow;
     }
   }
@@ -557,7 +514,6 @@ class ExperimentService {
         'participantEvaluations': participantEvaluations,
       });
     } catch (e) {
-      debugPrint('Error updating post survey URL sent status: $e');
       rethrow;
     }
   }

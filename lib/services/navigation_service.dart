@@ -38,7 +38,6 @@ class NavigationService {
       final experiment = await experimentService.getExperiment(experimentId);
       
       if (experiment == null) {
-        print('実験が見つかりません: $experimentId');
         return;
       }
       
@@ -55,17 +54,16 @@ class NavigationService {
         ),
       );
     } catch (e) {
-      print('実験画面への遷移エラー: $e');
     }
   }
   
   static Future<void> navigateToNotifications() async {
     final context = navigatorKey.currentContext;
     if (context == null) return;
-    
+
     // まずホーム画面に戻る
     Navigator.of(context).popUntil((route) => route.isFirst);
-    
+
     // NavigationScreenの通知タブに切り替え
     if (context.widget is NavigationScreen) {
       final navigationState = context.findAncestorStateOfType<NavigationScreenState>();
@@ -78,6 +76,22 @@ class NavigationService {
           builder: (context) => const NotificationScreen(),
         ),
       );
+    }
+  }
+
+  static Future<void> navigateToAdminSupportChat() async {
+    final context = navigatorKey.currentContext;
+    if (context == null) return;
+
+    // まずホーム画面に戻る
+    Navigator.of(context).popUntil((route) => route.isFirst);
+
+    // 管理者サポートチャット画面に遷移
+    // TODO: 管理者用のサポートチャット画面へのナビゲーションを実装
+    // 現在は通常のメッセージ画面にリダイレクト
+    if (context.widget is NavigationScreen) {
+      final navigationState = context.findAncestorStateOfType<NavigationScreenState>();
+      navigationState?.setSelectedIndex(1); // メッセージタブのインデックス
     }
   }
 }

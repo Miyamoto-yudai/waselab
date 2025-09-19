@@ -177,7 +177,6 @@ class LocalNotificationService {
   void _handleNotificationTap(String? payload) {
     // 通知タップ時の処理
     if (payload != null) {
-      debugPrint('通知タップ: $payload');
       // ここで画面遷移などの処理を実装
     }
   }

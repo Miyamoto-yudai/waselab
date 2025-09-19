@@ -3,6 +3,8 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:flutter/foundation.dart';
 import '../models/app_user.dart';
+import 'debug_service.dart';
+import 'auth_persistence_service.dart';
 
 /// 認証サービスクラス
 /// Firebase AuthenticationとGoogle Sign Inを使用したユーザー認証を管理する
@@ -29,6 +31,9 @@ class AuthService {
   /// ユーザーの認証状態の変更をストリームで監視
   Stream<User?> get authStateChanges => _auth.authStateChanges();
 
+  /// ユーザーの変更をストリームで監視（より詳細な変更を検知）
+  Stream<User?> get userChanges => _auth.userChanges();
+
   /// 早稲田大学のメールアドレスかどうかを検証
   /// @ruri.waseda.jp, @fuji.waseda.jp などのサブドメインも含む
   bool _isWasedaEmail(String email) {
@@ -48,9 +53,17 @@ class AuthService {
   }) async {
     try {
 
+      if (kDebugMode) {
+        print('[AuthService] Creating user with email: $email');
+      }
+
       // ユーザー作成
       final UserCredential userCredential = await _auth
           .createUserWithEmailAndPassword(email: email, password: password);
+
+      if (kDebugMode) {
+        print('[AuthService] User created successfully: ${userCredential.user?.uid}');
+      }
 
       // Firestoreにユーザー情報を保存
       if (userCredential.user != null) {
@@ -69,7 +82,25 @@ class AuthService {
 
         // 表示名を設定
         await userCredential.user!.updateDisplayName(name);
-        
+
+        // 認証情報を保存（Android対策）
+        await AuthPersistenceService().saveEmailAuthState(userCredential.user!, password);
+
+        // Firebase Authの永続化を確実にするため、ユーザー情報を再読み込み
+        // 注意: getIdToken(true)の強制リフレッシュは認証状態を不安定にする可能性があるため削除
+        try {
+          await userCredential.user!.reload();
+          // トークンの自然な更新を待つ（強制リフレッシュしない）
+          await userCredential.user!.getIdToken();
+          if (kDebugMode) {
+            print('[AuthService] New user authenticated successfully');
+          }
+        } catch (e) {
+          if (kDebugMode) {
+            print('[AuthService] Warning: User info reload failed: $e');
+          }
+        }
+
         // メール認証を送信
         await sendEmailVerification();
       }
@@ -98,11 +129,59 @@ class AuthService {
     required String password,
   }) async {
     try {
+      if (kDebugMode) {
+        print('[AuthService] Signing in with email: $email');
+      }
 
-      await _auth.signInWithEmailAndPassword(
+      final userCredential = await _auth.signInWithEmailAndPassword(
         email: email,
         password: password,
       );
+
+      if (kDebugMode) {
+        print('[AuthService] Sign in successful: ${userCredential.user?.uid}');
+        print('[AuthService] Email verified: ${userCredential.user?.emailVerified}');
+      }
+
+      // 認証情報を保存（Android対策）
+      if (userCredential.user != null) {
+        if (kDebugMode) {
+          print('[AuthService] Calling saveEmailAuthState for user: ${userCredential.user!.uid}');
+        }
+        await AuthPersistenceService().saveEmailAuthState(userCredential.user!, password);
+        if (kDebugMode) {
+          print('[AuthService] saveEmailAuthState completed');
+        }
+
+        // Firebase Authの永続化を確実にするため、ユーザー情報を確認
+        try {
+          await userCredential.user!.reload();
+          // トークンの自然な更新を待つ（強制リフレッシュしない）
+          final token = await userCredential.user!.getIdToken();
+          if (kDebugMode) {
+            print('[AuthService] Token exists: ${token != null && token.isNotEmpty}');
+          }
+
+          // 再度currentUserを確認
+          final currentUser = _auth.currentUser;
+          if (kDebugMode) {
+            print('[AuthService] Current user after sign in and persistence save: ${currentUser?.uid}');
+            print('[AuthService] Auth state should be persisted now');
+          }
+
+          // 保存されたデータを即座に確認
+          if (kDebugMode) {
+            final hasSaved = await AuthPersistenceService().hasSavedAuthState();
+            print('[AuthService] Persistence check - Has saved auth: $hasSaved');
+            final savedInfo = await AuthPersistenceService().getSavedAuthInfo();
+            print('[AuthService] Persistence check - Saved info: $savedInfo');
+          }
+        } catch (e) {
+          if (kDebugMode) {
+            print('[AuthService] Warning: User verification failed: $e');
+          }
+        }
+      }
 
       return null; // 成功
     } on FirebaseAuthException catch (e) {
@@ -173,6 +252,9 @@ class AuthService {
             });
           }
         });
+
+        // 認証情報を保存（Android対策）
+        await AuthPersistenceService().saveAuthState(user);
       }
 
       return null; // 成功
@@ -230,8 +312,102 @@ class AuthService {
     }
   }
 
+  /// Googleアカウントでサイレント再認証（復元用）
+  Future<bool> silentSignInWithGoogle() async {
+    try {
+      if (kDebugMode) {
+        print('[AuthService] Attempting silent Google sign-in...');
+      }
+
+      // サイレントサインインを試みる
+      final GoogleSignInAccount? googleUser = await _googleSignIn.signInSilently();
+
+      if (googleUser == null) {
+        if (kDebugMode) {
+          print('[AuthService] Silent sign-in failed: No cached Google account');
+        }
+        return false;
+      }
+
+      // 認証情報を取得
+      final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
+
+      // Firebase用の認証情報を作成
+      final credential = GoogleAuthProvider.credential(
+        accessToken: googleAuth.accessToken,
+        idToken: googleAuth.idToken,
+      );
+
+      // Firebaseにサインイン
+      final UserCredential userCredential = await _auth.signInWithCredential(credential);
+
+      if (userCredential.user != null) {
+        if (kDebugMode) {
+          print('[AuthService] ✅ Silent Google sign-in successful: ${userCredential.user!.uid}');
+        }
+
+        // Firestoreのユーザー情報を更新
+        await _firestore.collection('users').doc(userCredential.user!.uid).update({
+          'lastLoginAt': FieldValue.serverTimestamp(),
+        });
+
+        // 認証情報を保存
+        await AuthPersistenceService().saveAuthState(userCredential.user!);
+
+        return true;
+      }
+
+      return false;
+    } catch (e) {
+      if (kDebugMode) {
+        print('[AuthService] Silent Google sign-in error: $e');
+      }
+      return false;
+    }
+  }
+
+  /// カスタムトークンで再認証（メール認証用の復元）
+  Future<bool> signInWithCustomToken(String token) async {
+    try {
+      if (kDebugMode) {
+        print('[AuthService] Attempting custom token sign-in...');
+      }
+
+      final UserCredential userCredential = await _auth.signInWithCustomToken(token);
+
+      if (userCredential.user != null) {
+        if (kDebugMode) {
+          print('[AuthService] ✅ Custom token sign-in successful: ${userCredential.user!.uid}');
+        }
+        return true;
+      }
+
+      return false;
+    } catch (e) {
+      if (kDebugMode) {
+        print('[AuthService] Custom token sign-in error: $e');
+      }
+      return false;
+    }
+  }
+
   /// サインアウト
   Future<void> signOut() async {
+    // デバッグログ記録
+    AuthDebugService().log(
+      '🚪 signOut() called',
+      type: LogType.critical,
+      stackTrace: StackTrace.current,
+      data: {
+        'currentUser': currentUser?.uid,
+        'email': currentUser?.email,
+        'timestamp': DateTime.now().toIso8601String(),
+      },
+    );
+
+    // 保存された認証情報をクリア（Android対策）
+    await AuthPersistenceService().clearAuthState();
+
     // Googleサインアウトも実行
     await _googleSignIn.signOut();
     await _auth.signOut();
@@ -301,7 +477,6 @@ class AuthService {
       
       return false;
     } catch (e) {
-      debugPrint('メール認証状態のチェックエラー: $e');
       return false;
     }
   }
@@ -315,7 +490,6 @@ class AuthService {
       final doc = await _firestore.collection('users').doc(userId).get();
       return doc;
     } catch (e) {
-      debugPrint('Error getting user document: $e');
       return null;
     }
   }

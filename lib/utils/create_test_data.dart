@@ -15,7 +15,6 @@ class TestDataCreator {
     final creatorId = currentUser.uid;
     final creatorEmail = currentUser.email ?? 'unknown@example.com';
     
-    print('テストデータ作成: creatorId=$creatorId, email=$creatorEmail');
     
     // 最初の3件のみを使用
     final sampleExperiments = [
@@ -140,10 +139,8 @@ class TestDataCreator {
         'researcherEmail': creatorEmail,
       });
       
-      print('サンプル実験データを作成しました: ${exp['title']}');
     }
     
-    print('3件のサンプル実験データの作成が完了しました');
   }
   
   /// 30件のテスト実験データを作成
@@ -159,7 +156,6 @@ class TestDataCreator {
     final creatorId = currentUser.uid;
     final creatorEmail = currentUser.email ?? 'unknown@example.com';
     
-    print('テストデータ作成: creatorId=$creatorId, email=$creatorEmail');
     
     // テスト実験データのリスト
     final experiments = [

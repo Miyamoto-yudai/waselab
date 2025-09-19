@@ -49,10 +49,6 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
         _conversationId = ids.join('_');
       });
       
-      debugPrint('Support Chat Initialized:');
-      debugPrint('  User ID: $_currentUserId');
-      debugPrint('  User Name: $_currentUserName');
-      debugPrint('  Conversation ID: $_conversationId');
       
       _markMessagesAsRead();
     }
@@ -72,10 +68,6 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
       _isSending = true;
     });
 
-    debugPrint('Sending support message:');
-    debugPrint('  From: $_currentUserId ($_currentUserName)');
-    debugPrint('  To: $supportUserId ($supportUserName)');
-    debugPrint('  Content: ${_messageController.text.trim()}');
     
     try {
       final messageContent = _messageController.text.trim();
@@ -87,7 +79,6 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
         senderName: _currentUserName!,
         receiverName: supportUserName,
       );
-      debugPrint('Message sent successfully. Conversation ID: $conversationId');
 
       // 管理者にプッシュ通知を送信
       await _adminService.notifyAdminsOfSupportMessage(
@@ -97,7 +88,6 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
 
       // Update the conversation ID if it's different
       if (_conversationId != conversationId) {
-        debugPrint('Updating conversation ID from $_conversationId to $conversationId');
         setState(() {
           _conversationId = conversationId;
         });
@@ -106,7 +96,6 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
       _messageController.clear();
       _scrollToBottom();
     } catch (e) {
-      debugPrint('Error sending message: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -275,13 +264,7 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
             child: StreamBuilder<List<Message>>(
               stream: _messageService.getConversationMessages(_conversationId!),
               builder: (context, snapshot) {
-                debugPrint('=== StreamBuilder Update ===');
-                debugPrint('ConversationID: $_conversationId');
-                debugPrint('Connection state: ${snapshot.connectionState}');
-                debugPrint('Has data: ${snapshot.hasData}');
-                debugPrint('Has error: ${snapshot.hasError}');
                 if (snapshot.hasData) {
-                  debugPrint('Message count: ${snapshot.data?.length}');
                 }
                 
                 if (snapshot.connectionState == ConnectionState.waiting) {
@@ -293,8 +276,6 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
                 }
 
                 if (snapshot.hasError) {
-                  debugPrint('StreamBuilder error: ${snapshot.error}');
-                  debugPrint('Error stack trace: ${snapshot.stackTrace}');
                   return Center(
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
@@ -317,7 +298,6 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
                 }
 
                 final messages = snapshot.data ?? [];
-                debugPrint('Messages received: ${messages.length}');
                 
                 if (messages.isEmpty) {
                   return Center(

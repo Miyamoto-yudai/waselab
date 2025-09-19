@@ -117,7 +117,6 @@ class _NotificationScreenState extends State<NotificationScreen> {
               }
             }
           } catch (e) {
-            print('実験情報の取得に失敗: $e');
           }
         }
         break;
@@ -495,7 +494,6 @@ class _NotificationScreenState extends State<NotificationScreen> {
         builder: (context, snapshot) {
           // エラーチェックを追加
           if (snapshot.hasError) {
-            debugPrint('通知取得エラー: ${snapshot.error}');
             return Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,

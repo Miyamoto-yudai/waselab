@@ -11,15 +11,6 @@ class CreateExperimentScreenDemo extends StatelessWidget {
     await Future.delayed(const Duration(seconds: 2));
     
     // デバッグ出力
-    print('デモモード: 実験データ（実際には保存されません）');
-    print('タイトル: ${data['title']}');
-    print('説明: ${data['description']}');
-    print('タイプ: ${data['type']}');
-    print('報酬: ${data['isPaid'] ? '¥${data['reward']}' : '無償'}');
-    print('場所: ${data['location']}');
-    print('参加条件: ${data['requirements']}');
-    print('同意項目: ${data['consentItems']}');
-    print('柔軟な日程調整: ${data['allowFlexibleSchedule']}');
     
     // 成功を返す
     return;

@@ -148,7 +148,6 @@ class _ExperimentEvaluationScreenState extends State<ExperimentEvaluationScreen>
         }
       }
     } catch (e) {
-      debugPrint('Error loading data: $e');
       if (mounted) {
         setState(() {
           _isLoading = false;
@@ -264,9 +263,7 @@ class _ExperimentEvaluationScreenState extends State<ExperimentEvaluationScreen>
         );
         Navigator.pop(context, true); // 評価完了を親画面に通知
       }
-    } catch (e, stackTrace) {
-      debugPrint('Error submitting evaluation: $e');
-      debugPrint('Stack trace: $stackTrace');
+    } catch (e) {
       if (mounted) {
         setState(() {
           _isSubmitting = false;

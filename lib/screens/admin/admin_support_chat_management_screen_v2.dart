@@ -31,7 +31,6 @@ class _AdminSupportChatManagementScreenV2State extends State<AdminSupportChatMan
   @override
   void initState() {
     super.initState();
-    debugPrint('===== AdminSupportChatManagementScreenV2 initState =====');
     _tabController = TabController(length: 2, vsync: this);
     _loadAllSupportMessages();
     // 5秒ごとに自動更新
@@ -50,11 +49,9 @@ class _AdminSupportChatManagementScreenV2State extends State<AdminSupportChatMan
   }
 
   Future<void> _loadAllSupportMessages() async {
-    debugPrint('===== START Loading All Support Messages =====');
     
     try {
       // 1. conversationsコレクションからsupport_team関連の会話を取得
-      debugPrint('Fetching conversations involving support_team...');
       
       // support_teamが参加者として含まれる会話を取得
       final conversationSnapshots = await FirebaseFirestore.instance
@@ -62,7 +59,6 @@ class _AdminSupportChatManagementScreenV2State extends State<AdminSupportChatMan
           .where('participantIds', arrayContains: 'support_team')
           .get();
       
-      debugPrint('Found ${conversationSnapshots.docs.length} conversations with support_team');
       
       // 2. 各会話のメッセージを取得
       final Map<String, List<Message>> tempUserMessages = {};
@@ -83,7 +79,6 @@ class _AdminSupportChatManagementScreenV2State extends State<AdminSupportChatMan
         if (userId.isEmpty) continue;
         
         userIds.add(userId);
-        debugPrint('Processing conversation $conversationId for user $userId');
         
         // この会話のメッセージを取得（エラーハンドリング付き）
         try {
@@ -94,7 +89,6 @@ class _AdminSupportChatManagementScreenV2State extends State<AdminSupportChatMan
               .limit(50)
               .get();
           
-          debugPrint('Found ${messagesSnapshot.docs.length} messages in conversation $conversationId');
           
           for (var messageDoc in messagesSnapshot.docs) {
             final message = Message.fromFirestore(messageDoc);
@@ -106,7 +100,6 @@ class _AdminSupportChatManagementScreenV2State extends State<AdminSupportChatMan
             }
           }
         } catch (e) {
-          debugPrint('Error fetching messages for conversation $conversationId: $e');
           // インデックスエラーの場合は、orderByなしで試みる
           try {
             final messagesSnapshot = await FirebaseFirestore.instance
@@ -115,7 +108,6 @@ class _AdminSupportChatManagementScreenV2State extends State<AdminSupportChatMan
                 .limit(50)
                 .get();
             
-            debugPrint('Found ${messagesSnapshot.docs.length} messages in conversation $conversationId (without orderBy)');
             
             for (var messageDoc in messagesSnapshot.docs) {
               final message = Message.fromFirestore(messageDoc);
@@ -127,13 +119,11 @@ class _AdminSupportChatManagementScreenV2State extends State<AdminSupportChatMan
               }
             }
           } catch (e2) {
-            debugPrint('Error fetching messages without orderBy: $e2');
           }
         }
       }
       
       // 3. 直接support_teamへのメッセージも取得（conversationIdがない古いメッセージ対策）
-      debugPrint('Fetching direct messages to/from support_team...');
       
       // support_teamへのメッセージ
       final toSupportMessages = await FirebaseFirestore.instance
@@ -149,8 +139,6 @@ class _AdminSupportChatManagementScreenV2State extends State<AdminSupportChatMan
           .limit(50)
           .get();
       
-      debugPrint('Found ${toSupportMessages.docs.length} messages to support_team');
-      debugPrint('Found ${fromSupportMessages.docs.length} messages from support_team');
       
       // 直接メッセージを処理
       for (var doc in [...toSupportMessages.docs, ...fromSupportMessages.docs]) {
@@ -176,11 +164,9 @@ class _AdminSupportChatManagementScreenV2State extends State<AdminSupportChatMan
         }
       }
       
-      debugPrint('Total users with support messages: ${userIds.length}');
       
       // 4. ユーザー情報を取得
       for (var userId in userIds) {
-        debugPrint('Loading user info for: $userId');
         try {
           final userDoc = await FirebaseFirestore.instance
               .collection('users')
@@ -197,7 +183,6 @@ class _AdminSupportChatManagementScreenV2State extends State<AdminSupportChatMan
               canCreateExperiment: userData['canCreateExperiment'] ?? false,
               createdAt: DateTime.now(),
             );
-            debugPrint('User loaded: ${_usersCache[userId]!.name}');
           } else {
             _usersCache[userId] = AppUser(
               uid: userId,
@@ -207,10 +192,8 @@ class _AdminSupportChatManagementScreenV2State extends State<AdminSupportChatMan
               canCreateExperiment: false,
               createdAt: DateTime.now(),
             );
-            debugPrint('User not found, using fallback name');
           }
         } catch (e) {
-          debugPrint('Error loading user $userId: $e');
           _usersCache[userId] = AppUser(
             uid: userId,
             email: '',
@@ -234,10 +217,7 @@ class _AdminSupportChatManagementScreenV2State extends State<AdminSupportChatMan
         _unreadCounts.addAll(tempUnreadCounts);
       });
       
-      debugPrint('===== COMPLETED Loading Support Messages =====');
-      debugPrint('Total users with conversations: ${_userMessages.length}');
     } catch (e) {
-      debugPrint('CRITICAL ERROR in _loadAllSupportMessages: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -250,7 +230,6 @@ class _AdminSupportChatManagementScreenV2State extends State<AdminSupportChatMan
   }
 
   Future<void> _selectUser(String userId) async {
-    debugPrint('Selecting user: $userId');
 
     setState(() {
       _selectedUserId = userId;
@@ -270,7 +249,6 @@ class _AdminSupportChatManagementScreenV2State extends State<AdminSupportChatMan
         _selectedConversationId = conversationId;
       });
 
-      debugPrint('Conversation ID: $conversationId');
 
       // 未読メッセージを既読にする
       if (_unreadCounts[userId] != null && _unreadCounts[userId]! > 0) {
@@ -283,7 +261,6 @@ class _AdminSupportChatManagementScreenV2State extends State<AdminSupportChatMan
         _tabController.animateTo(1);
       }
     } catch (e) {
-      debugPrint('Error selecting user: $e');
     }
   }
 
@@ -303,7 +280,6 @@ class _AdminSupportChatManagementScreenV2State extends State<AdminSupportChatMan
         _unreadCounts[userId] = 0;
       });
     } catch (e) {
-      debugPrint('Error marking messages as read: $e');
     }
   }
 

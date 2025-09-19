@@ -31,11 +31,6 @@ class _ExperimentDetailBaseState extends State<ExperimentDetailBase> {
   @override
   void initState() {
     super.initState();
-    // デバッグ: consentItemsの内容を確認
-    debugPrint('=== ExperimentDetailBase: consentItems確認 ===');
-    debugPrint('consentItems数: ${widget.experiment.consentItems.length}');
-    debugPrint('consentItems内容: ${widget.experiment.consentItems}');
-    debugPrint('=======================================');
   }
 
   /// 実験種別のアイコンを取得

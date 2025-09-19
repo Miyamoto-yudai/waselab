@@ -45,7 +45,6 @@ class _FrameShopScreenState extends State<FrameShopScreen>
         });
       }
     } catch (e) {
-      debugPrint('ユーザー情報の取得エラー: $e');
       if (mounted) {
         setState(() {
           _isLoading = false;

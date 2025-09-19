@@ -24,7 +24,6 @@ class ExperimentDraftService {
       await prefs.setInt(_currentStepKey, currentStep);
       await prefs.setString(_draftTimestampKey, DateTime.now().toIso8601String());
     } catch (e) {
-      print('下書き保存エラー: $e');
     }
   }
   
@@ -53,7 +52,6 @@ class ExperimentDraftService {
       
       return draftData;
     } catch (e) {
-      print('下書き読み込みエラー: $e');
       return null;
     }
   }

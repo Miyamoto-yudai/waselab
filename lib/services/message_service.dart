@@ -19,17 +19,14 @@ class MessageService {
   }
 
   Stream<List<Message>> getConversationMessages(String conversationId) {
-    print('Getting messages for conversation: $conversationId');
     return _firestore
         .collection('messages')
         .where('conversationId', isEqualTo: conversationId)
         .orderBy('createdAt', descending: false)
         .snapshots()
         .map((snapshot) {
-          print('Snapshot received: ${snapshot.docs.length} messages');
           for (var doc in snapshot.docs) {
             final data = doc.data();
-            print('  Message: ${data['content']}, From: ${data['senderId']}, To: ${data['receiverId']}');
           }
           return snapshot.docs.map((doc) => Message.fromFirestore(doc)).toList();
         });
@@ -45,10 +42,6 @@ class MessageService {
     String? replyToContent,
     String? replyToSenderId,
   }) async {
-    print('=== sendMessage called ===');
-    print('From: $senderId ($senderName)');
-    print('To: $receiverId ($receiverName)');
-    print('Content: $content');
     
     String conversationId = await getOrCreateConversation(
       senderId,
@@ -57,7 +50,6 @@ class MessageService {
       receiverName,
     );
     
-    print('ConversationId obtained: $conversationId');
 
     final message = Message(
       id: '',
@@ -72,9 +64,7 @@ class MessageService {
       replyToSenderId: replyToSenderId,
     );
 
-    print('Adding message to Firestore...');
     final docRef = await _firestore.collection('messages').add(message.toFirestore());
-    print('Message added with ID: ${docRef.id}');
 
     await _firestore.collection('conversations').doc(conversationId).update({
       'lastMessage': content,
@@ -103,7 +93,6 @@ class MessageService {
         'editedAt': Timestamp.fromDate(DateTime.now()),
       });
     } catch (e) {
-      print('Error editing message: $e');
       rethrow;
     }
   }
@@ -122,7 +111,6 @@ class MessageService {
         'content': '', // 内容をクリア
       });
     } catch (e) {
-      print('Error deleting message: $e');
       rethrow;
     }
   }
@@ -171,7 +159,6 @@ class MessageService {
       
       return conversationId;
     } catch (e) {
-      print('Error forwarding message: $e');
       rethrow;
     }
   }
@@ -182,27 +169,20 @@ class MessageService {
     String userName1,
     String userName2,
   ) async {
-    print('=== getOrCreateConversation ===');
-    print('User1: $userId1 ($userName1)');
-    print('User2: $userId2 ($userName2)');
     
     final conversationQuery = await _firestore
         .collection('conversations')
         .where('participantIds', arrayContains: userId1)
         .get();
 
-    print('Found ${conversationQuery.docs.length} conversations for $userId1');
     
     for (var doc in conversationQuery.docs) {
       final participantIds = List<String>.from(doc.data()['participantIds']);
-      print('  Checking conversation ${doc.id}: $participantIds');
       if (participantIds.contains(userId2)) {
-        print('  -> Found existing conversation: ${doc.id}');
         return doc.id;
       }
     }
     
-    print('No existing conversation found, creating new one...');
 
     final conversation = Conversation(
       id: '',
@@ -218,13 +198,11 @@ class MessageService {
       createdAt: DateTime.now(),
     );
 
-    print('Creating conversation with data: ${conversation.toFirestore()}');
     
     final docRef = await _firestore
         .collection('conversations')
         .add(conversation.toFirestore());
     
-    print('New conversation created with ID: ${docRef.id}');
     return docRef.id;
   }
 
