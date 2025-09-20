@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:intl/intl.dart';
 import 'dart:async';
 import '../models/experiment.dart';
 import '../models/date_time_slot.dart';
@@ -2186,6 +2187,10 @@ class _CreateExperimentBaseState extends State<CreateExperimentBase> {
             ),
             if (previewExperiment.duration != null)
               _buildConfirmationItem('所要時間', '${previewExperiment.duration}分'),
+            _buildConfirmationItem(
+              '実験形態',
+              _isLabExperiment ? '研究室実験' : '個人実験',
+            ),
           ], targetStep: 1),
           const SizedBox(height: 16),
           
@@ -2194,7 +2199,11 @@ class _CreateExperimentBaseState extends State<CreateExperimentBase> {
               '募集期間',
               '${_formatDate(_recruitmentStartDate)} 〜 ${_formatDate(_recruitmentEndDate)}',
             ),
-            if (_allowFlexibleSchedule) ...[
+            _buildConfirmationItem(
+              '日程設定方法',
+              _scheduleType.label,
+            ),
+            if (_scheduleType == ScheduleType.reservation) ...[
               _buildConfirmationItem(
                 '実施期間',
                 '${_formatDate(_experimentPeriodStart)} 〜 ${_formatDate(_experimentPeriodEnd)}',
@@ -2204,17 +2213,25 @@ class _CreateExperimentBaseState extends State<CreateExperimentBase> {
                   '設定済みスロット数',
                   '${_dateTimeSlots.values.expand((slots) => slots).length}個',
                 ),
-                _buildConfirmationItem(
-                  '同時実験可能人数',
-                  '$_simultaneousCapacity名',
-                ),
+                ..._dateTimeSlots.entries.take(3).expand((entry) => [
+                  _buildConfirmationItem(
+                    '  ${DateFormat('MM/dd(E)', 'ja').format(entry.key)}',
+                    entry.value.map((slot) =>
+                      '${slot.startTime.hour.toString().padLeft(2, '0')}:${slot.startTime.minute.toString().padLeft(2, '0')}-${slot.endTime.hour.toString().padLeft(2, '0')}:${slot.endTime.minute.toString().padLeft(2, '0')}'
+                    ).join(', '),
+                  ),
+                ]),
+                if (_dateTimeSlots.length > 3)
+                  _buildConfirmationItem(
+                    '',
+                    '他${_dateTimeSlots.length - 3}日分の時間枠',
+                  ),
               ],
-            ],
-            _buildConfirmationItem(
-              '日程調整',
-              _allowFlexibleSchedule ? '柔軟（予約制）' : '固定',
-            ),
-            if (!_allowFlexibleSchedule) ...[
+              _buildConfirmationItem(
+                '同時実験可能人数',
+                '$_simultaneousCapacity名',
+              ),
+            ] else if (_scheduleType == ScheduleType.fixed) ...[
               if (_fixedExperimentDate != null || _fixedExperimentTime != null)
                 _buildConfirmationItem(
                   '実施日時',
@@ -2223,13 +2240,18 @@ class _CreateExperimentBaseState extends State<CreateExperimentBase> {
               else
                 _buildConfirmationItem(
                   '実施日時',
-                  '未定（個別調整）',
+                  '未定',
                 ),
               if (_simultaneousCapacity > 1)
                 _buildConfirmationItem(
                   '同時実験可能人数',
                   '$_simultaneousCapacity名',
                 ),
+            ] else if (_scheduleType == ScheduleType.individual) ...[
+              _buildConfirmationItem(
+                '実施日時',
+                '参加者と個別調整',
+              ),
             ],
             if (_selectedType != ExperimentType.survey)
               _buildConfirmationItem(
@@ -2249,19 +2271,158 @@ class _CreateExperimentBaseState extends State<CreateExperimentBase> {
                 _buildConfirmationItem('特別な同意項目', _consentItems.join('、')),
             ], targetStep: 3),
 
-          // アンケート設定セクション（URLが設定されている場合のみ表示）
+          // アンケート設定セクション
           if ((_selectedType == ExperimentType.survey && _surveyUrlController.text.trim().isNotEmpty) ||
-              (_selectedType != ExperimentType.survey && (_preSurveyUrlController.text.trim().isNotEmpty || _surveyUrlController.text.trim().isNotEmpty))) ...[
+              (_selectedType != ExperimentType.survey &&
+               (_preSurveyUrlController.text.trim().isNotEmpty ||
+                _surveyUrlController.text.trim().isNotEmpty ||
+                _postSurveyUrlController.text.trim().isNotEmpty ||
+                _preSurveyTemplateId != null ||
+                _experimentSurveyTemplateId != null ||
+                _postSurveyTemplateId != null))) ...[
             const SizedBox(height: 16),
             _buildConfirmationSection('アンケート設定', [
-              if (_selectedType == ExperimentType.survey && _surveyUrlController.text.trim().isNotEmpty)
-                _buildConfirmationItem('アンケートURL', _surveyUrlController.text.trim()),
-              if (_selectedType != ExperimentType.survey && _preSurveyUrlController.text.trim().isNotEmpty)
-                _buildConfirmationItem('事前アンケートURL', _preSurveyUrlController.text.trim()),
-              if (_selectedType != ExperimentType.survey && _surveyUrlController.text.trim().isNotEmpty)
-                _buildConfirmationItem('事後アンケートURL', _surveyUrlController.text.trim()),
+              if (_selectedType == ExperimentType.survey) ...[
+                if (_surveyUrlController.text.trim().isNotEmpty)
+                  _buildConfirmationItem('アンケートURL', _surveyUrlController.text.trim()),
+                if (_experimentSurveyTemplateId != null)
+                  _buildConfirmationItem('テンプレート', 'Google Forms テンプレート使用'),
+              ] else ...[
+                if (_preSurveyUrlController.text.trim().isNotEmpty)
+                  _buildConfirmationItem('事前アンケートURL', _preSurveyUrlController.text.trim()),
+                if (_preSurveyTemplateId != null)
+                  _buildConfirmationItem('事前アンケートテンプレート', 'Google Forms テンプレート使用'),
+                if (_surveyUrlController.text.trim().isNotEmpty)
+                  _buildConfirmationItem('実験アンケートURL', _surveyUrlController.text.trim()),
+                if (_experimentSurveyTemplateId != null)
+                  _buildConfirmationItem('実験アンケートテンプレート', 'Google Forms テンプレート使用'),
+                if (_postSurveyUrlController.text.trim().isNotEmpty)
+                  _buildConfirmationItem('事後アンケートURL', _postSurveyUrlController.text.trim()),
+                if (_postSurveyTemplateId != null)
+                  _buildConfirmationItem('事後アンケートテンプレート', 'Google Forms テンプレート使用'),
+              ],
             ], targetStep: 4),
           ],
+
+          // 登録データ完全リスト（デバッグ・確認用）
+          const SizedBox(height: 24),
+          ExpansionTile(
+            title: const Text(
+              '📋 登録データ詳細（すべての項目）',
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                color: Color(0xFF8E1728),
+              ),
+            ),
+            subtitle: const Text(
+              'Firebaseに保存されるすべてのデータを確認',
+              style: TextStyle(fontSize: 12),
+            ),
+            children: [
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade50,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _buildDataRow('title', _titleController.text.trim()),
+                    _buildDataRow('description', _descriptionController.text.trim()),
+                    _buildDataRow('detailedContent', _detailedContentController.text.trim()),
+                    _buildDataRow('type', _selectedType.name),
+                    _buildDataRow('location', _locationController.text.trim()),
+                    _buildDataRow('isPaid', _isPaid.toString()),
+                    _buildDataRow('reward', _isPaid ? (int.tryParse(_rewardController.text) ?? 0).toString() : '0'),
+                    _buildDataRow('labName', _labNameController.text.trim().isNotEmpty ? _labNameController.text.trim() : 'null'),
+                    _buildDataRow('isLabExperiment', _isLabExperiment.toString()),
+                    _buildDataRow('duration', _durationController.text.trim().isNotEmpty ? _durationController.text.trim() : 'null'),
+                    _buildDataRow('maxParticipants', _maxParticipantsController.text.trim().isNotEmpty ? _maxParticipantsController.text.trim() : 'null'),
+                    _buildDataRow('requirements', _requirements.isEmpty ? '[]' : '[\n  ${_requirements.join(',\n  ')}\n]'),
+                    _buildDataRow('consentItems', _consentItems.isEmpty ? '[]' : '[\n  ${_consentItems.join(',\n  ')}\n]'),
+                    _buildDataRow('recruitmentStartDate', _formatDate(_recruitmentStartDate)),
+                    _buildDataRow('recruitmentEndDate', _formatDate(_recruitmentEndDate)),
+                    _buildDataRow('scheduleType', _scheduleType.name),
+                    _buildDataRow('allowFlexibleSchedule', _allowFlexibleSchedule.toString()),
+                    if (_scheduleType == ScheduleType.reservation) ...[
+                      _buildDataRow('experimentPeriodStart', _formatDate(_experimentPeriodStart)),
+                      _buildDataRow('experimentPeriodEnd', _formatDate(_experimentPeriodEnd)),
+                      _buildDataRow('dateTimeSlots', '${_dateTimeSlots.values.expand((slots) => slots).length}個設定'),
+                      _buildDataRow('simultaneousCapacity', _simultaneousCapacity.toString()),
+                    ] else if (_scheduleType == ScheduleType.fixed) ...[
+                      _buildDataRow('fixedExperimentDate', _formatDate(_fixedExperimentDate)),
+                      if (_fixedExperimentTime != null)
+                        _buildDataRow('fixedExperimentTime', '${_fixedExperimentTime!.hour}:${_fixedExperimentTime!.minute.toString().padLeft(2, '0')}'),
+                    ],
+                    _buildDataRow('reservationDeadlineDays', _reservationDeadlineController.text.trim().isNotEmpty ? _reservationDeadlineController.text.trim() : '1'),
+                    if (_selectedType == ExperimentType.survey) ...[
+                      _buildDataRow('surveyUrl', _surveyUrlController.text.trim().isNotEmpty ? _surveyUrlController.text.trim() : 'null'),
+                      if (_experimentSurveyTemplateId != null)
+                        _buildDataRow('experimentSurveyTemplateId', _experimentSurveyTemplateId!),
+                    ] else ...[
+                      if (_preSurveyUrlController.text.trim().isNotEmpty || _preSurveyTemplateId != null) ...[
+                        _buildDataRow('preSurveyUrl', _preSurveyUrlController.text.trim()),
+                        if (_preSurveyTemplateId != null)
+                          _buildDataRow('preSurveyTemplateId', _preSurveyTemplateId!),
+                      ],
+                      if (_surveyUrlController.text.trim().isNotEmpty || _experimentSurveyTemplateId != null) ...[
+                        _buildDataRow('experimentSurveyUrl', _surveyUrlController.text.trim()),
+                        if (_experimentSurveyTemplateId != null)
+                          _buildDataRow('experimentSurveyTemplateId', _experimentSurveyTemplateId!),
+                      ],
+                      if (_postSurveyUrlController.text.trim().isNotEmpty || _postSurveyTemplateId != null) ...[
+                        _buildDataRow('postSurveyUrl', _postSurveyUrlController.text.trim()),
+                        if (_postSurveyTemplateId != null)
+                          _buildDataRow('postSurveyTemplateId', _postSurveyTemplateId!),
+                      ],
+                    ],
+                    const SizedBox(height: 8),
+                    Text(
+                      '※ creatorId, createdAt, status, participantsは自動設定されます',
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: Colors.grey.shade600,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// データ行を作成
+  Widget _buildDataRow(String key, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 180,
+            child: Text(
+              '$key:',
+              style: const TextStyle(
+                fontWeight: FontWeight.w600,
+                fontSize: 12,
+                fontFamily: 'monospace',
+              ),
+            ),
+          ),
+          Expanded(
+            child: Text(
+              value.isEmpty ? '(空)' : value,
+              style: TextStyle(
+                fontSize: 12,
+                fontFamily: 'monospace',
+                color: value.isEmpty ? Colors.orange : Colors.black87,
+              ),
+            ),
+          ),
         ],
       ),
     );

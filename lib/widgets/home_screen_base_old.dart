@@ -497,7 +497,6 @@ class _HomeScreenBaseState extends State<HomeScreenBase> {
           AnimatedContainer(
             duration: const Duration(milliseconds: 100),
             height: _isHeaderVisible ? (isSmallScreen ? 180 : 160) : 0,
-            curve: Curves.easeInOut,
             child: SingleChildScrollView(
               physics: const NeverScrollableScrollPhysics(),
               child: Visibility( // OpacityをVisibilityに変更

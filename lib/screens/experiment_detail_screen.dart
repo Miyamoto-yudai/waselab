@@ -632,7 +632,9 @@ class _ExperimentDetailScreenState extends State<ExperimentDetailScreen> {
     );
   }
 
-  /// カレンダー連携プロンプトを表示
+  // 旧仕様：カレンダー連携の自動プロンプトは廃止
+  // このメソッドは使用されなくなりました
+  @deprecated
   Future<bool> _showCalendarPromptDialog() async {
     return await showDialog<bool>(
       context: context,
@@ -665,7 +667,9 @@ class _ExperimentDetailScreenState extends State<ExperimentDetailScreen> {
     ) ?? false;
   }
   
-  /// カレンダー連携を有効化
+  // 旧仕様：カレンダー連携の自動有効化は廃止
+  // このメソッドは使用されなくなりました
+  @deprecated
   Future<void> _enableCalendarIntegration() async {
     try {
       setState(() => _isLoading = true);
@@ -747,18 +751,9 @@ class _ExperimentDetailScreenState extends State<ExperimentDetailScreen> {
         return;
       }
       
-      // 初回予約かつカレンダー連携が無効の場合、プロンプトを表示
+      // 旧仕様：カレンダー連携の自動プロンプトは廃止
+      // ユーザーは設定画面から手動で連携できる
       final isFirstReservation = await PreferenceService.isFirstReservation();
-      final calendarEnabled = await _calendarService.isCalendarEnabled();
-      final hasShownPrompt = await PreferenceService.hasShownCalendarPrompt();
-      
-      if (isFirstReservation && !calendarEnabled && !hasShownPrompt && mounted) {
-        await PreferenceService.recordCalendarPromptShown();
-        final shouldEnableCalendar = await _showCalendarPromptDialog();
-        if (shouldEnableCalendar) {
-          await _enableCalendarIntegration();
-        }
-      }
 
       // 予約を作成
       final reservationId = await _reservationService.createReservation(
@@ -788,28 +783,9 @@ class _ExperimentDetailScreenState extends State<ExperimentDetailScreen> {
 
       // 予約情報を再読み込み
       await _loadUserReservation();
-      
-      // Googleカレンダーに登録（エラーが起きても予約処理は続行）
-      if (await _calendarService.isCalendarEnabled()) {
-        try {
-          final eventId = await _calendarService.addReservationToCalendar(
-            experiment: widget.experiment,
-            slot: slot,
-            reservationId: reservationId,
-          );
-          
-          if (eventId != null && mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('Googleカレンダーに予定を追加しました'),
-                backgroundColor: Colors.blue,
-                duration: Duration(seconds: 2),
-              ),
-            );
-          }
-        } catch (e) {
-        }
-      }
+
+      // 旧仕様：Googleカレンダーの自動登録は廃止
+      // ユーザーは通知から手動でカレンダーに追加できる
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
