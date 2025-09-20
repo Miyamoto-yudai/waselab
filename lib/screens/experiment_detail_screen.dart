@@ -60,7 +60,6 @@ class _ExperimentDetailScreenState extends State<ExperimentDetailScreen> {
     super.initState();
     // 同意項目のチェック状態を初期化
     _detailConsentChecked = List.filled(widget.experiment.consentItems.length, false);
-    // デバッグ: consentItemsの内容を確認
     _checkParticipation();
     _loadExperimenterName();
     _loadUserReservation();
@@ -773,9 +772,13 @@ class _ExperimentDetailScreenState extends State<ExperimentDetailScreen> {
         await PreferenceService.recordFirstReservation();
       }
 
-      // 実験への参加履歴を追加
+      // 実験への参加履歴を追加（予約制の場合はスロットIDも渡す）
       final experimentService = ExperimentService();
-      await experimentService.joinExperiment(widget.experiment.id, user.uid);
+      await experimentService.joinExperiment(
+        widget.experiment.id,
+        user.uid,
+        slotId: slot.id,  // 予約制なのでスロットIDを渡す
+      );
 
       // 参加状態を更新
       setState(() {
@@ -1654,16 +1657,27 @@ class _ExperimentDetailScreenState extends State<ExperimentDetailScreen> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(
-                              'この実験に参加する際は、以下の項目への同意が必要です：',
-                              style: TextStyle(
-                                fontSize: 13,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.amber[800],
+                            if (widget.experiment.consentItems.isNotEmpty) ...[
+                              Text(
+                                'この実験に参加する際は、以下の項目への同意が必要です：',
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.amber[800],
+                                ),
                               ),
-                            ),
-                            const SizedBox(height: 8),
-                            ...widget.experiment.consentItems.asMap().entries.map((entry) {
+                              const SizedBox(height: 8),
+                            ] else ...[
+                              Text(
+                                '特別な同意項目は設定されていません',
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  color: Colors.grey[600],
+                                ),
+                              ),
+                            ],
+                            if (widget.experiment.consentItems.isNotEmpty)
+                              ...widget.experiment.consentItems.asMap().entries.map((entry) {
                               final index = entry.key;
                               final item = entry.value;
                               return Padding(

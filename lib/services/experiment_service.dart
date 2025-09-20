@@ -97,7 +97,7 @@ class ExperimentService {
   }
 
   /// 実験に参加
-  Future<void> joinExperiment(String experimentId, String userId) async {
+  Future<void> joinExperiment(String experimentId, String userId, {String? slotId}) async {
     try {
       
       // トランザクションで実験への参加を処理
@@ -179,6 +179,24 @@ class ExperimentService {
             participantName = userDoc.data()!['name'] as String? ?? 'ユーザー';
           }
 
+          // 予約制の場合はスロット情報を取得
+          Map<String, dynamic>? slotInfo;
+          if (slotId != null) {
+            try {
+              final slotDoc = await _firestore.collection('experiment_slots').doc(slotId).get();
+              if (slotDoc.exists) {
+                final slotData = slotDoc.data()!;
+                slotInfo = {
+                  'slotId': slotId,
+                  'startTime': (slotData['startTime'] as Timestamp).toDate().toIso8601String(),
+                  'endTime': (slotData['endTime'] as Timestamp).toDate().toIso8601String(),
+                };
+              }
+            } catch (e) {
+              // スロット情報の取得に失敗しても続行
+            }
+          }
+
           // 実験作成者に通知を送信（作成者と参加者が異なる場合のみ）
           if (creatorId != null && creatorId != userId) {
             await _notificationService.createExperimentJoinedNotification(
@@ -186,8 +204,17 @@ class ExperimentService {
               participantName: participantName,
               experimentTitle: experimentTitle,
               experimentId: experimentId,
+              slotInfo: slotInfo,
             );
           }
+
+          // 参加者自身にも通知を送信
+          await _notificationService.createParticipantJoinedNotification(
+            userId: userId,
+            experimentTitle: experimentTitle,
+            experimentId: experimentId,
+            slotInfo: slotInfo,
+          );
 
           // 事前アンケートがある場合は参加者に通知を送信
           final preSurveyUrl = experimentData['preSurveyUrl'] as String?;

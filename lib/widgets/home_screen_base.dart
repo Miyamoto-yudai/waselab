@@ -158,21 +158,68 @@ class _HomeScreenBaseState extends State<HomeScreenBase> {
     }
     
     // ソート処理
+    // 終了済み判定の共通ロジック
+    bool isEnded(Experiment exp) {
+      final now = DateTime.now();
+      return (exp.recruitmentEndDate != null && exp.recruitmentEndDate!.isBefore(now)) ||
+             exp.status == ExperimentStatus.completed ||
+             exp.status == ExperimentStatus.waitingEvaluation ||
+             exp.status == ExperimentStatus.ongoing;
+    }
+
     switch (_sortOption) {
       case SortOption.newest:
-        filtered.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+        filtered.sort((a, b) {
+          // 終了済みの実験を下に
+          final aEnded = isEnded(a);
+          final bEnded = isEnded(b);
+          if (aEnded && !bEnded) return 1;
+          if (!aEnded && bEnded) return -1;
+          // それ以外は作成日でソート
+          return b.createdAt.compareTo(a.createdAt);
+        });
         break;
       case SortOption.oldest:
-        filtered.sort((a, b) => a.createdAt.compareTo(b.createdAt));
+        filtered.sort((a, b) {
+          // 終了済みの実験を下に
+          final aEnded = isEnded(a);
+          final bEnded = isEnded(b);
+          if (aEnded && !bEnded) return 1;
+          if (!aEnded && bEnded) return -1;
+          // それ以外は作成日でソート
+          return a.createdAt.compareTo(b.createdAt);
+        });
         break;
       case SortOption.highReward:
-        filtered.sort((a, b) => b.reward.compareTo(a.reward));
+        filtered.sort((a, b) {
+          // 終了済みの実験を下に
+          final aEnded = isEnded(a);
+          final bEnded = isEnded(b);
+          if (aEnded && !bEnded) return 1;
+          if (!aEnded && bEnded) return -1;
+          // それ以外は報酬額でソート
+          return b.reward.compareTo(a.reward);
+        });
         break;
       case SortOption.lowReward:
-        filtered.sort((a, b) => a.reward.compareTo(b.reward));
+        filtered.sort((a, b) {
+          // 終了済みの実験を下に
+          final aEnded = isEnded(a);
+          final bEnded = isEnded(b);
+          if (aEnded && !bEnded) return 1;
+          if (!aEnded && bEnded) return -1;
+          // それ以外は報酬額でソート
+          return a.reward.compareTo(b.reward);
+        });
         break;
       case SortOption.soonest:
         filtered.sort((a, b) {
+          // 終了済みの実験を下に
+          final aEnded = isEnded(a);
+          final bEnded = isEnded(b);
+          if (aEnded && !bEnded) return 1;
+          if (!aEnded && bEnded) return -1;
+          // それ以外は実験日でソート
           if (a.experimentDate == null && b.experimentDate == null) return 0;
           if (a.experimentDate == null) return 1;
           if (b.experimentDate == null) return -1;
@@ -181,6 +228,12 @@ class _HomeScreenBaseState extends State<HomeScreenBase> {
         break;
       case SortOption.latest:
         filtered.sort((a, b) {
+          // 終了済みの実験を下に
+          final aEnded = isEnded(a);
+          final bEnded = isEnded(b);
+          if (aEnded && !bEnded) return 1;
+          if (!aEnded && bEnded) return -1;
+          // それ以外は実験日でソート
           if (a.experimentDate == null && b.experimentDate == null) return 0;
           if (a.experimentDate == null) return -1;
           if (b.experimentDate == null) return 1;

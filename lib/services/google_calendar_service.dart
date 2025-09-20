@@ -1,5 +1,4 @@
 import 'package:flutter/foundation.dart';
-import 'package:google_sign_in/google_sign_in.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -7,18 +6,17 @@ import 'dart:io' show Platform;
 import 'package:android_intent_plus/android_intent.dart';
 import '../models/experiment.dart';
 import '../models/experiment_slot.dart';
+import 'google_account_service.dart';
 
 class GoogleCalendarService {
   static const String _calendarPermissionKey = 'google_calendar_permission';
   static const String _calendarEnabledKey = 'google_calendar_enabled';
-  
-  final GoogleSignIn _googleSignIn = GoogleSignIn(
-    scopes: [
-      'email',
-    ],
-  );
-  
+
+  final GoogleAccountService _accountService = GoogleAccountService();
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+
+  /// エラーコールバック（UI層でエラーハンドリングするため）
+  Function(String error, bool needsAccountSelection)? onError;
   
   /// カレンダー連携が有効かどうかを取得
   Future<bool> isCalendarEnabled() async {
@@ -33,19 +31,39 @@ class GoogleCalendarService {
     await prefs.setBool(_calendarEnabledKey, enabled);
   }
   
-  /// Google認証とカレンダーアクセスの許可を取得
-  Future<bool> requestCalendarPermission() async {
+  /// Google認証とカレンダーアクセスの許可を取得（明示的なアカウント選択付き）
+  Future<bool> requestCalendarPermission({bool forceAccountSelection = false}) async {
     try {
-      final account = await _googleSignIn.signIn();
+      // アカウントサービスを初期化
+      await _accountService.initialize();
+
+      // アカウントを選択（強制選択オプション付き）
+      final account = forceAccountSelection
+          ? await _accountService.selectAccount(forceAccountSelection: true)
+          : await _accountService.signInSilently() ?? await _accountService.selectAccount();
+
       if (account == null) {
+        onError?.call('Googleアカウントが選択されませんでした', true);
         return false;
       }
-      
+
+      // カレンダー権限をリクエスト
+      final hasPermission = await _accountService.requestCalendarPermission();
+      if (!hasPermission) {
+        onError?.call(
+          'Googleカレンダーへのアクセス権限が必要です。\n'
+          '選択したアカウント（${account.email}）に編集権限があることを確認してください。',
+          false
+        );
+        return false;
+      }
+
       final prefs = await SharedPreferences.getInstance();
       await prefs.setBool(_calendarPermissionKey, true);
       await prefs.setString('google_user_email', account.email);
       return true;
     } catch (e) {
+      onError?.call('認証エラー: $e', false);
       return false;
     }
   }
@@ -54,21 +72,64 @@ class GoogleCalendarService {
   Future<bool> hasCalendarPermission() async {
     final prefs = await SharedPreferences.getInstance();
     final hasPermission = prefs.getBool(_calendarPermissionKey) ?? false;
-    
-    // SharedPreferencesに保存されたフラグを信頼する
-    // サイレントサインインは実際にカレンダーAPIを使用する時に行う
-    return hasPermission;
+
+    if (!hasPermission) return false;
+
+    // アカウントサービスを初期化して権限を再確認
+    await _accountService.initialize();
+    if (_accountService.currentAccount == null) {
+      return false;
+    }
+
+    // 実際に権限があるか確認
+    return await _accountService.hasRequiredPermissions();
   }
   
   /// カレンダー連携を解除
   Future<void> disconnectCalendar() async {
     try {
-      await _googleSignIn.disconnect();
+      await _accountService.signOut();
       final prefs = await SharedPreferences.getInstance();
       await prefs.setBool(_calendarPermissionKey, false);
       await prefs.setBool(_calendarEnabledKey, false);
+      await prefs.remove('google_user_email');
     } catch (e) {
+      debugPrint('カレンダー連携解除エラー: $e');
     }
+  }
+
+  /// アカウントを切り替える
+  Future<bool> switchAccount() async {
+    try {
+      final account = await _accountService.switchAccount();
+      if (account == null) {
+        onError?.call('アカウントの切り替えに失敗しました', true);
+        return false;
+      }
+
+      // カレンダー権限を再確認
+      final hasPermission = await _accountService.requestCalendarPermission();
+      if (!hasPermission) {
+        onError?.call(
+          '新しいアカウント（${account.email}）にカレンダーの編集権限がありません',
+          false
+        );
+        return false;
+      }
+
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('google_user_email', account.email);
+      return true;
+    } catch (e) {
+      onError?.call('アカウント切り替えエラー: $e', false);
+      return false;
+    }
+  }
+
+  /// 現在のGoogleアカウント情報を取得
+  Map<String, dynamic>? getCurrentAccountInfo() {
+    if (_accountService.currentAccount == null) return null;
+    return _accountService.getAccountInfo();
   }
   
   /// 実験予約をGoogleカレンダーに追加（URLスキームを使用）
@@ -141,7 +202,7 @@ class GoogleCalendarService {
     }
   }
   
-  /// 新規予約通知受信時にカレンダーに追加するためのクイック追加機能
+  /// 新規予約通知受信時にカレンダーに追加するためのクイック追加機能（実験者用）
   Future<String?> quickAddReservationToCalendar({
     required String experimentTitle,
     required DateTime startTime,
@@ -155,7 +216,7 @@ class GoogleCalendarService {
       if (!await isCalendarEnabled()) {
         return null;
       }
-      
+
       // 場所を取得
       String? eventLocation;
       if (type == ExperimentType.onsite && location != null) {
@@ -165,10 +226,10 @@ class GoogleCalendarService {
       } else if (type == ExperimentType.survey && surveyUrl != null) {
         eventLocation = surveyUrl;
       }
-      
+
       final title = '【わせラボ】$experimentTitle - $participantName';
       final details = '参加者: $participantName\n\nわせラボで予約された実験です。';
-      
+
       // カレンダーを開く
       final result = await _openCalendar(
         title: title,
@@ -177,9 +238,67 @@ class GoogleCalendarService {
         startTime: startTime,
         endTime: endTime,
       );
-      
+
       if (result) {
         return 'quick-add-${DateTime.now().millisecondsSinceEpoch}';
+      } else {
+        return null;
+      }
+    } catch (e) {
+      return null;
+    }
+  }
+
+  /// 参加者が実験をカレンダーに追加するための機能
+  Future<String?> addParticipantExperimentToCalendar({
+    required String experimentTitle,
+    required DateTime startTime,
+    required DateTime endTime,
+    String? location,
+    String? surveyUrl,
+    String? preSurveyUrl,
+    ExperimentType type = ExperimentType.onsite,
+  }) async {
+    try {
+      if (!await isCalendarEnabled()) {
+        return null;
+      }
+
+      // 場所を取得
+      String? eventLocation;
+      if (type == ExperimentType.onsite && location != null) {
+        eventLocation = location;
+      } else if (type == ExperimentType.online) {
+        eventLocation = 'オンライン実験';
+      } else if (type == ExperimentType.survey && surveyUrl != null) {
+        eventLocation = surveyUrl;
+      }
+
+      final title = '【わせラボ】$experimentTitle';
+
+      // 詳細情報を構築
+      var details = 'わせラボで参加予定の実験です。\n';
+      if (preSurveyUrl != null && preSurveyUrl.isNotEmpty) {
+        details += '\n事前アンケート: $preSurveyUrl';
+      }
+      if (type == ExperimentType.survey && surveyUrl != null && surveyUrl.isNotEmpty) {
+        details += '\nアンケートURL: $surveyUrl';
+      } else if (type == ExperimentType.online && surveyUrl != null && surveyUrl.isNotEmpty) {
+        details += '\n実験URL: $surveyUrl';
+      }
+      details += '\n\n実験終了後は相互評価をお忘れなく！';
+
+      // カレンダーを開く
+      final result = await _openCalendar(
+        title: title,
+        details: details,
+        location: eventLocation,
+        startTime: startTime,
+        endTime: endTime,
+      );
+
+      if (result) {
+        return 'participant-add-${DateTime.now().millisecondsSinceEpoch}';
       } else {
         return null;
       }
@@ -455,7 +574,7 @@ class GoogleCalendarService {
     }
   }
   
-  /// GoogleカレンダーURLを生成
+  /// GoogleカレンダーURLを生成（アカウント指定付き）
   String _createGoogleCalendarUrl({
     required String title,
     required String details,
@@ -470,16 +589,16 @@ class GoogleCalendarService {
       'details': details,
       'dates': '${_formatDateTime(startTime)}/${_formatDateTime(endTime)}',
     };
-    
+
     if (location != null && location.isNotEmpty) {
       params['location'] = location;
     }
-    
-    final queryString = params.entries
-        .map((e) => '${e.key}=${Uri.encodeComponent(e.value)}')
-        .join('&');
-    
-    return '$baseUrl?$queryString';
+
+    // アカウントサービスを使用してURLを生成（authuser パラメータ付き）
+    return _accountService.generateCalendarUrl(
+      baseUrl: baseUrl,
+      params: params,
+    );
   }
   
   /// DateTimeをGoogleカレンダーURL形式に変換

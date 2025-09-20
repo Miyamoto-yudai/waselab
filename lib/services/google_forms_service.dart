@@ -1,24 +1,64 @@
 import 'package:url_launcher/url_launcher.dart';
 import 'package:cloud_functions/cloud_functions.dart';
+import 'package:flutter/material.dart';
 import '../models/survey_template.dart';
 import '../data/survey_templates.dart';
 import 'package:flutter/services.dart';
+import 'google_account_service.dart';
 
 /// Google Forms関連の機能を提供するサービス
 class GoogleFormsService {
   static const String _baseFormUrl = 'https://docs.google.com/forms/create';
+  static final GoogleAccountService _accountService = GoogleAccountService();
+
+  /// エラーコールバック（UI層でエラーハンドリングするため）
+  static Function(String error, bool needsAccountSelection)? onError;
   
-  /// Firebase Functions経由でGoogleフォームを自動作成して開く
+  /// Firebase Functions経由でGoogleフォームを自動作成して開く（アカウント選択機能付き）
   static Future<Map<String, dynamic>?> createAndOpenGoogleForm({
     required SurveyTemplate template,
     String? customTitle,
+    bool forceAccountSelection = false,
   }) async {
     try {
+      // アカウントサービスを初期化
+      await _accountService.initialize();
+
+      // アカウントを確認・選択
+      if (_accountService.currentAccount == null || forceAccountSelection) {
+        final account = await _accountService.selectAccount(
+          forceAccountSelection: forceAccountSelection
+        );
+        if (account == null) {
+          onError?.call('Googleアカウントが選択されませんでした', true);
+          return {
+            'success': false,
+            'error': 'アカウントが選択されませんでした',
+            'needsAccountSelection': true,
+          };
+        }
+      }
+
+      // フォーム作成権限を確認
+      final hasPermission = await _accountService.requestFormsPermission();
+      if (!hasPermission) {
+        onError?.call(
+          'Google Formsへのアクセス権限が必要です。\n'
+          '選択したアカウント（${_accountService.currentEmail}）に編集権限があることを確認してください。',
+          false
+        );
+        return {
+          'success': false,
+          'error': 'フォーム作成権限がありません',
+          'needsPermission': true,
+        };
+      }
+
       // Firebase Functionsを呼び出し
       final HttpsCallable callable = FirebaseFunctions.instance
           .httpsCallable('createGoogleFormFromTemplate');
-      
-      // テンプレートデータを準備
+
+      // テンプレートデータを準備（アカウント情報を含む）
       final templateData = {
         'title': customTitle ?? '${template.title}_${DateTime.now().millisecondsSinceEpoch}',
         'description': template.description,
@@ -37,19 +77,24 @@ class GoogleFormsService {
         }).toList(),
         'instructions': template.instructions,
         'estimatedMinutes': template.estimatedMinutes,
+        'userEmail': _accountService.currentEmail, // アカウント情報を追加
       };
-      
+
       // Functionsを実行
       final result = await callable.call({
         'template': templateData,
         'customTitle': customTitle,
       });
-      
+
       final data = result.data as Map<String, dynamic>;
-      
+
       if (data['success'] == true && data['formUrl'] != null) {
-        // 作成されたフォームを開く
-        final formUrl = Uri.parse(data['formUrl']);
+        // 作成されたフォームを開く（アカウント指定付きURL）
+        final formUrlWithAccount = _accountService.generateFormsUrl(
+          baseUrl: data['formUrl'],
+          params: {},
+        );
+        final formUrl = Uri.parse(formUrlWithAccount);
         if (await canLaunchUrl(formUrl)) {
           await launchUrl(
             formUrl,
@@ -58,11 +103,27 @@ class GoogleFormsService {
         }
         return data;
       }
-      
+
       return null;
     } on FirebaseFunctionsException catch (e) {
-      
-      // エラー情報を返す（UIで表示するため）
+      debugPrint('Firebase Functions エラー: ${e.message}');
+
+      // 権限エラーの場合は特別な処理
+      if (e.code == 'permission-denied' || e.message?.contains('permission') == true) {
+        onError?.call(
+          'Google Formsの作成権限がありません。\n別のGoogleアカウントを選択してください。',
+          true
+        );
+        return {
+          'success': false,
+          'error': e.message,
+          'code': e.code,
+          'details': e.details,
+          'needsAccountSelection': true,
+        };
+      }
+
+      // その他のエラー情報を返す
       return {
         'success': false,
         'error': e.message,
@@ -70,6 +131,7 @@ class GoogleFormsService {
         'details': e.details,
       };
     } catch (e) {
+      debugPrint('フォーム作成エラー: $e');
       return {
         'success': false,
         'error': e.toString(),
@@ -100,11 +162,30 @@ class GoogleFormsService {
     }
   }
   
-  /// 新規Googleフォームを開く（テンプレートなし）
-  static Future<bool> openNewGoogleForm() async {
+  /// 新規Googleフォームを開く（テンプレートなし、アカウント指定付き）
+  static Future<bool> openNewGoogleForm({bool forceAccountSelection = false}) async {
     try {
-      final url = Uri.parse(_baseFormUrl);
-      
+      // アカウントサービスを初期化
+      await _accountService.initialize();
+
+      // アカウントを確認・選択
+      if (_accountService.currentAccount == null || forceAccountSelection) {
+        final account = await _accountService.selectAccount(
+          forceAccountSelection: forceAccountSelection
+        );
+        if (account == null) {
+          onError?.call('Googleアカウントが選択されませんでした', true);
+          return false;
+        }
+      }
+
+      // アカウント指定付きURLを生成
+      final urlWithAccount = _accountService.generateFormsUrl(
+        baseUrl: _baseFormUrl,
+        params: {},
+      );
+      final url = Uri.parse(urlWithAccount);
+
       if (await canLaunchUrl(url)) {
         await launchUrl(
           url,
@@ -114,20 +195,42 @@ class GoogleFormsService {
       }
       return false;
     } catch (e) {
+      debugPrint('新規フォーム作成エラー: $e');
+      onError?.call('フォームの作成に失敗しました: $e', false);
       return false;
     }
   }
   
-  /// 既存のGoogleフォームURLを開く
-  static Future<bool> openExistingForm(String formUrl) async {
+  /// 既存のGoogleフォームURLを開く（アカウント指定付き）
+  static Future<bool> openExistingForm(String formUrl, {bool forceAccountSelection = false}) async {
     try {
       // URLの検証
       if (!_isValidGoogleFormUrl(formUrl)) {
+        onError?.call('無効なGoogle FormsのURLです', false);
         return false;
       }
-      
-      final url = Uri.parse(formUrl);
-      
+
+      // アカウントサービスを初期化
+      await _accountService.initialize();
+
+      // アカウントを確認・選択（必要な場合）
+      if (_accountService.currentAccount == null || forceAccountSelection) {
+        final account = await _accountService.selectAccount(
+          forceAccountSelection: forceAccountSelection
+        );
+        if (account == null) {
+          onError?.call('Googleアカウントが選択されませんでした', true);
+          return false;
+        }
+      }
+
+      // アカウント指定付きURLを生成
+      final urlWithAccount = _accountService.generateFormsUrl(
+        baseUrl: formUrl,
+        params: {},
+      );
+      final url = Uri.parse(urlWithAccount);
+
       if (await canLaunchUrl(url)) {
         await launchUrl(
           url,
@@ -137,6 +240,8 @@ class GoogleFormsService {
       }
       return false;
     } catch (e) {
+      debugPrint('既存フォームを開くエラー: $e');
+      onError?.call('フォームを開くことができませんでした: $e', false);
       return false;
     }
   }
@@ -237,22 +342,60 @@ class GoogleFormsService {
   /// テンプレートの説明文を生成（LLM連携用の準備）
   static String generateTemplateDescription(SurveyTemplate template) {
     final buffer = StringBuffer();
-    
+
     buffer.writeln('【${template.title}】');
     buffer.writeln('タイプ: ${template.type.label}');
     buffer.writeln('カテゴリ: ${template.category.label}');
     buffer.writeln('予想所要時間: ${template.estimatedMinutes ?? "未設定"}分');
     buffer.writeln();
     buffer.writeln('説明: ${template.description}');
-    
+
     if (template.instructions != null) {
       buffer.writeln();
       buffer.writeln('回答手順: ${template.instructions}');
     }
-    
+
     buffer.writeln();
     buffer.writeln('質問数: ${template.questions.length}');
-    
+
     return buffer.toString();
+  }
+
+  /// アカウントを切り替える
+  static Future<bool> switchAccount() async {
+    try {
+      final account = await _accountService.switchAccount();
+      if (account == null) {
+        onError?.call('アカウントの切り替えに失敗しました', true);
+        return false;
+      }
+
+      // フォーム権限を再確認
+      final hasPermission = await _accountService.requestFormsPermission();
+      if (!hasPermission) {
+        onError?.call(
+          '新しいアカウント（${account.email}）にGoogle Formsの編集権限がありません',
+          false
+        );
+        return false;
+      }
+
+      return true;
+    } catch (e) {
+      debugPrint('アカウント切り替えエラー: $e');
+      onError?.call('アカウント切り替えエラー: $e', false);
+      return false;
+    }
+  }
+
+  /// 現在のGoogleアカウント情報を取得
+  static Map<String, dynamic>? getCurrentAccountInfo() {
+    if (_accountService.currentAccount == null) return null;
+    return _accountService.getAccountInfo();
+  }
+
+  /// アカウントをリセット（サインアウト）
+  static Future<void> resetAccount() async {
+    await _accountService.signOut();
   }
 }

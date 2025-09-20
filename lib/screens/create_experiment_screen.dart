@@ -58,6 +58,7 @@ class CreateExperimentScreen extends StatelessWidget {
         ? Timestamp.fromDate(data['experimentPeriodEnd'])
         : null,
       'allowFlexibleSchedule': data['allowFlexibleSchedule'],
+      'scheduleType': data['scheduleType'],
       'labName': data['labName'],
       'duration': data['duration'],
       'maxParticipants': data['maxParticipants'],

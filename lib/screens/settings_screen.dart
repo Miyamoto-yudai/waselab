@@ -3,6 +3,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../services/auth_service.dart';
 import '../services/fcm_service.dart';
 import '../services/google_calendar_service.dart';
+import '../services/google_forms_service.dart';
+import '../services/google_account_service.dart';
 import 'login_screen.dart';
 import 'support_chat_screen.dart';
 import 'support_donation_screen.dart';
@@ -19,21 +21,153 @@ class _SettingsScreenState extends State<SettingsScreen> with WidgetsBindingObse
   final AuthService _authService = AuthService();
   final FCMService _fcmService = FCMService();
   final GoogleCalendarService _calendarService = GoogleCalendarService();
-  
+  final GoogleAccountService _accountService = GoogleAccountService();
+
   // 通知設定
   bool _experimentNotifications = true;
   bool _messageNotifications = true;
   bool _emailNotifications = false;
-  
+
   // カレンダー連携設定
   bool _calendarEnabled = false;
   bool _calendarConnected = false;
+
+  // Googleアカウント情報
+  String? _currentGoogleAccount;
+  Map<String, dynamic>? _accountInfo;
   
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    _initializeServices();
     _loadSettings();
+  }
+
+  Future<void> _initializeServices() async {
+    // エラーハンドラーを設定
+    _calendarService.onError = _handleGoogleServiceError;
+    GoogleFormsService.onError = _handleGoogleServiceError;
+
+    // アカウントサービスを初期化
+    await _accountService.initialize();
+    _loadAccountInfo();
+  }
+
+  void _handleGoogleServiceError(String error, bool needsAccountSelection) {
+    if (!mounted) return;
+
+    if (needsAccountSelection) {
+      // アカウント選択が必要な場合
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('アカウントの選択が必要'),
+          content: Text(error),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('キャンセル'),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                Navigator.pop(context);
+                await _selectGoogleAccount();
+              },
+              child: const Text('アカウントを選択'),
+            ),
+          ],
+        ),
+      );
+    } else {
+      // その他のエラー
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(error),
+          backgroundColor: Colors.red,
+          action: SnackBarAction(
+            label: '再試行',
+            textColor: Colors.white,
+            onPressed: () => _loadSettings(),
+          ),
+        ),
+      );
+    }
+  }
+
+  Future<void> _loadAccountInfo() async {
+    final info = _calendarService.getCurrentAccountInfo();
+    if (mounted) {
+      setState(() {
+        _accountInfo = info;
+        _currentGoogleAccount = info?['email'];
+      });
+    }
+  }
+
+  Future<void> _selectGoogleAccount() async {
+    try {
+      final account = await _accountService.selectAccount(forceAccountSelection: true);
+      if (account != null) {
+        // カレンダーとフォームの権限をリクエスト
+        final calendarPermission = await _accountService.requestCalendarPermission();
+        final formsPermission = await _accountService.requestFormsPermission();
+
+        if (mounted) {
+          if (calendarPermission || formsPermission) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('${account.email} でログインしました'),
+                backgroundColor: Colors.green,
+              ),
+            );
+            _loadAccountInfo();
+            _loadSettings();
+          } else {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('必要な権限が付与されませんでした'),
+                backgroundColor: Colors.orange,
+              ),
+            );
+          }
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('アカウント選択エラー: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _switchGoogleAccount() async {
+    try {
+      final success = await _calendarService.switchAccount();
+      if (success && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('アカウントを切り替えました'),
+            backgroundColor: Colors.green,
+          ),
+        );
+        _loadAccountInfo();
+        _loadSettings();
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('アカウント切り替えエラー: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
   }
   
   @override
@@ -69,10 +203,13 @@ class _SettingsScreenState extends State<SettingsScreen> with WidgetsBindingObse
     try {
       // まず保存された設定を読み込む
       final enabled = await _calendarService.isCalendarEnabled();
-      
+
       // 接続状態を確認（enabledの値に関わらず）
       final connected = await _calendarService.hasCalendarPermission();
-      
+
+      // Googleアカウント情報を読み込み
+      _loadAccountInfo();
+
       if (mounted) {
         setState(() {
           _calendarEnabled = enabled;
@@ -304,12 +441,12 @@ class _SettingsScreenState extends State<SettingsScreen> with WidgetsBindingObse
           ),
           
           const SizedBox(height: 24),
-          
-          // Googleカレンダー連携セクション
+
+          // Google連携セクション
           const Padding(
             padding: EdgeInsets.all(16.0),
             child: Text(
-              'Googleカレンダー連携',
+              'Google連携',
               style: TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.bold,
@@ -317,22 +454,84 @@ class _SettingsScreenState extends State<SettingsScreen> with WidgetsBindingObse
               ),
             ),
           ),
+
+          // Googleアカウント情報
+          if (_currentGoogleAccount != null)
+            Card(
+              margin: const EdgeInsets.symmetric(horizontal: 16),
+              child: ListTile(
+                leading: const CircleAvatar(
+                  backgroundColor: Colors.blue,
+                  child: Icon(Icons.account_circle, color: Colors.white),
+                ),
+                title: const Text('Googleアカウント'),
+                subtitle: Text(_currentGoogleAccount!),
+                trailing: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    IconButton(
+                      icon: const Icon(Icons.swap_horiz),
+                      onPressed: _switchGoogleAccount,
+                      tooltip: 'アカウントを切り替え',
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.logout),
+                      onPressed: () async {
+                        await _accountService.signOut();
+                        _loadAccountInfo();
+                        _loadSettings();
+                        if (mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Googleアカウントからログアウトしました'),
+                            ),
+                          );
+                        }
+                      },
+                      tooltip: 'ログアウト',
+                    ),
+                  ],
+                ),
+              ),
+            )
+          else
+            Card(
+              margin: const EdgeInsets.symmetric(horizontal: 16),
+              child: ListTile(
+                leading: const CircleAvatar(
+                  backgroundColor: Colors.grey,
+                  child: Icon(Icons.account_circle, color: Colors.white),
+                ),
+                title: const Text('Googleアカウント'),
+                subtitle: const Text('未接続'),
+                trailing: ElevatedButton(
+                  onPressed: _selectGoogleAccount,
+                  child: const Text('アカウントを選択'),
+                ),
+              ),
+            ),
+
+          const SizedBox(height: 8),
+
+          // カレンダー連携
           Card(
             margin: const EdgeInsets.symmetric(horizontal: 16),
             child: Column(
               children: [
                 SwitchListTile(
-                  title: const Text('カレンダー連携'),
-                  subtitle: Text(_calendarConnected 
-                    ? (_calendarEnabled ? 'Googleカレンダーと連携済み' : 'カレンダー連携は無効です')
-                    : 'Googleカレンダーと連携していません'),
+                  title: const Text('Googleカレンダー連携'),
+                  subtitle: Text(_calendarConnected
+                    ? (_calendarEnabled ? 'カレンダーと連携済み' : 'カレンダー連携は無効です')
+                    : 'カレンダーと連携していません'),
                   value: _calendarEnabled,
                   onChanged: (value) async {
                     if (value) {
                       // カレンダー連携を有効にする
                       if (!_calendarConnected) {
                         // まだ認証していない場合は認証を行う
-                        final success = await _calendarService.requestCalendarPermission();
+                        final success = await _calendarService.requestCalendarPermission(
+                          forceAccountSelection: _currentGoogleAccount == null
+                        );
                         if (success) {
                           await _calendarService.setCalendarEnabled(true);
                           if (mounted) {
@@ -340,6 +539,7 @@ class _SettingsScreenState extends State<SettingsScreen> with WidgetsBindingObse
                               _calendarEnabled = true;
                               _calendarConnected = true;
                             });
+                            _loadAccountInfo();
                             ScaffoldMessenger.of(context).showSnackBar(
                               const SnackBar(
                                 content: Text('Googleカレンダーと連携しました'),

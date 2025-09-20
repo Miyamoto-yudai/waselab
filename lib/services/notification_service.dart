@@ -216,22 +216,68 @@ class NotificationService {
     );
   }
 
-  // 実験参加通知を作成
+  // 実験参加通知を作成（実験者向け）
   Future<void> createExperimentJoinedNotification({
     required String userId,
     required String participantName,
     required String experimentTitle,
     required String experimentId,
+    Map<String, dynamic>? slotInfo,
   }) async {
+    // 予約制の場合は日時を含める
+    String message = '$participantNameさんが「$experimentTitle」に参加しました';
+    if (slotInfo != null && slotInfo['startTime'] != null) {
+      final startTime = DateTime.parse(slotInfo['startTime']);
+      final dateFormat = DateFormat('MM月dd日 HH:mm');
+      message += '（予約日時: ${dateFormat.format(startTime)}）';
+    }
+
+    final data = <String, dynamic>{
+      'experimentId': experimentId,
+      'participantName': participantName,
+    };
+    if (slotInfo != null) {
+      data.addAll(slotInfo);
+    }
+
     await createNotification(
       userId: userId,
       type: NotificationType.experimentJoined,
       title: '実験に参加者が加わりました',
-      message: '$participantNameさんが「$experimentTitle」に参加しました',
-      data: {
-        'experimentId': experimentId,
-        'participantName': participantName,
-      },
+      message: message,
+      data: data,
+    );
+  }
+
+  // 実験参加通知を作成（参加者向け）
+  Future<void> createParticipantJoinedNotification({
+    required String userId,
+    required String experimentTitle,
+    required String experimentId,
+    Map<String, dynamic>? slotInfo,
+  }) async {
+    // 予約制の場合は日時を含める
+    String message = '「$experimentTitle」への参加が完了しました';
+    if (slotInfo != null && slotInfo['startTime'] != null) {
+      final startTime = DateTime.parse(slotInfo['startTime']);
+      final dateFormat = DateFormat('MM月dd日 HH:mm');
+      message += '（予約日時: ${dateFormat.format(startTime)}）';
+    }
+
+    final data = <String, dynamic>{
+      'experimentId': experimentId,
+      'isParticipantNotification': true,  // 参加者側の通知であることを示す
+    };
+    if (slotInfo != null) {
+      data.addAll(slotInfo);
+    }
+
+    await createNotification(
+      userId: userId,
+      type: NotificationType.experimentJoined,
+      title: '実験に参加しました',
+      message: message,
+      data: data,
     );
   }
 
