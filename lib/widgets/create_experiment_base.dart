@@ -71,8 +71,8 @@ class _CreateExperimentBaseState extends State<CreateExperimentBase> {
   bool _showPreview = false;
 
   // 折りたたみ状態管理
-  bool _requirementsExpanded = false; // 参加条件
-  bool _consentExpanded = false; // 特別な同意項目
+  bool _requirementsExpanded = true; // 参加条件 - 初期状態で展開
+  bool _consentExpanded = true; // 特別な同意項目 - 初期状態で展開
   bool _fixedDateExpanded = false; // 実施日時
   bool _reservationDeadlineExpanded = false; // 予約締切
   
@@ -606,7 +606,6 @@ class _CreateExperimentBaseState extends State<CreateExperimentBase> {
       'postSurveyTemplateId': _postSurveyTemplateId,
       'isLabExperiment': _isLabExperiment,
     };
-
 
     try {
       await widget.onSave(data);
@@ -1885,7 +1884,14 @@ class _CreateExperimentBaseState extends State<CreateExperimentBase> {
                       '${_requirements.length}件の条件設定済み',
                       style: const TextStyle(fontSize: 13),
                     )
-                  : const Text('参加者の条件を設定', style: TextStyle(fontSize: 13)),
+                  : const Text(
+                      '参加者の条件を設定（推奨）',
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: Colors.orange,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
                 initiallyExpanded: _requirementsExpanded,
                 onExpansionChanged: (expanded) {
                   setState(() {
@@ -2019,7 +2025,14 @@ class _CreateExperimentBaseState extends State<CreateExperimentBase> {
                       '${_consentItems.length}件の同意項目設定済み',
                       style: const TextStyle(fontSize: 13),
                     )
-                  : const Text('特殊な器具使用などの同意項目', style: TextStyle(fontSize: 13)),
+                  : const Text(
+                      '特殊な器具使用などの同意項目（該当する場合は必須）',
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: Colors.orange,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
                 initiallyExpanded: _consentExpanded,
                 onExpansionChanged: (expanded) {
                   setState(() {
@@ -2261,15 +2274,33 @@ class _CreateExperimentBaseState extends State<CreateExperimentBase> {
           ], targetStep: 2),
           const SizedBox(height: 16),
 
-          if (previewExperiment.maxParticipants != null || _requirements.isNotEmpty || _consentItems.isNotEmpty)
-            _buildConfirmationSection('募集要項', [
-              if (previewExperiment.maxParticipants != null)
-                _buildConfirmationItem('募集人数', '${previewExperiment.maxParticipants}名'),
-              if (_requirements.isNotEmpty)
-                _buildConfirmationItem('参加条件', _requirements.join('、')),
-              if (_consentItems.isNotEmpty)
-                _buildConfirmationItem('特別な同意項目', _consentItems.join('、')),
-            ], targetStep: 3),
+          // 募集要項（常に表示）
+          _buildConfirmationSection('募集要項', [
+            if (previewExperiment.maxParticipants != null)
+              _buildConfirmationItem('募集人数', '${previewExperiment.maxParticipants}名')
+            else
+              _buildConfirmationItem(
+                '募集人数',
+                '未設定',
+                isWarning: true,
+              ),
+            if (_requirements.isNotEmpty)
+              _buildConfirmationItem('参加条件', _requirements.join('、'))
+            else
+              _buildConfirmationItem(
+                '参加条件',
+                '未設定（推奨）',
+                isWarning: true,
+              ),
+            if (_consentItems.isNotEmpty)
+              _buildConfirmationItem('特別な同意項目', _consentItems.join('、'))
+            else
+              _buildConfirmationItem(
+                '特別な同意項目',
+                '未設定（必要に応じて設定）',
+                isWarning: false,
+              ),
+          ], targetStep: 3),
 
           // アンケート設定セクション
           if ((_selectedType == ExperimentType.survey && _surveyUrlController.text.trim().isNotEmpty) ||
@@ -2464,10 +2495,10 @@ class _CreateExperimentBaseState extends State<CreateExperimentBase> {
   }
 
   /// 確認項目
-  Widget _buildConfirmationItem(String label, String value) {
+  Widget _buildConfirmationItem(String label, String value, {bool isWarning = false}) {
     // 長いテキストの場合は縦並びにする
     final isLongText = value.length > 50 || value.contains('\n');
-    
+
     if (isLongText) {
       return Padding(
         padding: const EdgeInsets.only(bottom: 12),
@@ -2477,7 +2508,7 @@ class _CreateExperimentBaseState extends State<CreateExperimentBase> {
             Text(
               label,
               style: TextStyle(
-                color: Colors.grey.shade600,
+                color: isWarning ? Colors.orange : Colors.grey.shade600,
                 fontSize: 14,
                 fontWeight: FontWeight.bold,
               ),
@@ -2513,7 +2544,7 @@ class _CreateExperimentBaseState extends State<CreateExperimentBase> {
             child: Text(
               label,
               style: TextStyle(
-                color: Colors.grey.shade600,
+                color: isWarning ? Colors.orange : Colors.grey.shade600,
                 fontSize: 14,
               ),
             ),
@@ -2521,9 +2552,10 @@ class _CreateExperimentBaseState extends State<CreateExperimentBase> {
           Expanded(
             child: Text(
               value,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 14,
                 fontWeight: FontWeight.w500,
+                color: isWarning ? Colors.orange : Colors.black,
               ),
             ),
           ),
