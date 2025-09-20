@@ -53,13 +53,10 @@ class _ExperimentDetailScreenState extends State<ExperimentDetailScreen> {
   String? _experimenterName;
   ExperimentReservation? _currentUserReservation;
   ExperimentSlot? _reservedSlot;
-  late List<bool> _detailConsentChecked;
 
   @override
   void initState() {
     super.initState();
-    // 同意項目のチェック状態を初期化
-    _detailConsentChecked = List.filled(widget.experiment.consentItems.length, false);
     _checkParticipation();
     _loadExperimenterName();
     _loadUserReservation();
@@ -1653,42 +1650,24 @@ class _ExperimentDetailScreenState extends State<ExperimentDetailScreen> {
                               ),
                             ],
                             if (widget.experiment.consentItems.isNotEmpty)
-                              ...widget.experiment.consentItems.asMap().entries.map((entry) {
-                              final index = entry.key;
-                              final item = entry.value;
+                              ...widget.experiment.consentItems.map((item) {
                               return Padding(
                                 padding: const EdgeInsets.only(bottom: 6),
                                 child: Row(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    SizedBox(
-                                      width: 20,
-                                      height: 20,
-                                      child: Checkbox(
-                                        value: _detailConsentChecked[index],
-                                        onChanged: (value) {
-                                          setState(() {
-                                            _detailConsentChecked[index] = value ?? false;
-                                          });
-                                        },
-                                        activeColor: Colors.amber[700],
-                                        materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                                      ),
+                                    const Icon(
+                                      Icons.info_outline,
+                                      size: 16,
+                                      color: Colors.amber,
                                     ),
                                     const SizedBox(width: 8),
                                     Expanded(
-                                      child: GestureDetector(
-                                        onTap: () {
-                                          setState(() {
-                                            _detailConsentChecked[index] = !_detailConsentChecked[index];
-                                          });
-                                        },
-                                        child: Text(
-                                          item,
-                                          style: TextStyle(
-                                            fontSize: 13,
-                                            color: Colors.amber[700],
-                                          ),
+                                      child: Text(
+                                        item,
+                                        style: TextStyle(
+                                          fontSize: 13,
+                                          color: Colors.amber[700],
                                         ),
                                       ),
                                     ),
@@ -1757,29 +1736,21 @@ class _ExperimentDetailScreenState extends State<ExperimentDetailScreen> {
                       ListTile(
                         leading: Icon(
                           Icons.calendar_month,
-                          color: (widget.experiment.consentItems.isNotEmpty && !_detailConsentChecked.every((checked) => checked))
-                            ? Colors.grey
-                            : const Color(0xFF8E1728),
+                          color: const Color(0xFF8E1728),
                         ),
                         title: Text(
                           '予約日時を選択',
                           style: TextStyle(
                             fontWeight: FontWeight.bold,
-                            color: (widget.experiment.consentItems.isNotEmpty && !_detailConsentChecked.every((checked) => checked))
-                              ? Colors.grey
-                              : null,
+                            color: null,
                           ),
                         ),
                         subtitle: Text(
-                          (widget.experiment.consentItems.isNotEmpty && !_detailConsentChecked.every((checked) => checked))
-                            ? '同意項目にチェックしてから日時を選択してください'
-                            : widget.experiment.maxParticipants != null
+                          widget.experiment.maxParticipants != null
                               ? 'カレンダーから希望の日時を選んでください（残り${widget.experiment.maxParticipants! - widget.experiment.participants.length}名）'
                               : 'カレンダーから希望の日時を選んでください',
                           style: TextStyle(
-                            color: (widget.experiment.consentItems.isNotEmpty && !_detailConsentChecked.every((checked) => checked))
-                              ? Colors.grey
-                              : null,
+                            color: null,
                           ),
                         ),
                         trailing: IconButton(
@@ -1787,26 +1758,20 @@ class _ExperimentDetailScreenState extends State<ExperimentDetailScreen> {
                             _showCalendar
                               ? Icons.keyboard_arrow_up
                               : Icons.keyboard_arrow_down,
-                            color: (widget.experiment.consentItems.isNotEmpty && !_detailConsentChecked.every((checked) => checked))
-                              ? Colors.grey
-                              : null,
+                            color: null,
                           ),
-                          onPressed: (widget.experiment.consentItems.isNotEmpty && !_detailConsentChecked.every((checked) => checked))
-                            ? null
-                            : () {
+                          onPressed: () {
                                 setState(() {
                                   _showCalendar = !_showCalendar;
                                 });
                               },
                         ),
-                        onTap: (widget.experiment.consentItems.isNotEmpty && !_detailConsentChecked.every((checked) => checked))
-                          ? null
-                          : () {
+                        onTap: () {
                               setState(() {
                                 _showCalendar = !_showCalendar;
                               });
                             },
-                        enabled: !(widget.experiment.consentItems.isNotEmpty && !_detailConsentChecked.every((checked) => checked)),
+                        enabled: true,
                       ),
                       if (_showCalendar)
                         ExperimentCalendarView(
@@ -1977,9 +1942,8 @@ class _ExperimentDetailScreenState extends State<ExperimentDetailScreen> {
                   width: double.infinity,
                   height: 48,
                   child: ElevatedButton.icon(
-                    onPressed: _isLoading || 
-                        (widget.experiment.consentItems.isNotEmpty && !_detailConsentChecked.every((checked) => checked))
-                      ? null // 読み込み中、または同意項目未チェックの場合は無効化
+                    onPressed: _isLoading
+                      ? null // 読み込み中の場合は無効化
                       : () => _handleDirectApplication(),
                     icon: _isLoading
                       ? const SizedBox(
@@ -1993,16 +1957,12 @@ class _ExperimentDetailScreenState extends State<ExperimentDetailScreen> {
                                 : Icons.send,
                         ),
                     label: Text(
-                      (widget.experiment.consentItems.isNotEmpty && !_detailConsentChecked.every((checked) => checked))
-                            ? 'すべての同意項目にチェックしてください'
-                            : widget.experiment.type == ExperimentType.survey
+                      widget.experiment.type == ExperimentType.survey
                                 ? '今すぐ参加'
                                 : '参加申請する',
                     ),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: (widget.experiment.consentItems.isNotEmpty && !_detailConsentChecked.every((checked) => checked))
-                          ? Colors.grey 
-                          : null,
+                      backgroundColor: null,
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(8),
                       ),

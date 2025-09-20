@@ -396,10 +396,13 @@ class _HomeScreenBaseState extends State<HomeScreenBase> {
               padding: EdgeInsets.only(
                 top: (isSmallScreen ? 250 + safeAreaTop : 230),
               ),
-            child: AppBar(
-              toolbarHeight: isSmallScreen ? 70 + safeAreaTop : 70,
-              titleSpacing: 0,
-              centerTitle: false,
+              child: Column(
+                children: [
+                  // ヘッダーのAppBar
+                  AppBar(
+                    toolbarHeight: isSmallScreen ? 70 + safeAreaTop : 70,
+                    titleSpacing: 0,
+                    centerTitle: false,
               flexibleSpace: SafeArea(
                 child: Container(),
               ),
@@ -491,10 +494,9 @@ class _HomeScreenBaseState extends State<HomeScreenBase> {
                     padding: const EdgeInsets.all(12),
                   ),
               ],
-            ),
-          ),
-          // 検索バー、日付フィルター、種別切り替えボタン、ソート選択
-          AnimatedContainer(
+                  ),
+                  // 検索バー、日付フィルター、種別切り替えボタン、ソート選択
+                  AnimatedContainer(
             duration: const Duration(milliseconds: 100),
             height: _isHeaderVisible ? (isSmallScreen ? 180 : 160) : 0,
             child: SingleChildScrollView(
@@ -809,9 +811,9 @@ class _HomeScreenBaseState extends State<HomeScreenBase> {
                 ),
               ),
             ),
-          ),
-          // 実験リスト（レスポンシブグリッド）
-          Expanded(
+                  ),
+                  // 実験リスト（レスポンシブグリッド）
+                  Expanded(
             child: Container(
               color: const Color(0xFFF5F5F5),
               child: filteredExperiments.isEmpty
@@ -872,6 +874,10 @@ class _HomeScreenBaseState extends State<HomeScreenBase> {
                         );
                       },
                     ),
+            ),
+                  ),
+                ],
+              ),
             ),
           ),
         ],
