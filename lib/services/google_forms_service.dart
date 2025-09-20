@@ -30,10 +30,15 @@ class GoogleFormsService {
           forceAccountSelection: forceAccountSelection
         );
         if (account == null) {
-          onError?.call('Googleアカウントが選択されませんでした', true);
+          onError?.call(
+            'Googleフォームを作成するには、Googleアカウントとの連携が必要です。\n'
+            '設定画面からGoogleアカウントを連携してください。',
+            true
+          );
           return {
             'success': false,
-            'error': 'アカウントが選択されませんでした',
+            'error': 'Googleアカウントが連携されていません',
+            'needsGoogleAuth': true,
             'needsAccountSelection': true,
           };
         }
@@ -174,7 +179,11 @@ class GoogleFormsService {
           forceAccountSelection: forceAccountSelection
         );
         if (account == null) {
-          onError?.call('Googleアカウントが選択されませんでした', true);
+          onError?.call(
+            'Googleフォームを作成するには、Googleアカウントとの連携が必要です。\n'
+            '設定画面からGoogleアカウントを連携してください。',
+            true
+          );
           return false;
         }
       }
@@ -219,7 +228,11 @@ class GoogleFormsService {
           forceAccountSelection: forceAccountSelection
         );
         if (account == null) {
-          onError?.call('Googleアカウントが選択されませんでした', true);
+          onError?.call(
+            'Googleフォームを編集するには、Googleアカウントとの連携が必要です。\n'
+            '設定画面からGoogleアカウントを連携してください。',
+            true
+          );
           return false;
         }
       }
@@ -252,6 +265,8 @@ class GoogleFormsService {
       final questionsText = template.exportQuestionsAsText();
       await Clipboard.setData(ClipboardData(text: questionsText));
     } catch (e) {
+      // クリップボードのコピーに失敗しても処理を続行
+      debugPrint('Failed to copy to clipboard: $e');
     }
   }
   

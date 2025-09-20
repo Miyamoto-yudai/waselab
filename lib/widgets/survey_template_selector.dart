@@ -1456,6 +1456,13 @@ class _SurveyTemplateSelectorState extends State<SurveyTemplateSelector> {
   
   /// 自動でフォームを作成（Firebase Functions経由）
   Future<void> _createFormAutomatically() async {
+    // Googleアカウントの連携状態を確認
+    final accountInfo = GoogleFormsService.getCurrentAccountInfo();
+    if (accountInfo == null) {
+      // Googleアカウントが連携されていない場合の処理
+      _showGoogleAccountRequiredDialog();
+      return;
+    }
     // ローディングダイアログを表示
     showDialog(
       context: context,
@@ -1522,7 +1529,9 @@ class _SurveyTemplateSelectorState extends State<SurveyTemplateSelector> {
                   '解決方法:',
                   style: TextStyle(fontWeight: FontWeight.bold),
                 ),
-                if (errorCode == 'permission-denied' || errorMessage.contains('403'))
+                if (result?['needsGoogleAuth'] == true)
+                  const Text('• 設定画面からGoogleアカウントを連携してください')
+                else if (errorCode == 'permission-denied' || errorMessage.contains('403'))
                   const Text('• Google Forms APIを有効化してください')
                 else if (errorCode == 'unauthenticated' || errorMessage.contains('401'))
                   const Text('• サービスアカウントの認証情報を設定してください')
@@ -1572,8 +1581,87 @@ class _SurveyTemplateSelectorState extends State<SurveyTemplateSelector> {
       );
     }
   }
-  
-  
+
+  /// Googleアカウント連携が必要なことを通知するダイアログ
+  void _showGoogleAccountRequiredDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Row(
+          children: [
+            Icon(Icons.warning_amber, color: Colors.orange),
+            const SizedBox(width: 8),
+            const Text('Googleアカウント連携が必要'),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Googleフォームの自動作成機能を使用するには、Googleアカウントとの連携が必要です。',
+            ),
+            const SizedBox(height: 16),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.blue.shade50,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.blue.shade200),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Icon(Icons.info_outline, size: 16, color: Colors.blue.shade700),
+                      const SizedBox(width: 8),
+                      Text(
+                        '連携すると以下のことが可能になります：',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color: Colors.blue.shade700,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  const Text('• Googleフォームの自動作成'),
+                  const Text('• 作成したフォームの編集権限付与'),
+                  const Text('• アンケート結果の自動集計'),
+                ],
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('キャンセル'),
+          ),
+          ElevatedButton.icon(
+            onPressed: () async {
+              Navigator.of(context).pop();
+              // 設定画面を開く
+              await Navigator.pushNamed(context, '/settings');
+              // 設定画面から戻ってきたら、アカウント状態を再確認
+              final accountInfo = GoogleFormsService.getCurrentAccountInfo();
+              if (accountInfo != null) {
+                // アカウントが連携されたら、フォーム作成を続行
+                _createFormAutomatically();
+              }
+            },
+            icon: const Icon(Icons.settings),
+            label: const Text('設定画面へ'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF8E1728),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildQuestionPreview(SurveyQuestion question) {
     switch (question.type) {
       case QuestionType.shortText:
