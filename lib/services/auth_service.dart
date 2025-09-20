@@ -39,8 +39,25 @@ class AuthService {
   bool _isWasedaEmail(String email) {
     final lowercaseEmail = email.toLowerCase();
     // 早稲田大学の各種メールドメインに対応
-    return lowercaseEmail.endsWith('.waseda.jp') || 
+    return lowercaseEmail.endsWith('.waseda.jp') ||
            lowercaseEmail.endsWith('@waseda.jp');
+  }
+
+  /// ユーザーのGoogleアカウントメールアドレスを更新
+  Future<void> updateGoogleEmail(String userId, String googleEmail) async {
+    try {
+      await _firestore.collection('users').doc(userId).update({
+        'googleEmail': googleEmail,
+      });
+      if (kDebugMode) {
+        print('[AuthService] Updated Google email for user: $userId');
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('[AuthService] Failed to update Google email: $e');
+      }
+      rethrow;
+    }
   }
 
   /// メールアドレスとパスワードでサインアップ

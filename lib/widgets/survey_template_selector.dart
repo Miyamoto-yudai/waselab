@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'dart:convert';
 import '../models/survey_template.dart';
 import '../services/google_forms_service.dart';
+import '../screens/settings_screen.dart';
 import 'ai_survey_generator.dart';
 
 /// アンケートテンプレート選択ダイアログ
@@ -1628,7 +1629,6 @@ class _SurveyTemplateSelectorState extends State<SurveyTemplateSelector> {
                   const SizedBox(height: 8),
                   const Text('• Googleフォームの自動作成'),
                   const Text('• 作成したフォームの編集権限付与'),
-                  const Text('• アンケート結果の自動集計'),
                 ],
               ),
             ),
@@ -1643,7 +1643,12 @@ class _SurveyTemplateSelectorState extends State<SurveyTemplateSelector> {
             onPressed: () async {
               Navigator.of(context).pop();
               // 設定画面を開く
-              await Navigator.pushNamed(context, '/settings');
+              await Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const SettingsScreen(),
+                ),
+              );
               // 設定画面から戻ってきたら、アカウント状態を再確認
               final accountInfo = GoogleFormsService.getCurrentAccountInfo();
               if (accountInfo != null) {

@@ -82,7 +82,7 @@ class GoogleFormsService {
         }).toList(),
         'instructions': template.instructions,
         'estimatedMinutes': template.estimatedMinutes,
-        'userEmail': _accountService.currentEmail, // アカウント情報を追加
+        'userEmail': _accountService.currentEmail, // 連携したGoogleアカウントのメールアドレス
       };
 
       // Functionsを実行

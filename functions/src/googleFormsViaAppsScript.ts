@@ -27,6 +27,7 @@ interface FormTemplate {
   questions: TemplateQuestion[];
   instructions?: string;
   estimatedMinutes?: number;
+  userEmail?: string; // ユーザーメールアドレスを追加
 }
 
 // Google Apps Script経由でフォームを作成
@@ -64,6 +65,12 @@ export const createGoogleFormViaAppsScript = functions.https.onCall(
       console.log("Title:", customTitle);
       console.log("Questions count:", template.questions.length);
 
+      // ユーザーのメールアドレスを取得
+      const authUserId = context.auth.uid;
+      const userDoc = await admin.firestore().collection("users").doc(authUserId).get();
+      const userData = userDoc.data();
+      const userEmail = userData?.googleEmail || userData?.email || template.userEmail || null;
+
       // Google Apps Scriptに送信するデータ
       const requestData = {
         action: "createForm",
@@ -73,6 +80,7 @@ export const createGoogleFormViaAppsScript = functions.https.onCall(
           instructions: template.instructions,
           questions: template.questions,
         },
+        userEmail: userEmail, // ユーザーのメールアドレスを追加
       };
 
       // Google Apps Script Web Appを呼び出し
@@ -115,6 +123,7 @@ export const createGoogleFormViaAppsScript = functions.https.onCall(
         formId: result.formId,
         formUrl: result.formUrl,
         editUrl: result.editUrl,
+        sharedWith: result.sharedWith || userEmail,
       };
 
     } catch (error: any) {

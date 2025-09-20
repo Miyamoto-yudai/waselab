@@ -113,6 +113,12 @@ class _SettingsScreenState extends State<SettingsScreen> with WidgetsBindingObse
         final calendarPermission = await _accountService.requestCalendarPermission();
         final formsPermission = await _accountService.requestFormsPermission();
 
+        // Firestoreのユーザー情報を更新してGoogleアカウントのメールを保存
+        final user = _authService.currentUser;
+        if (user != null) {
+          await _authService.updateGoogleEmail(user.uid, account.email);
+        }
+
         if (mounted) {
           if (calendarPermission || formsPermission) {
             ScaffoldMessenger.of(context).showSnackBar(

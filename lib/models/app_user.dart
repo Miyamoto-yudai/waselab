@@ -33,6 +33,7 @@ class AppUser {
   final List<String> unlockedColors; // 解放済みアイコンカラーIDリスト
   final String? selectedColor;       // 選択中のアイコンカラーID
   final String? studentId;            // 学籍番号（早稲田学生のみ）
+  final String? googleEmail;          // 連携したGoogleアカウントのメールアドレス
 
   AppUser({
     required this.uid,
@@ -65,6 +66,7 @@ class AppUser {
     this.unlockedColors = const ['default'], // デフォルトカラーは最初から解放
     this.selectedColor = 'default',
     this.studentId,
+    this.googleEmail,
   });
 
   /// Firestoreのドキュメントからユーザーを作成
@@ -102,6 +104,7 @@ class AppUser {
       unlockedColors: List<String>.from(data['unlockedColors'] ?? ['default']),
       selectedColor: data['selectedColor'] ?? 'default',
       studentId: data['studentId'],
+      googleEmail: data['googleEmail'],
     );
   }
 
@@ -142,6 +145,7 @@ class AppUser {
       'unlockedColors': unlockedColors,
       'selectedColor': selectedColor,
       'studentId': studentId,
+      'googleEmail': googleEmail,
     };
   }
 
